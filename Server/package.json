@@ -1,0 +1,16 @@
+{
+  "name": "NeptuneServer",
+  "description": "Receive notifications from your Android device",
+  "author": {
+    "name": "neptune",
+    "email": "neptune@cnewb.co",
+    "url": "https://projects.cnewb.co/CSCECapstone/"
+  },
+  "homepage": "https://github.com/SCCapstone/Neptune",
+  "dependencies": {
+    "@nodegui/nodegui": "^0.57.1",
+    "express": "^4.18.2",
+    "node-notifier": "^10.0.1",
+    "pkg": "^5.8.0"
+  }
+}
