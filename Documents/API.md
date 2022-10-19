@@ -238,7 +238,7 @@ Other end will respond with `200: OK`, allowing the device that sent the request
 ## Misc commands
 `/api/v1/client/getBatteryInfo`:
 For server to request battery information of the client, no parameters.
-Reply (also the data the client sends with `/api/v1/client/sendBatteryLevel`):
+Reply (also the data the client sends with `/api/v1/server/sendBatteryLevel`):
 ```json
 {
     "level": 100, // Battery percentage
