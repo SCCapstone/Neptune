@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.neptune.app">
+    package="com.example.neptuneclientfrontend">
 
     <application
         android:allowBackup="true"
@@ -11,7 +11,29 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Neptune"
-        tools:targetApi="31" />
+        android:theme="@style/Theme.NeptuneClientFrontEnd"
+        tools:targetApi="31">
+        <activity
+            android:name=".FileActivity"
+            android:exported="false"
+            android:label = "File sharing settings"/>
+        <activity
+            android:name=".NotificationsActivity"
+            android:exported="false"
+            android:label = "Change synched notifications"/>
+        <activity
+            android:name=".DeviceActivity"
+            android:exported="false"
+            android:label = "Desktop-24Sf4"/>
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
 
 </manifest>
