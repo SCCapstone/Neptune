@@ -71,11 +71,11 @@ class IPAddress {
     }
 
     /**
-     * This will print the object
-     * @return {void}
+     * Returns the IP address as a string
+     * @return {string}
      */
     toString() {
-        console.log("string");
+        return this.#IPAddress + ":" + this.#port;
     }
 
 
