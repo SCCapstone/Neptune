@@ -3,7 +3,7 @@ class NotificationManager {
     /** @typedef {ClientManager} */
     #clientManager;
     /** @typedef {Map<notificationId: string, Notification>} */
-    #notifications;
+    #notifications = new Map();
     
     /**
      * This is the constuctor

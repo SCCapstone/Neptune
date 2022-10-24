@@ -3,7 +3,7 @@ class NeptuneNotification {
     /** @typedef {StatusBarNotification} */
     #Notification;
     /** @typedef {Map<string, boolean>} */
-    #pushedClients;
+    #pushedClients = new Map();
     /** @typedef {string} */
     #id;
     
