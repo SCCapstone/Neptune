@@ -16,7 +16,7 @@ const hkdf = require("futoin-hkdf");
  */
 NeptuneCrypto.HDFK = function(sharedSecret, salt) {
 	sharedSecret = "18" // The example shared secret for the DH wiki page
-	salt = "SuperSecureSaltg8pLcriqI#istlsWu"; // Static, in future use seperate DH exchange for salt?
+	salt = "SuperSecureSaltg8pLcriqI#istlsWu"; // Static, in future use separate DH exchange for salt?
 	// Would likely be SHA256(DH2_SharedSecret)
 	
 	let hashLength = hkdf.hash_length('sha256');
