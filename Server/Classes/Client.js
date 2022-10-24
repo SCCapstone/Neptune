@@ -1,3 +1,6 @@
+const ConfigItem = require('ConfigItem.js');
+const IPAddess = require('IPAddress.js');
+
 class Client {
 
     /** @typedef {IPAddress} */

@@ -1,3 +1,5 @@
+const ConnectionManager = require('ConnectionManager.js');
+
 class IPAddress {
     
     /** @typedef {string} */

@@ -1,3 +1,5 @@
+const NotificationManager = require('NotificationManager.js');
+
 class ClientManager {
     
     /** @typedef {Map<clientId: string, Client} */
