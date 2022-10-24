@@ -67,7 +67,6 @@ class IPAddress {
      * @return {void} 
      */
     setPort(port) {
-        // comment
         this.#port = port;
     }
 
