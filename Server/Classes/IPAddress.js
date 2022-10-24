@@ -75,7 +75,7 @@ class IPAddress {
      * @return {void}
      */
     toString() {
-        console.log("string");
+        return this.#IPAddress
     }
 
 
