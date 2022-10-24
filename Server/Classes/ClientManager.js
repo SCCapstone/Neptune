@@ -1,7 +1,7 @@
 class ClientManager {
     
     /** @typedef {Map<clientId: string, Client} */
-    #clients;
+    #clients = new Map();
 
     /**
      * This is the constructor
