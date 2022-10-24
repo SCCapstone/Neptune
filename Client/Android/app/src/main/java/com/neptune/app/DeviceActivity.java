@@ -1,4 +1,4 @@
-package com.example.neptuneclientfrontend;
+package com.neptune.app;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
@@ -10,6 +10,7 @@ import android.widget.RadioButton;
 import android.widget.TextView;
 import android.content.Intent;
 import android.view.View;
+
 
 public class DeviceActivity extends AppCompatActivity {
 

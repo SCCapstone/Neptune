@@ -1,4 +1,4 @@
-package com.example.neptuneclientfrontend;
+package com.neptune.app;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.DialogFragment;

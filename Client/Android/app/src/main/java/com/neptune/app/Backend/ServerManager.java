@@ -1,6 +1,8 @@
-public class ServerManager  extends NotificationManager {
+import java.util.Map;
 
-    private Map<serverId, Server>;
+public class ServerManager {
+
+    private Map<serverId, Server> servers;
 
     private void removeServer() {
 
@@ -15,17 +17,17 @@ public class ServerManager  extends NotificationManager {
         return null;
     }
 
-    public Server pair(String name, IPAddress) {
+    public Server pair(String name, IPAddress ipAddress) {
 
         return null;
     }
 
-    public boolean unpair(Server) {
+    public boolean unpair(Server server) {
 
         return false;
     }
 
-    public Server getServer(serverId) {
+    public Server getServer(serverId serverId) {
 
         return null;
     }

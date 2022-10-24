@@ -2,7 +2,7 @@ import android.app.Notification;
 
 import java.util.Map;
 
-public class NotificationManager {
+public class NotificationManager extends ServerManager {
 
     private Map<String, Notification> notifications;
     private ServerManager serverManager;
