@@ -1,6 +1,10 @@
+package com.neptune.app.Backend;
+
 import android.app.Notification;
 
 import org.json.JSONObject;
+
+import java.util.Date;
 
 public class Server {
     private IPAddress ipAddress;
@@ -9,7 +13,7 @@ public class Server {
     private String serverId;
     private String name;
     private String friendlyName;
-    private DateTime dateAdded;
+    private Date dateAdded;
     private String[] notifiableApps;
 
     public Server server() {

@@ -1,8 +1,10 @@
+package com.neptune.app.Backend;
+
 import android.app.Notification;
 
 import java.util.Map;
 
-public class NotificationManager extends ServerManager {
+public class NotificationManager {
 
     private Map<String, Notification> notifications;
     private ServerManager serverManager;

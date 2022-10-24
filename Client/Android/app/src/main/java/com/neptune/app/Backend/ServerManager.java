@@ -1,8 +1,10 @@
+package com.neptune.app.Backend;
+
 import java.util.Map;
 
 public class ServerManager {
 
-    private Map<serverId, Server> servers;
+    private Map<String, Server> servers;
 
     private void removeServer() {
 
@@ -27,14 +29,14 @@ public class ServerManager {
         return false;
     }
 
-    public Server getServer(serverId serverId) {
+    public Server getServer(String serverId) {
 
         return null;
     }
 
     public Server[] getServers() {
 
-        return new Server[0];
+        return servers.values().toArray(new Server[0]); // Maybe?
     }
 
     public void loadServers() {
