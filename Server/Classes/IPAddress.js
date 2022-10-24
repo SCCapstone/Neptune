@@ -67,7 +67,8 @@ class IPAddress {
      * @return {void} 
      */
     setPort(port) {
-        console.log(port);
+        // comment
+        this.#port = port;
     }
 
     /**
