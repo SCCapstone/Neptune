@@ -170,38 +170,8 @@ tray.show();
 global.tray = tray; // prevents garbage collection of tray
 
 
-
-
-const mainWindow = new NodeGUI.QMainWindow();
-mainWindow.setWindowTitle('Neptune');
-mainWindow.setWindowIcon(ApplicationIcon);
-mainWindow.resize(400, 200);
-mainWindow.addEventListener(NodeGUI.WidgetEventTypes.Close, () => {
-	console.log('Window closed.')
-});
-
-const centralWidget = new NodeGUI.QWidget();
-centralWidget.setObjectName("myroot");
-const rootLayout = new NodeGUI.FlexLayout();
-centralWidget.setLayout(rootLayout);
-
-const label = new NodeGUI.QLabel();
-label.setInlineStyle("font-size: 16px; font-weight: bold;");
-label.setText("Project Neptune");
-
-rootLayout.addWidget(label);
-mainWindow.setCentralWidget(centralWidget);
-mainWindow.setStyleSheet(
-  `
-    #myroot {
-      background-color: #009688;
-    }
-  `
-);
+const mainWindow = new (require('./Windows/mainWindow.js'))();
 mainWindow.show();
-
-global.mainWindow = mainWindow;
-
 
 
 
