@@ -6,12 +6,28 @@
     "email": "neptune@cnewb.co",
     "url": "https://projects.cnewb.co/CSCECapstone/"
   },
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack -p",
+    "start": "webpack && qode ./dist/index.js",
+    "debug": "webpack && qode --inspect ./dist/index.js"
+  },
   "homepage": "https://github.com/SCCapstone/Neptune",
   "dependencies": {
     "@nodegui/nodegui": "^0.57.1",
+    "@nodegui/packer": "^1.5.0",
+    "@types/node": "^18.7.14",
+    "clean-webpack-plugin": "^4.0.0",
     "express": "^4.18.2",
+    "file-loader": "^6.2.0",
     "futoin-hkdf": "^1.5.1",
+    "native-addon-loader": "^2.0.1",
+    "node-loader": "^2.0.0",
     "node-notifier": "^10.0.1",
-    "pkg": "^5.8.0"
+    "pkg": "^5.8.0",
+    "ts-loader": "^9.3.1",
+    "typescript": "^4.8.2",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0"
   }
 }
