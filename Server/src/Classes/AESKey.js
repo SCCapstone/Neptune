@@ -19,7 +19,7 @@ class AESKey {
      * @return {byte[]}
      */
     getKey() {
-        return;
+        return this.#key;
     }
 
     /**
@@ -27,7 +27,7 @@ class AESKey {
      * @returns {btye[]}
      */
     getIV() {
-        return;
+        return this.#iv;
     }
 }
 

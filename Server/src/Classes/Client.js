@@ -80,6 +80,7 @@ class Client {
      * @return {void}
      */
     setIPAddress(ipAddress) {
+        this.#IPAddress = ipAddress;
         return;
     }
 
@@ -88,7 +89,7 @@ class Client {
      * @return {IPAddress}
      */
     getIPAddress() {
-        return;
+        return this.#IPAddress;
     }
 
     /**

@@ -53,7 +53,7 @@ class ClientManager {
      * @returns {Client}
      */
     getClient(clientId) {
-        return;
+        return this.#clients.get(clientId);
     }
 
     /**
