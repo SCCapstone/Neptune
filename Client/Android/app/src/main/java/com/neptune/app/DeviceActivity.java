@@ -31,7 +31,7 @@ public class DeviceActivity extends AppCompatActivity {
             }
         });
 
-        TextView files = (TextView) findViewById(R.id.test1);
+        ImageView files = (ImageView) findViewById(R.id.fileSets);
         files.setOnClickListener(new View.OnClickListener(){
             public void onClick(View v) {
                 startActivity(new Intent(DeviceActivity.this, FileActivity.class));

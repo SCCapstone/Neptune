@@ -8,8 +8,6 @@ import android.view.View;
 import android.widget.TextView;
 import android.content.Intent;
 
-import org.w3c.dom.Text;
-
 public class MainActivity extends AppCompatActivity {
     //public ServerManager serverManager;
     //public Config config
@@ -19,8 +17,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        TextView devName = (TextView) findViewById(R.id.test1);
-        devName.setOnClickListener(new View.OnClickListener(){
+        TextView devName = (TextView) findViewById(R.id.name);
+        devName.setOnClickListener(new TextView.OnClickListener(){
+            @Override
             public void onClick(View v) {
                 startActivity(new Intent(MainActivity.this, DeviceActivity.class));
             }

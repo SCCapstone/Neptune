@@ -99,7 +99,7 @@
         tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
 
     <TextView
-        android:id="@+id/test1"
+        android:id="@+id/name"
         android:layout_width="310dp"
         android:layout_height="25dp"
         android:layout_alignParentEnd="true"
