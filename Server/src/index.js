@@ -24,6 +24,7 @@ Error.stackTraceLimit = 3;
 Neptune.Version = new Version(0, 0, 1, ((debug)?"debug":"release"), "Skeleton");
 
 
+var port = 25560;
 
 const useDPAPI = false; // Toggles use of Window's Data Protection API. DPAPI is used to protect configuration files, account data and more.
 
@@ -38,9 +39,16 @@ process.Neptune = Neptune; // Anywhere down the chain you can use process.Neptun
  * Pull in externals here, imports, libraries
  * 
  */
+// Basic
+const path = require("path");
 
+// GUI
+const NodeGUI = require("@nodegui/nodegui");
+
+// Web
+const http = require('http');
 const Express = require('express'); // also kinda important
-
+const multer = require('multer');
 
 
 
@@ -137,40 +145,109 @@ console.log("\n");
 
 
 
+// Used "globally"
+const ApplicationIcon = new NodeGUI.QIcon(path.resolve(__dirname, "../src/Support/coconut.jpg"));
 
-// const mainWindow = new NodeGUI.QMainWindow();
 
-// mainWindow.show();
+const qApp = NodeGUI.QApplication.instance();
+qApp.setQuitOnLastWindowClosed(false); // required so that app doesn't close if we close all windows.
 
-const {
-  QMainWindow,
-  QWidget,
-  QLabel,
-  FlexLayout
-} = require("@nodegui/nodegui");
 
-const win = new QMainWindow();
-win.setWindowTitle('Neptune');
-win.resize(400, 200);
+// Tray icon
+const menu = new NodeGUI.QMenu();
 
-const centralWidget = new QWidget();
+
+// https://docs.nodegui.org/docs/api/generated/classes/qsystemtrayicon/
+const tray = new NodeGUI.QSystemTrayIcon();
+tray.setIcon(ApplicationIcon);
+tray.setToolTip("Neptune Server running");
+tray.addEventListener('clicked',(checked)=>console.log("clicked"));
+
+tray.show();
+
+
+
+global.tray = tray; // prevents garbage collection of tray
+
+
+
+
+const mainWindow = new NodeGUI.QMainWindow();
+mainWindow.setWindowTitle('Neptune');
+mainWindow.setWindowIcon(ApplicationIcon);
+mainWindow.resize(400, 200);
+mainWindow.addEventListener(NodeGUI.WidgetEventTypes.Close, () => {
+	console.log('Window closed.')
+});
+
+const centralWidget = new NodeGUI.QWidget();
 centralWidget.setObjectName("myroot");
-const rootLayout = new FlexLayout();
+const rootLayout = new NodeGUI.FlexLayout();
 centralWidget.setLayout(rootLayout);
 
-const label = new QLabel();
+const label = new NodeGUI.QLabel();
 label.setInlineStyle("font-size: 16px; font-weight: bold;");
 label.setText("Project Neptune");
 
 rootLayout.addWidget(label);
-win.setCentralWidget(centralWidget);
-win.setStyleSheet(
+mainWindow.setCentralWidget(centralWidget);
+mainWindow.setStyleSheet(
   `
     #myroot {
       background-color: #009688;
     }
   `
 );
-win.show();
+mainWindow.show();
 
-global.win = win;
+global.mainWindow = mainWindow;
+
+
+
+
+// Express
+const app = Express();
+// app.use(bodyParser.urlencoded({ extended: true }));
+app.use(Express.json());
+// app.use(session({
+// 	secret: "fThx4TVHS7XvW84274W0uoY4GvhmsDN7nN0W3mhRGH2fgFFEZUEZYIeCGoDNoGojW4YfCUlfNZupiekNiOXI1wuOeS2HICpRsrQdndecLCFKtYXr26jLTEtekpPJpFJ7gt8DSmtOYx8WRVz0Jbb211Vqiwnnc8ENl7Z8iDldh01cICNHBrG4F5E6Uz6IRBJonHOPbi3TiNjnW4nxCywjuhpOkzpDGKhox1A3EythsBLNEJp4Br6X3Uef8muOxKzN",
+// 	saveUninitialized: true,
+// 	resave: true
+// }));
+var upload = multer({
+	dest: './data/uploads/',
+	limits: {
+		fileSize: 40000000, // 40MB
+	},
+	fileFilter: function (req, file, callback) {
+        var ext = path.extname(file.originalname);
+        if(ext !== '.png' && ext !== '.jpg' && ext !== '.jpeg') { // Only allow JPG's
+            return callback(new Error('Only images are allowed'))
+        }
+        callback(null, true)
+    },
+}); // For uploads
+
+
+const httpServer = http.createServer(app);
+
+
+// Web page
+app.get("/", (req, res) => {
+	res.end(`<html>
+	<head>
+		<title>Neptune</title>
+	</head>
+	<body>
+		<h1>Oh my Neptune.</h1>
+	</body>
+</html>`);
+
+	mainWindow.show();
+});
+
+
+// Listener
+httpServer.listen(port, () => {
+	console.log("[Web] Express server listening on port " + port);
+});

@@ -9,7 +9,7 @@
   "main": "index.js",
   "scripts": {
     "build": "webpack -p",
-    "start": "webpack && qode ./dist/index.js",
+    "start": "webpack && del dist\\513baa13871a954a5b75b2da32de654f.node && move dist\\88af812b4c74a9ed091c5173105490fb.node dist\\513baa13871a954a5b75b2da32de654f.node && qode ./dist/index.js",
     "debug": "webpack && qode --inspect ./dist/index.js"
   },
   "homepage": "https://github.com/SCCapstone/Neptune",
@@ -21,6 +21,8 @@
     "express": "^4.18.2",
     "file-loader": "^6.2.0",
     "futoin-hkdf": "^1.5.1",
+    "http": "^0.0.1-security",
+    "multer": "^1.4.5-lts.1",
     "native-addon-loader": "^2.0.1",
     "node-loader": "^2.0.0",
     "node-notifier": "^10.0.1",
