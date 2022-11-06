@@ -10,7 +10,6 @@
  */
 
 const NodeGUI = require("@nodegui/nodegui");
-const ResourceManager = new (require("../ResourceManager"))();
 
 
 /**
@@ -28,7 +27,7 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 
 	constructor(arg) {
 		super(arg);
-		this.setWindowIcon(ResourceManager.ApplicationIcon);
+		this.setWindowIcon(process.ResourceManager.ApplicationIcon);
 
 		let centralWidget = new NodeGUI.QWidget();
 		let rootLayout = new NodeGUI.FlexLayout();

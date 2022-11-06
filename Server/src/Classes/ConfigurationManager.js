@@ -9,7 +9,7 @@
 
 
 /* Imports */
-const ConfigItem = require('ConfigItem.js');
+const ConfigItem = require('./ConfigItem.js');
 
 
 /**
@@ -23,20 +23,49 @@ class ConfigurationManager {
 	 */
 	#cachedItems;
 
-	constructor() {
-		// Do stuff here?
-		// Probably grab the base encryption key for files
+	/**
+	 * Encryption key used for storing config files
+	 * @type {string} 
+	 */
+	#encryptionKey;
+
+	/**
+	 * Path to the configuration files
+	 * @type {string}
+	 */
+	#configDirectory = "./data/configs/";
+
+	constructor(configDirectory, encryptionKey) {
+		this.#configDirectory = configDirectory;
+		this.#encryptionKey = encryptionKey;
 	}
 
 	/**
 	 * Load a configuration from disk
-	 * @param {string} filePath
+	 * @param {string} configName The name of the configuration file (or path if isPath is set to true)
+	 * @param {boolean} isPath Indicates that configName is in fact the path to the config file
 	 * @return {ConfigItem}
 	 */
-	loadConfig(filePath) {
-		let configItem = new ConfigItem(filePath);
-		this.#cachedItems.set(filePath, configItem);
+	loadConfig(configName, isPath) {
+		if (typeof configName !== "string")
+			throw new TypeError("configName expected string got " + (typeof configName).toString());
+
+		let path = configName;
+		if (isPath !== true)
+			path = this.#configDirectory + configName.replace(/[^0-9a-zA-Z]/g, ""); // strip
+		
+		let configItem = new ConfigItem(this, path);
+		this.#cachedItems.set(path, configItem);
+		
 		return configItem;
+	}
+
+	/**
+	 * Changes the encryption key on all configuration files
+	 * @param {string} newKey The new encryption key. If empty or undefined that will disable encryption.
+	 */
+	rekey(newKey) {
+
 	}
 
 }

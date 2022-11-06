@@ -12,7 +12,7 @@
 /**
  * Manager class for configuration items
  */
-class ConfigurationManager {
+class ConfigItem {
 
 	/**
 	 * Cached configurations
@@ -28,10 +28,16 @@ class ConfigurationManager {
 	#filePath = "";
 
 	/**
+	 * Indicates that the file is still open
+	 * @type {boolean}
+	 */
+	#isAlive = true;
+
+	/**
 	 * @param {string} filePath The path to the config file
 	 * @return {ConfigItem}
 	 */
-	constructor(filePath) {
+	constructor(configManager, filePath) {
 		if (typeof filePath !== "string")
 			throw new TypeError("filePath expected string got " + (typeof filePath).toString());
 
@@ -101,7 +107,7 @@ class ConfigurationManager {
 	}
 
 	/**
-	 * I cannot remember what this means.
+	 * Indicates that the config is still open
 	 * @return {boolean}
 	 */
 	getIsAlive() {
@@ -125,4 +131,4 @@ class ConfigurationManager {
 
 }
 
-module.exports = ConfigurationManager;
+module.exports = ConfigItem;

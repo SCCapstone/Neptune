@@ -38,8 +38,8 @@ class mainWindow extends NeptuneWindow {
          * The aboutWindow
          * @type {import('./aboutWindow')}
          */
-        let aboutWindow = this.newChildWindow('aboutWindow');
-        aboutWindow.show();
+        // let aboutWindow = this.newChildWindow('aboutWindow');
+        // aboutWindow.show();
 	}
 }
 
