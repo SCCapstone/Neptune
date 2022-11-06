@@ -1,1 +1,1 @@
-qode /dist/index.js
+qode ./dist/index.js
