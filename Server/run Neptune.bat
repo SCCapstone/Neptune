@@ -1,1 +1,1 @@
-node neptune.js
+qode ./dist/index.js
