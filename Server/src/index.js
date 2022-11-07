@@ -1,3 +1,4 @@
+'use strict';
 /**
  *      _  _ 
  *     | \| |
@@ -96,7 +97,7 @@ function dlog(msg) {
 
 // For debugging, allows you to output a nasty object into console. Neat
 const util = require('util');
-utilLog = function(obj, depth) {
+var utilLog = function(obj, depth) {
 	console.log(util.inspect(obj, {depth: (depth!=undefined)? depth : 2}));
 }
 
@@ -290,7 +291,7 @@ keytar.getPassword("Neptune","ConfigKey").then((encryptionKey) => { // Do not st
 
 
 	// Command line listener
-	Shutdown = async function() {
+	async function Shutdown() {
 		console.log("\nShutting down");
 		process.exit(0);
 	}

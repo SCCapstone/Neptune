@@ -10,7 +10,6 @@
  */
 
 const NodeGUI = require("@nodegui/nodegui");
-const ResourceManager = new (require("../ResourceManager"))();
 const NeptuneWindow = require("./NeptuneWindow");
 
 

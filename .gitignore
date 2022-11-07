@@ -3,10 +3,3 @@
 .vscode/
 *.sublime-project
 *.sublime-workspace
-
-
-
-# =======
-# Server
-# =======
-/Server/node_modules

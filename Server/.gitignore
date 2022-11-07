@@ -1,2 +1,9 @@
-/dist
-/deploy
+/node_modules/
+/dist/
+/deploy/
+/data/
+/.idea/
+/.vs/
+/.vscode/
+*.sublime-project
+*.sublime-workspace

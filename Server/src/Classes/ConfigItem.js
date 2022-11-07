@@ -33,6 +33,9 @@ class ConfigItem {
 	 */
 	#isAlive = true;
 
+
+	#configManager;
+
 	/**
 	 * @param {string} filePath The path to the config file
 	 * @return {ConfigItem}
@@ -44,6 +47,7 @@ class ConfigItem {
 		// check if file exists
 
 		this.#filePath = filePath;
+		this.#configManager = configManager;
 
 		// load
 		this.loadConfig();
