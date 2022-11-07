@@ -1,1 +1,1 @@
-powershell.exe -Command "Start-Process cmd \"/k cd /d %cd% ^&^& npm i\" -Verb RunAs"
+npm i
