@@ -82,8 +82,8 @@
         app:srcCompat="@drawable/desktop_connection_logo"
         tools:ignore="ImageContrastCheck" />
 
-    <ImageButton
-        android:id="@+id/imageButton"
+    <ImageView
+        android:id="@+id/editDevName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
@@ -93,6 +93,7 @@
         android:background="@null"
         android:minWidth="40dp"
         android:minHeight="40dp"
+        android:clickable="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/change_name_pencil_logo"
