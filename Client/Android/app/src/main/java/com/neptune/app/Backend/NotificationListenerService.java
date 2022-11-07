@@ -27,19 +27,20 @@ public class NotificationListenerService extends android.service.notification.No
     }
 
     public IBinder onBind(Intent intent) {
+        //return super.onBind(intent)
         return null;
     }
 
     public void onDestroy() {
-
+        //super.onDestroy();
     }
 
     public void onNotificationPosted(StatusBarNotification notification) {
-
+        //onNotificationPosted(notification);
     }
 
     public void onNotificationRemoved(StatusBarNotification notification) {
-
+        //onNotificationRemoved(notification);
     }
 
     public void onSilentStatusBariconsVisibilityChanged(boolean status) {
