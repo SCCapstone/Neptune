@@ -40,6 +40,8 @@ process.Neptune = Neptune; // Anywhere down the chain you can use process.Neptun
  */
 // Basic
 const path = require("path");
+const EventEmitter = require('events');
+const util = require('util');
 
 const keytar = require("keytar");
 
@@ -70,6 +72,21 @@ const ogLog = console.log;
 
 
 // would like the below to be "cleaner" but eh
+class EventEmitterN extends require('events') {
+	#name;
+	constructor(name) {
+		super();
+		this.#name = name;
+	}
+    emit(type, ...args) {
+        console.log("[Event] Neptune.Events." + this.#name + "@" + type + " fired | " + util.inspect(arguments, {depth: 1}));
+        super.emit(type, ...args);
+    }
+}
+Neptune.Events = {
+	application: new EventEmitterN("application"), // Application events (UI related, shutting down)
+	server: new EventEmitterN("server") // Server events (new device connected, device paired)
+}
 
 /***
  * Logs to the console
@@ -96,7 +113,6 @@ function dlog(msg) {
 
 
 // For debugging, allows you to output a nasty object into console. Neat
-const util = require('util');
 var utilLog = function(obj, depth) {
 	console.log(util.inspect(obj, {depth: (depth!=undefined)? depth : 2}));
 }
@@ -183,10 +199,6 @@ keytar.getPassword("Neptune","ConfigKey").then((encryptionKey) => { // Do not st
 	dlog("Configuration manager loaded | base: ./data/"); // probably should make that dynamic
 
 
-	// /^v/^\v/^\v/^\v/^\v^\
-	console.log("\n");
-
-
 
 
 	/**
@@ -209,18 +221,69 @@ keytar.getPassword("Neptune","ConfigKey").then((encryptionKey) => { // Do not st
 
 
 	// Tray icon
-	// https://docs.nodegui.org/docs/api/generated/classes/qsystemtrayicon/
-	const menu = new NodeGUI.QMenu();
+	// https://docs.nodegui.org/docs/api/generated/classes/qsystemtrayicon/ | https://github.com/nodegui/examples/blob/master/nodegui/systray/src/index.ts
 	const tray = new NodeGUI.QSystemTrayIcon();
 	tray.setIcon(ResourceManager.ApplicationIcon);
 	tray.setToolTip("Neptune Server running");
-	tray.addEventListener('clicked',(checked)=>console.log("clicked"));
+	tray.addEventListener('activated',(clickType)=> {
+		// 1: right click, 2: left, 3: double, 4: middle
+		switch(clickType) {
+			case 3:
+				if (mainWindow.isVisible()) {
+					mainWindow.hide();
+				} else {
+					mainWindow.show();
+				}
+				break;
+		}
+	});
+	Neptune.Events.application.on('shutdown', ()=>{
+		tray.hide();
+	});
+	
+	const tMenu = new NodeGUI.QMenu();
+	// tMenu.setStyleSheet("QMenu::item { height: 25%; margin: 0px }")
+	var tActions = {}; // trayActions
+
+	// Quit action
+	tActions.quit = new NodeGUI.QAction();
+	tActions.quit.setText("Shutdown Neptune");
+	tActions.quit.addEventListener("triggered", () => {
+		Shutdown();
+	});
+
+	// Show window
+	tActions.showMainWindow = new NodeGUI.QAction();
+	tActions.showMainWindow.setText("Show");
+	tActions.showMainWindow.addEventListener("triggered", () => {
+		if (mainWindow.isVisible()) {
+			mainWindow.hide();
+		} else {
+			mainWindow.show();
+		}
+	});
+
+	// Add actions
+	tMenu.addAction(tActions.showMainWindow);
+	tMenu.addAction(tActions.quit);
+
+	tray.setContextMenu(tMenu);
 	tray.show();
 	global.tray = tray; // prevents garbage collection of tray (not a fan!)
 
 
 	// Main window
 	const mainWindow = new (require('./Windows/mainWindow.js'))();
+	// https://docs.nodegui.org/docs/api/generated/enums/widgeteventtypes
+	// mainWindow.addEventListener(NodeGUI.WidgetEventTypes.Close, (abc) => console.log("close")); // redundant
+	mainWindow.addEventListener(NodeGUI.WidgetEventTypes.Hide, () => {
+		tActions.showMainWindow.setText("Show");
+		dlog("mainWindow@Hide");
+	});
+	mainWindow.addEventListener(NodeGUI.WidgetEventTypes.Show, () => {
+		tActions.showMainWindow.setText("Hide");
+		dlog("mainWindow@Show");
+	});
 	mainWindow.show();
 
 
@@ -292,9 +355,22 @@ keytar.getPassword("Neptune","ConfigKey").then((encryptionKey) => { // Do not st
 
 	// Command line listener
 	async function Shutdown() {
-		console.log("\nShutting down");
-		process.exit(0);
+		let shutdownTimeout = 1000;
+		if (typeof shutdownTimeout !== "number") {
+			shutdownTimeout = (debug)? 1000 : 5000;
+		}
+
+		// dlog("Fired @Neptune.Events.application#shutdown: " + shutdownTimeout);
+		Neptune.Events.application.emit('shutdown', shutdownTimeout)
 	}
+
+	Neptune.Events.application.on('shutdown', (shutdownTimeout) => {
+		console.log("\nShutting down");
+		setTimeout(()=>{
+			console.log("goodbye ...");
+			process.exit(0)
+		}, shutdownTimeout);
+	})
 
 
 	// Server operator interaction
@@ -311,6 +387,14 @@ keytar.getPassword("Neptune","ConfigKey").then((encryptionKey) => { // Do not st
 				Shutdown();
 			else if (command == "showmain")
 				mainWindow.show()
+			else if (command.startsWith("eval ")) {
+				let cmd = command.substr(5);
+				try {
+					eval(cmd);
+				} catch(err) {
+					console.error(err);
+				}
+			}
 			else
 				ogLog("Received input: " + command + " . (not a command)");
 		} catch(_) {
