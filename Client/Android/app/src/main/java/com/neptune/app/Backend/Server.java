@@ -17,6 +17,14 @@ public class Server {
     private String[] notifiableApps;
 
     public Server server() {
+        this.ipAddress = this.ipAddress;
+        this.connectionManager = this.connectionManager;
+        this.configuartion = this.configuartion;
+        this.serverId = this.serverId;
+        this.name = this.name;
+        this.friendlyName = this.friendlyName;
+        this.dateAdded = this.dateAdded;
+        this.notifiableApps = this.notifiableApps;
 
         return null;
     }
@@ -47,13 +55,14 @@ public class Server {
     }
 
     public IPAddress setIPAddress() {
+        this.ipAddress = ipAddress;
 
         return null;
     }
 
     public IPAddress getIpAddress() {
 
-        return null;
+        return ipAddress;
     }
 
     public boolean unpair() {

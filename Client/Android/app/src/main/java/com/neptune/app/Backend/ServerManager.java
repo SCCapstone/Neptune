@@ -15,6 +15,7 @@ public class ServerManager {
     }
 
     public ServerManager serverManager() {
+        this.servers = this.servers;
 
         return null;
     }
@@ -31,7 +32,7 @@ public class ServerManager {
 
     public Server getServer(String serverId) {
 
-        return null;
+        return this.servers.get(serverId);
     }
 
     public Server[] getServers() {
