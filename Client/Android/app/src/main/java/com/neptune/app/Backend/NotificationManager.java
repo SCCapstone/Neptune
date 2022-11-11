@@ -23,7 +23,7 @@ public class NotificationManager {
     }
 
     public void notificationDismissed(Notification notification) {
-
+        //notificationManager.cancelNotification(notificationId);
     }
 
 

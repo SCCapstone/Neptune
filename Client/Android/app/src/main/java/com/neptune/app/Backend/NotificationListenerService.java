@@ -9,7 +9,7 @@ public class NotificationListenerService extends android.service.notification.No
 
     private NotificationManager notificationManager;
 
-    public void cancelNotification (Notification[] notfication) {
+    public void cancelNotification (Notification[] notification) {
 
     }
 
@@ -27,20 +27,20 @@ public class NotificationListenerService extends android.service.notification.No
     }
 
     public IBinder onBind(Intent intent) {
-        //return super.onBind(intent)
-        return null;
+        return super.onBind(intent);
+
     }
 
     public void onDestroy() {
-        //super.onDestroy();
+        super.onDestroy();
     }
 
     public void onNotificationPosted(StatusBarNotification notification) {
-        //onNotificationPosted(notification);
+        onNotificationPosted(notification);
     }
 
     public void onNotificationRemoved(StatusBarNotification notification) {
-        //onNotificationRemoved(notification);
+        onNotificationRemoved(notification);
     }
 
     public void onSilentStatusBariconsVisibilityChanged(boolean status) {

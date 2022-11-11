@@ -10,6 +10,7 @@ public class NeptuneNotification extends NotificationListenerService {
     private Map<String, Boolean> pushedServers;
 
     public Notification notification() {
+
         return null;
     }
 
