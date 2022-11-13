@@ -24,7 +24,7 @@ const debug = true;
 Error.stackTraceLimit = 3;
 
 Neptune.Version = new Version(0, 0, 1, ((debug)?"debug":"release"), "WkE_13");
-defaults.enableFileEncryption = true;
+defaults.enableFileEncryption = (debug)? false : true;
 defaults.encryptionKeyLength = 64;
 
 /** @type {import('./Classes/ConfigurationManager')} */
@@ -461,10 +461,8 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 
 	// Server operator interaction
 
-	var rkey = function(a) { Neptune.configManager.rekey(a).then((didIt) => console.log("Successful: " + didIt)).catch(err => console.error("Failed: " + err)); };
-
 	var output;
-	var defaultToEval = false;
+	var defaultToEval = false; // use `eval defaultToEval=true` in the terminal to flip into eval only mode
 	function processCMD(command) {
 		try {
 			if (defaultToEval) {
@@ -481,6 +479,10 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 					Shutdown();
 				else if (command == "showmain")
 					mainWindow.show()
+				else if (command.startsWith("rekey")) {
+					let cmd = command.substr(6);
+					Neptune.configManager.rekey(cmd).then((didIt) => console.log("Successful: " + didIt)).catch(err => console.error("Failed: " + err));
+				}
 				else if (command.startsWith("eval ")) {
 					let cmd = command.substr(5);
 					try {
@@ -497,11 +499,11 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 			// do a thing or something
 		}
 	}
-	function prompt() {
-		rl.question("", (command) => { // can't put any prompt there, breaks when someone prints to the console
-			processCMD(command);
-			prompt(); // the nested hell hole
-		});
+
+	async function prompt() {
+		for await (const line of rl) {
+			processCMD(line)
+		}
 	}
 
 
