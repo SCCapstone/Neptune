@@ -2,15 +2,12 @@ var NeptuneCrypto = {}
 
 const hkdf = require("futoin-hkdf"); // wait what https://nodejs.org/api/crypto.html#cryptohkdfdigest-ikm-salt-info-keylen-callback
 const crypto = require('node:crypto');
+const { Neptune } = require("node:process");
 
 
-const defaultCipherAlgorithm = "chacha20-poly1305" // P-good
+const defaultCipherAlgorithm = "chacha20-poly1305" // P-good, although the slowest
 const defaultHashAlgorithm = "sha256" // It works
 const encryptedPrefix = "ncrypt::";
-
-
-
-const convert = (str, from, to) => Buffer.from(str, from).toString(to)
 
 // A list of "supported" (we know the proper key lengths) ciphers for encrypting data
 const encryptionCipherKeyLengths = { // algorithm: [keyLenght (bytes), iv/secondary (bytes)]
@@ -29,19 +26,87 @@ const encryptionCipherKeyLengths = { // algorithm: [keyLenght (bytes), iv/second
 	'aes128': [16, 16]
 }
 
+// Errors
+class DataNotEncrypted extends Error {
+	constructor() {
+		let message = "Data not encrypted, cannot find encrypted prefix " + toString(encryptedPrefix);
+		super(message);
+		this.name = this.constructor.name;
+		Error.captureStackTrace(this, this.constructor);
+	}
+}
+class EncryptedDataSplitError extends Error {
+	/** @param {(string|number)} actualParts Number of splits in the data
+	  * @param {(string|number)} requestedParts Number of splits required in the data */
+	constructor(actualParts, requestedParts) {
+		let message = "Encrypted data does not split properly (contains " + toString(actualParts) + " not " + toString(requestedParts) + " parts).";
+		super(message);
+		this.name = this.constructor.name;
+		Error.captureStackTrace(this, this.constructor);
+	}
+}
+class EncryptedDataInvalidVersion extends Error {
+	/** @param {(string|number)} version Reported version from encrypted data */
+	constructor(version) {
+		let message = "Invalid encrypted data version, no idea how to handle version: " + toString(version);
+		super(message);
+		this.name = this.constructor.name;
+		Error.captureStackTrace(this, this.constructor);
+	}
+}
+class UnsupportedCipher extends Error {
+	/** @param {string} requestedCipher Cipher requested but is not supported */
+	constructor(requestedCipher) {
+		let message = "Unsupported cipher: " + toString(requestedCipher) + ". Use chacha20, aes-256-gcm, or aes128.";
+		super(message);
+		this.name = this.constructor.name;
+		Error.captureStackTrace(this, this.constructor);
+	}
+}
+class MissingDecryptionKey extends Error {
+	constructor() {
+		super("Empty decryption key passed in with encrypted data.");
+		this.name = this.constructor.name;
+		Error.captureStackTrace(this, this.constructor);
+	}
+}
+class InvalidDecryptionKey extends Error {
+	constructor() {
+		super("Provided key was unable to decrypt the data, wrong key.");
+		this.name = this.constructor.name;
+		Error.captureStackTrace(this, this.constructor);
+	}
+}
+
+NeptuneCrypto.Errors = {
+	DataNotEncrypted: DataNotEncrypted,
+	EncryptedDataSplitError: EncryptedDataSplitError,
+	EncryptedDataInvalidVersion: EncryptedDataInvalidVersion,
+	UnsupportedCipher: UnsupportedCipher,
+	MissingDecryptionKey: MissingDecryptionKey,
+	InvalidDecryptionKey: InvalidDecryptionKey
+}
+
+
+// Methods
+const convert = (str, from, to) => Buffer.from(str, from).toString(to)
+
+
+
 /**
  * AES Key
  * @typedef {object} AESKey
- * @param {Buffer} key The AES key itself
- * @param {Buffer} iv The initialization vector
+ * @property {Buffer} key The AES key itself
+ * @property {Buffer} iv The initialization vector
  */
 
  /**
   * HKDF options
-  * @param {string} [hashAlgorithm = "sha256"] Hashing algorithm used in deriving the key via HKDF
-  * @param {int} [keyLength = 32] AES key length (this can just be your primary key)
-  * @param {int} [ivLength = 16] IV length, needs to be 16 for any AES algorithm. If not needing a AES key, this can just be a secondary key (and ignored)
-  * @param {boolean} [uniqueIV = true] The IV generated is random. DO NOT SET THIS TO FALSE! Only set to false IF the IV must be shared and cannot be synced/transmitted
+  * @typedef {object} HKDFOptions
+  * @property {string} [hashAlgorithm = "sha256"] Hashing algorithm used in deriving the key via HKDF
+  * @property {int} [keyLength = 32] AES key length (this can just be your primary key)
+  * @property {int} [ivLength = 16] IV length, needs to be 16 for any AES algorithm. If not needing a AES key, this can just be a secondary key (and ignored)
+  * @property {boolean} [uniqueIV = true] The IV generated is random. DO NOT SET THIS TO FALSE! Only set to false IF the IV must be shared and cannot be synced/transmitted
   */
 
 
@@ -138,19 +203,36 @@ NeptuneCrypto.HKDF = function(sharedSecret, salt, options) {
 // see: https://gist.github.com/btxtiger/e8eaee70d6e46729d127f1e384e755d6
 
 /**
+ * @typedef {object} EncryptionOptions
+ * @property {string} [hashAlgorithm = "sha256"] Hashing algorithm used in deriving the key via HKDF
+ * @property {string} [cipherAlgorithm = ""] Encryption method. Can be: `chacha20-poly1305`, `aes-256-gcm`, `aes256` or anything else defined in `encryptionCipherKeyLengths`
+ * 
+ */
+
+/**
  * Encrypts plain text data using the requested algorithm and key. Uses HKDF to derive the actual encryption keys from your provided key.
- * @param {string} cipherAlgorithm Encryption method. Can be: `chacha20-poly1305`, `aes-256-gcm`, `aes256` or anything else defined in `encryptionCipherKeyLengths`
+ * 
+ * @throws {TypeError} Parameter types are incorrect
+ * @throws {UnsupportedCipher} Unsupported cipher requested
+ * 
  * @param {string} plainText Plain text you wish to encrypt
  * @param {string} key Encryption key (we'll use HKDF to derive the actual key)
- * @param {string} [salt] Encryption salt (passed to HKDF)
- * @param {object} [options] Misc options. Currently the only options is hashAlgorithm (defaulted to sha256). Passed to the HKDF function
+ * @param {string} [salt] Encryption salt (passed to HKDF). If undefined, a random string of length 32 will be used
+ * @param {EncryptionOptions} [options] Misc options, such as the hash algorithm or cipher used.
  * @return {string} Encrypted data
  */
-NeptuneCrypto.encrypt = function(cipherAlgorithm, plainText, key, salt, options) {
-	if (cipherAlgorithm === undefined)
-		cipherAlgorithm == defaultCipherAlgorithm;
+NeptuneCrypto.encrypt = function(plainText, key, salt, options) {
+	var cipherAlgorithm = defaultCipherAlgorithm;;
+	if (options !== undefined) {
+		if (options.cipherAlgorithm !== undefined)
+			cipherAlgorithm = options.cipherAlgorithm;
+	}
+	
 	if (typeof cipherAlgorithm !== "string")
 		throw new TypeError("cipherAlgorithm expected string got " + (typeof cipherAlgorithm).toString());
+
+	if (Buffer.isBuffer(plainText))
+		plainText = plainText.toString('utf8');
 	if (typeof plainText !== "string")
 		throw new TypeError("plainText expected string got " + (typeof plainText).toString());
 	if (typeof key !== "string")
@@ -167,7 +249,7 @@ NeptuneCrypto.encrypt = function(cipherAlgorithm, plainText, key, salt, options)
 
 	let keyParameters = encryptionCipherKeyLengths[cipherAlgorithm];
 	if (keyParameters == undefined)
-		throw new Error("Unsupported/unknown cipher algorithm. Use chacha20-poly1305, aes-256-gcm, or aes256 not " + toString(cipherAlgorithm))
+		throw new UnsupportedCipher(cipherAlgorithm);
 
 	var useAAD = false;
 	var AAD;
@@ -199,7 +281,7 @@ NeptuneCrypto.encrypt = function(cipherAlgorithm, plainText, key, salt, options)
 	// <prefix>::version:cipherAlgorithm:hashAlgorithm:salt:garbage:iv:encryptedData
 	// <prefix>::version:cipherAlgorithm:hashAlgorithm:salt:garbage:iv:encryptedData:additionalData:authTag
 	var ourOutput = encryptedPrefix;
-	ourOutput += "2:"								// Version
+	ourOutput += "1:"								// Version
 	ourOutput += cipherAlgorithm + ":"				// Cipher algorithm
 	ourOutput += options.hashAlgorithm + ":"		// HKDF hash algorithm
 	ourOutput += convert(salt, 'utf8', 'base64') + ":"	// Salt
@@ -218,32 +300,46 @@ NeptuneCrypto.encrypt = function(cipherAlgorithm, plainText, key, salt, options)
 
 
 /**
- * Decrypts data using the encrypted data and key.
- * 
+ * Decrypts data using the encrypted data and key.\
  * Encrypted data needs to be in a special format, `ncrypt::version:a:b:c:d:e:f` with `:g:i` added at the end for AEAD ciphers
- * @param {string} encryptedText Encrypted data provided by the encrypt function (at some point).
+ * 
+ * @throws {TypeError} Parameter types are incorrect.
+ * @throws {DataNotEncrypted} Unable to find the encryption prefix, likely data is not even encrypted.
+ * @throws {EncryptedDataSplitError} Data not stored correctly, cannot split on ':' enough times to be valid.
+ * @throws {EncryptedDataInvalidVersion} Not sure how to decrypt this data, how is it stored (which parts mean what)?
+ * @throws {UnsupportedCipher} Unsupported cipher used to encrypt the data
+ * @throws {InvalidDecryptionKey} Wrong decryption key used
+ * 
+ * @param {(string|Buffer)} encryptedText Encrypted data provided by the encrypt function (at some point).
  * @param {string} key Key used to encrypt the data. HKDF used to derive actual encryption key.
  * @return {string} Decrypted text
  */
 NeptuneCrypto.decrypt = function(encryptedText, key) {
+	if (Buffer.isBuffer(encryptedText))
+		encryptedText = encryptedText.toString('utf8');
 	if (typeof encryptedText !== "string")
 		throw new TypeError("encryptedText expected string got " + (typeof encryptedText).toString());
-	if (typeof key !== "string")
+
+	if (typeof key !== "string" && key !== undefined) // can't be undefined .. used to throw error if encrypted.
 		throw new TypeError("key expected string got " + (typeof key).toString());
 
-	if (encryptedText.substring(0, encryptedPrefix.length) != encryptedPrefix)
-		throw new Error("Data not encrypted. Cannot find encrypted prefix " + toString(encryptedPrefix));
+
+	if (encryptedText.substring(0, encryptedPrefix.length) != encryptedPrefix) // Check for prefix
+		throw new DataNotEncrypted();
+	else if (key === undefined || key === "")
+		throw new MissingDecryptionKey();
+
 
 	let encryptedData = encryptedText.split(encryptedPrefix)[1].split(":");
 	var version = encryptedData[0];
 	var cipherAlgorithm = encryptedData[1];
 	if (cipherAlgorithm == "aes-256-gcm" || cipherAlgorithm == "chacha20-poly1305" || cipherAlgorithm == "aes-192-gcm" || cipherAlgorithm == "aes-128-gcm") {
 		if (encryptedData.length != 9) {
-			throw new Error("Damaged encrypted data. Data does not split properly, does not contain 9 parts.");
+			throw new EncryptedDataSplitError(encryptedData.length, "9");
 		}
 	} else {
 		if (encryptedData.length != 7) {
-			throw new Error("Damaged encrypted data. Data does not split properly, does not contain 7 parts.");
+			throw new EncryptedDataSplitError(encryptedData.length, "7");
 		}
 	}
 
@@ -263,30 +359,41 @@ NeptuneCrypto.decrypt = function(encryptedText, key) {
 		authTag = Buffer.from(encryptedData[8], 'hex');
 	}
 
-	if (version != "2")
-		throw new Error("Unknown/invalid encrypted data version, no idea how to handle that. Version read: " + toString(encryptedData[0]));
+	if (version != "1")
+		throw new EncryptedDataInvalidVersion(encryptedData[0]);
 
 	let keyParameters = encryptionCipherKeyLengths[cipherAlgorithm];
 	if (keyParameters == undefined)
-		throw new Error("Unsupported/unknown cipher algorithm. Use chacha20-poly1305, aes-256-gcm, or aes256 not " + toString(cipherAlgorithm))
+		throw new UnsupportedCipher(cipherAlgorithm);
 	
 		
 
 	
-	let encryptionKey = NeptuneCrypto.HKDF(key, salt, { hashAlgorithm: hashAlgorithm, keyLength: keyParameters[0], ivLength: keyParameters[1] });
-	let decipher = crypto.createDecipheriv(cipherAlgorithm, encryptionKey.key, iv, { authTagLength: 16 });
-	if (AAD !== undefined) {
-		decipher.setAAD(AAD);
-		decipher.setAuthTag(authTag);
+	try {
+		let encryptionKey = NeptuneCrypto.HKDF(key, salt, { hashAlgorithm: hashAlgorithm, keyLength: keyParameters[0], ivLength: keyParameters[1] });
+		let decipher = crypto.createDecipheriv(cipherAlgorithm, encryptionKey.key, iv, { authTagLength: 16 });
+		if (AAD !== undefined) {
+			decipher.setAAD(AAD);
+			decipher.setAuthTag(authTag);
+		}
+
+		let decrypted = Buffer.concat([decipher.update(data), decipher.final()]).toString();
+
+		return decrypted;
+	} catch (err) {
+		throw new InvalidDecryptionKey();
 	}
-
-	let decrypted = Buffer.concat([decipher.update(data), decipher.final()]).toString();
-
-	return decrypted;
 }
 
 
 
+NeptuneCrypto.isEncrypted = function(data) {
+	if (Buffer.isBuffer(data))
+		data = data.toString('utf8');
+	if (typeof data !== "string")
+		throw new TypeError("data expected string got " + (typeof data).toString());
+	return (data.substring(0, encryptedPrefix.length) === encryptedPrefix);
+}
 
 
 
@@ -294,7 +401,7 @@ NeptuneCrypto.decrypt = function(encryptedText, key) {
 
 /**
  * This will test each supported crypto function to make sure data can be encrypted and then decrypted correctly.
- * @param {boolean} [simplePassFail = false] If false, an object containing the results of each supported cipher is returned. If true, `true` is returned if all ciphers pass, or `false` if one fails.
+ * @param {boolean} [simplePassFail=false] If false, an object containing the results of each supported cipher is returned. If true, `true` is returned if all ciphers pass, or `false` if one fails.
  * @param {(string|number)} [msg] Data you would like to test with. If none provided, a random string of length 256 (or if an number provided, a string of that length) is used.
  * @param {(string|number)} [key] Encryption key to use. If none provided, a random string of length 128 (or if an number provided, a string of that length) is used.
  * @param {boolean} [testAllHashes = false] Very dangerous. Runs the tests for all supported ciphers AND hashing algorithms (a lot). Expect ~495 tests :)
@@ -321,7 +428,7 @@ NeptuneCrypto.testEncryption = function(simplePassFail, msg, key, testAllHashes)
 		for (const [oKey, oValue] of Object.entries(encryptionCipherKeyLengths)) {
 			// start timer
 			let hrstart = process.hrtime();
-			let encryptedValue = NeptuneCrypto.encrypt(oKey, msg, key, undefined, { hashAlgorithm: hash });
+			let encryptedValue = NeptuneCrypto.encrypt(msg, key, undefined, { hashAlgorithm: hash, cipherAlgorithm: oKey });
 			let decryptedValue = NeptuneCrypto.decrypt(encryptedValue, key);
 			let exeTime = process.hrtime(hrstart);
 			// end timer
@@ -363,6 +470,9 @@ NeptuneCrypto.testEncryption = function(simplePassFail, msg, key, testAllHashes)
 
 	return (simplePassFail === true)? allPassed : testedHashes;
 }
+
+
+
 
 
 module.exports = NeptuneCrypto;

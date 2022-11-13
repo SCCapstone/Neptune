@@ -7,3 +7,4 @@
 /.vscode/
 *.sublime-project
 *.sublime-workspace
+encryptionKey.txt

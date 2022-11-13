@@ -7,6 +7,10 @@
  * 		Capstone Project 2022
  */
 
+const { fileURLToPath } = require("url");
+
+const fs = require("node:fs");
+
 
 
 /**
@@ -16,9 +20,9 @@ class ConfigItem {
 
 	/**
 	 * Cached configurations
-	 * @type {Map<string, any>}
+	 * @type {object}
 	 */
-	#configEntries = new Map();
+	entries = {};
 
 
 	/**
@@ -34,7 +38,11 @@ class ConfigItem {
 	#isAlive = true;
 
 
+	/**
+	 * @type {import('./ConfigurationManager')}
+	 */
 	#configManager;
+
 
 	/**
 	 * @param {string} filePath The path to the config file
@@ -50,34 +58,67 @@ class ConfigItem {
 		this.#configManager = configManager;
 
 		// load
-		this.loadConfig();
+		this.loadSync();
 	}
 
 	/**
-	 * @param {boolean} save Save the file on close
+	 * @param {boolean} save Save the file on close .. no reason to call this really.
 	 * @return {void}
 	 */
-	closeConfig(save) {
+	close(save) {
 		if (save === true)
-			this.saveConfig();
+			this.save();
+		this.#isAlive = false;
+		delete this.entries;
 	}
 	
 	/**
 	 * Reload the configuration from disk
-	 * @return {void}
+	 * @return {Promise<boolean>} Load successful
 	 */
-	loadConfig() {
-
+	load() {
+		return new Promise((resolve, reject) => {
+			this.#configManager.readFileContents(this.#filePath).then((data) => {
+				this.entries = data;
+				resolve(true);
+			}).catch(err => {
+				reject(err);
+			});
+		});
+		
+	}
+	/**
+	 * Loads the configuration from disk (synchronously)
+	 * @return {boolean} Load successful
+	 */
+	async loadSync() {
+		this.entries = this.#configManager.readFileContentsSync(this.#filePath);
+		return true;
 	}
 	
 	/**
 	 * Save the configuration
 	 * @return {void}
 	 */
-	saveConfig() {
-
+	save() {
+		if (this.#isAlive)
+			return this.#configManager.writeFileContents(JSON.stringify(this.entries), this.#filePath);
+		else
+			throw new Error("Config file closed, not active.");
 	}
 	
+	/**
+	 * Save the configuration
+	 * @return {void}
+	 */
+	async saveSync() {
+		return await save();
+	}
+	
+
+
+
+
 	/**
 	 * Get a config value
 	 * @param {string} key The configuration item to get
@@ -87,7 +128,7 @@ class ConfigItem {
 		if (typeof key !== "string")
 			throw new TypeError("key expected string got " + (typeof key).toString());
 
-		return this.#configEntries.get(key);
+		return this.entries[key];
 	}
 	
 	/**
@@ -99,7 +140,8 @@ class ConfigItem {
 		if (typeof key !== "string")
 			throw new TypeError("key expected string got " + (typeof key).toString());
 
-		this.#configEntries.set(key, value);
+		this.entries[key] = value;
+		this.save();
 	}
 	
 	/**
@@ -123,16 +165,15 @@ class ConfigItem {
 	 * @return {JSON}
 	 */
 	toJSON() {
-		return JSON.stringify(Object.fromEntries(this.#configEntries));
+		return { ... this.entries };
 	}
 
 	/**
 	 * @param {JSON} JSONObject JSON interpretation of the configuration 
 	 */
 	setJSON(JSONObject) {
-		// stuff
+		this.entries = { ... JSONObject };
 	}
-
 }
 
 module.exports = ConfigItem;

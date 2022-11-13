@@ -11,7 +11,8 @@
 
 // Which came first? Chicken or the egg?
 const Version = require('./Support/version');
-const Neptune = {}
+const Neptune = {};
+const defaults = {};
 
 
 
@@ -22,11 +23,16 @@ const Neptune = {}
 const debug = true;
 Error.stackTraceLimit = 3;
 
-Neptune.Version = new Version(0, 0, 1, ((debug)?"debug":"release"), "Skeleton");
-Neptune.enableFileEncryption = true;
-Neptune.encryptionKeyLength = 64;
+Neptune.Version = new Version(0, 0, 1, ((debug)?"debug":"release"), "WkE_13");
+defaults.enableFileEncryption = true;
+defaults.encryptionKeyLength = 64;
 
-var port = 25560;
+/** @type {import('./Classes/ConfigurationManager')} */
+Neptune.configManager;
+/** @type {import('./Classes/ConfigItem')} */
+Neptune.Config;
+
+defaults.port = 25560;
 
 process.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune. Allows us to get around providing `Neptune` to everything
 
@@ -39,19 +45,32 @@ process.Neptune = Neptune; // Anywhere down the chain you can use process.Neptun
  * 
  */
 // Basic
-const path = require("path");
-const EventEmitter = require('events');
-const util = require('util');
+const path = require("node:path");
+const fs = require("node:fs")
+const EventEmitter = require('node:events');
+const util = require('node:util');
 
+// Crypto
 const keytar = require("keytar");
+
 
 // GUI
 const NodeGUI = require("@nodegui/nodegui");
+// Interaction
+const readline = require("readline");
+
 
 // Web
 const http = require('http');
 const Express = require('express'); // also kinda important
 const multer = require('multer');
+
+
+// Classes
+const ConfigurationManager = require('./Classes/ConfigurationManager.js'); // The data directory
+
+const NeptuneCrypto = require('./Support/NeptuneCrypto.js');
+
 
 
 
@@ -71,6 +90,13 @@ Neptune.debugMode = debug;
 const ogLog = console.log;
 
 
+const rl = readline.createInterface({
+	input: process.stdin,
+	output: process.stdout
+});
+
+
+
 // would like the below to be "cleaner" but eh
 class EventEmitterN extends require('events') {
 	#name;
@@ -87,6 +113,29 @@ Neptune.Events = {
 	application: new EventEmitterN("application"), // Application events (UI related, shutting down)
 	server: new EventEmitterN("server") // Server events (new device connected, device paired)
 }
+
+async function Shutdown() {
+	let shutdownTimeout = 1000;
+	if (typeof shutdownTimeout !== "number") {
+		shutdownTimeout = (debug)? 1000 : 5000;
+	}
+
+	// dlog("Fired @Neptune.Events.application#shutdown: " + shutdownTimeout);
+	Neptune.Events.application.emit('shutdown', shutdownTimeout)
+}
+
+Neptune.Events.application.on('shutdown', (shutdownTimeout) => {
+	console.log("\nShutting down");
+	setTimeout(()=>{
+		console.log("goodbye ...");
+		process.exit(0)
+	}, shutdownTimeout);
+});
+rl.on("close", function () {
+	Shutdown();
+});
+
+
 
 /***
  * Logs to the console
@@ -138,67 +187,121 @@ if (!debug) {
 
 
 
-/**
- * Generates a random string. Does not touch the RNG seed, recommend you set that first.
- * @param {int} len Length of random string
- * @param {int} [minChar = 33] The lower character code
- * @param {int} [maxChar = 220] The upper character code
- */
-function randomString(len, minChar, maxChar) {
-	var str = ""
-	if (maxChar == undefined || maxChar > 220)
-		maxChar = 220;
-	if (minChar == undefined || minChar < 33)
-		minChar = 33;
-
-	if (minChar>maxChar) {
-		minChar = minChar + maxChar;
-		maxChar = minChar - maxChar;
-		minChar = minChar - maxChar;
-	}
-
-	for (var i = 0; i<len; i++)
-		str += String.fromCharCode((Math.random()* (maxChar - minChar) +minChar));
-	return str;
-}
-
 
 
 // Begin
 
 Neptune.log("--== Neptune ==--");
 if (!debug)
-	Neptune.log("{ \x1b[1m\x1b[47m\x1b[34mProduction" + endTerminalCode + ", version: " + Neptune.Version.toString(true) + " }"); // Production mode
+	Neptune.log("{ \x1b[1m\x1b[47m\x1b[34mProduction" + endTerminalCode + ", version: " + Neptune.Version.toString() + " }"); // Production mode
 else
-	Neptune.log("{ \x1b[1m\x1b[41m\x1b[33m**DEV MODE**" + endTerminalCode + ", version: " + Neptune.Version.toString(true) + " }"); // Developer (debug) mode
+	Neptune.log("{ \x1b[1m\x1b[41m\x1b[33m**DEV MODE**" + endTerminalCode + ", version: " + Neptune.Version.toString() + " }"); // Developer (debug) mode
 
 Neptune.log("] Running on \x1b[1m\x1b[34m" + process.platform);
 
 
-keytar.getPassword("Neptune","ConfigKey").then((encryptionKey) => { // Do not start until we load that key.
-	let keyFound = (encryptionKey !== undefined && encryptionKey !== "");
-	if (keyFound && Neptune.enableFileEncryption) {
-		// Set a new key
-		encryptionKey = randomString(Neptune.encryptionKeyLength);
-		keytar.setPassword("Neptune","ConfigKey",encryptionKey); // error catching (we can't save this key, what's the point ??)
+async function promptUser(quetion) {
+	function getPromise() {
+		return new Promise(resolve => rl.question(question, ans => {
+			rl.close();
+			resolve(ans);
+		}));
 	}
 
-	if (Neptune.enableFileEncryption && (encryptionKey !== undefined || encryptionKey !== ""))
+	return await getPromise();
+}
+
+var firstRun = (fs.existsSync("./data/NeptuneConfig.json") === false);
+
+
+keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do not start until we load that key. (also now we can use await)
+	let keyFound = (encryptionKey !== null && encryptionKey !== "");
+	if (encryptionKey == null)
+		encryptionKey = undefined;
+
+	
+	try {
+		Neptune.configManager = new ConfigurationManager("./data/configs/", (keyFound)? encryptionKey : undefined);
+		Neptune.Config = Neptune.configManager.loadConfig("./data/NeptuneConfig.json", true);
+
+		// For whatever reason, this try block just does not work! Very cool!
+		// manually check the encryption:
+		let encryptionCheck = fs.readFileSync("./data/NeptuneConfig.json");
+		if (NeptuneCrypto.isEncrypted(encryptionCheck)) { // if there's actual encryption.
+			encryptionCheck = NeptuneCrypto.decrypt(encryptionCheck, encryptionKey);
+			// eh probably worked.
+			encryptionCheck = JSON.parse(encryptionCheck);
+			encryptionCheck = {}; // good enough
+		}
+	} catch (err) {
+		console.log("\u0007");
+		if (err instanceof NeptuneCrypto.Errors.InvalidDecryptionKey) {
+			console.error("Encryption key is invalid! Data is in a limbo state, possibly corrupted.");
+			console.log("Neptune will halt. To load Neptune, please fix this error by deleting/moving the config files, fixing the encryption key, or fixing the configs.");
+		} else if (err instanceof NeptuneCrypto.Errors.MissingDecryptionKey) {
+			console.error("Encryption key is missing! Data is still there, but good luck decrypting it !");
+			console.log("Neptune will halt. To load Neptune, please fix this error by deleting/moving the config files, fixing the encryption key, or fixing the configs.");
+		} else {
+			console.error("Config is completely broken!");
+		}
+
+		dlog("Encryption KEY: " + encryptionKey);
+
+		console.log("")
+		console.log(" === ::error on read Neptune config:: === ");
+		console.error(err);
+
+		console.log("");
+		console.log("Stack: ");
+		console.log(err.stack);
+
+		process.exitCode = -1;
+		process.exit();
+	}
+
+	if (Object.keys(Neptune.Config.entries).length < 1) {
+		firstRun = true
+		dlog("Config is completely empty, setting as first run...");
+	}
+	if (firstRun) {
+		Neptune.Config.entries = {...defaults};
+		dlog("First run! Generated default config file.");
+		
+		if (!keyFound && Neptune.Config.entries.enableFileEncryption) {
+			// Set a new key
+			encryptionKey = NeptuneCrypto.randomString(Neptune.Config.entries.encryptionKeyLength, 33, 220);
+			dlog("Generated encryption key of length " + Neptune.Config.entries.encryptionKeyLength);
+			keytar.setPassword("Neptune","ConfigKey",encryptionKey);
+			Neptune.configManager.setEncryptionKey(encryptionKey);
+			dlog("Encryption key loaded");
+		} else if (keyFound && Neptune.Config.entries.enableFileEncryption) {
+			dlog("Encryption key loaded from OS keychain");
+		}
+	}
+
+	if (keyFound && Neptune.Config.entries.enableFileEncryption === false) {
+		dlog("Key found, yet encryption is disabled. Odd. Running rekey to completely disable.")
+		Neptune.configManager.rekey(); // Encryption is set to off, but the key is there? Make sure to decrypt everything and remove key
+	}
+
+
+	if (Neptune.Config.entries.enableFileEncryption && (encryptionKey !== undefined || encryptionKey !== ""))
 		Neptune.log("] File encryption \x1b[1m\x1b[32mACTIVE" + endTerminalCode + ", file security enabled");
 	else
 		Neptune.log("] File encryption \x1b[1m\x1b[33mDEACTIVE" + endTerminalCode + ", file security disabled.");
 
-	if (!keyFound) {
-		dlog("Encryption key not set | Neptune.enableFileEncryption == " + Neptune.enableFileEncryption);
-		if (Neptune.enableFileEncryption)
-			dlog("generated key of length " + Neptune.encryptionKeyLength);
-	} else
-		dlog("Encryption key loaded from OS keychain");
-
-	Neptune.configurationManager = new (require('./Classes/ConfigurationManager.js'))("./data/", encryptionKey); // The data directory
-	dlog("Configuration manager loaded | base: ./data/"); // probably should make that dynamic
 
 
+	utilLog(Neptune.Config.entries);
+	Neptune.Config.setProperty("testKey", true);
+	Neptune.Config.entries["thisIsATest"] = { passed: true }
+	Neptune.Config.save();
+
+	dlog("Encryption KEY: " + encryptionKey);
+
+	Neptune.Events.application.on('shutdown', (shutdownTimeout) => {
+		Neptune.configManager.destroy(); // Save all configs!
+	});
 
 
 	/**
@@ -344,8 +447,8 @@ keytar.getPassword("Neptune","ConfigKey").then((encryptionKey) => { // Do not st
 
 
 	// Listener
-	httpServer.listen(port, () => {
-		console.log("[Web] Express server listening on port " + port);
+	httpServer.listen(Neptune.Config.entries.port, () => {
+		console.log("[Web] Express server listening on port " + Neptune.Config.entries.port);
 	});
 
 
@@ -354,49 +457,42 @@ keytar.getPassword("Neptune","ConfigKey").then((encryptionKey) => { // Do not st
 
 
 	// Command line listener
-	async function Shutdown() {
-		let shutdownTimeout = 1000;
-		if (typeof shutdownTimeout !== "number") {
-			shutdownTimeout = (debug)? 1000 : 5000;
-		}
-
-		// dlog("Fired @Neptune.Events.application#shutdown: " + shutdownTimeout);
-		Neptune.Events.application.emit('shutdown', shutdownTimeout)
-	}
-
-	Neptune.Events.application.on('shutdown', (shutdownTimeout) => {
-		console.log("\nShutting down");
-		setTimeout(()=>{
-			console.log("goodbye ...");
-			process.exit(0)
-		}, shutdownTimeout);
-	})
 
 
 	// Server operator interaction
 
-	const readline = require("readline");
-	const rl = readline.createInterface({
-		input: process.stdin,
-		output: process.stdout
-	});
+	var rkey = function(a) { Neptune.configManager.rekey(a).then((didIt) => console.log("Successful: " + didIt)).catch(err => console.error("Failed: " + err)); };
 
+	var output;
+	var defaultToEval = false;
 	function processCMD(command) {
 		try {
-			if (command == "exit" || command == "quit" || command == "end")
-				Shutdown();
-			else if (command == "showmain")
-				mainWindow.show()
-			else if (command.startsWith("eval ")) {
-				let cmd = command.substr(5);
+			if (defaultToEval) {
 				try {
-					eval(cmd);
+					output = eval(command);
+					console.log("Output: ");
+					utilLog(output, 2);
 				} catch(err) {
 					console.error(err);
 				}
 			}
-			else
-				ogLog("Received input: " + command + " . (not a command)");
+			else {
+				if (command == "exit" || command == "quit" || command == "end")
+					Shutdown();
+				else if (command == "showmain")
+					mainWindow.show()
+				else if (command.startsWith("eval ")) {
+					let cmd = command.substr(5);
+					try {
+						output = eval(cmd);
+						utilLog(output, 2);
+					} catch(err) {
+						console.error(err);
+					}
+				}
+				else
+					ogLog("Received input: " + command + " . (not a command)");
+			}
 		} catch(_) {
 			// do a thing or something
 		}
@@ -408,9 +504,6 @@ keytar.getPassword("Neptune","ConfigKey").then((encryptionKey) => { // Do not st
 		});
 	}
 
-	rl.on("close", function () {
-		Shutdown();
-	});
 
 	// Operator input
 	prompt();
