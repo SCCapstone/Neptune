@@ -14,7 +14,7 @@ const fs = require("node:fs");
 
 
 /**
- * Manager class for configuration items
+ * Config item
  */
 class ConfigItem {
 

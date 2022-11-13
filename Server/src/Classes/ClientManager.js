@@ -1,9 +1,21 @@
 const NotificationManager = require('NotificationManager.js');
 
 class ClientManager {
-    
-    /** @typedef {Map<clientId: string, Client} */
+    /** @typedef {import('./Client')} Client */
+    /**
+     * @typedef {object} PairData
+     * @property {string} pairId Id representing this pair
+     * @property {string} pairKey Shared secret used to enhance encryption
+     * @property {string} clientId Id of the client this pair is for
+     */
+
+
+
+    /** @typedef {Map<string, Client>} */
     #clients = new Map();
+
+    /** @typedef {Map<string, PairData>} */
+    #pairData = new Map();
 
     /**
      * This is the constructor
@@ -13,7 +25,7 @@ class ClientManager {
     }
 
     /**
-     * This will remove a Client
+     * This will remove a Client, call after unpair. Literal cleanup.
      * @returns {void}
      */
     #removeClient() {
@@ -21,7 +33,7 @@ class ClientManager {
     }
 
     /**
-     * This will add a Client
+     * This will add a Client ??
      * @returns {void}
      */
     #addClient() {
@@ -77,7 +89,9 @@ class ClientManager {
      * @returns {void}
      */
     saveClients() {
-        return;
+        this.#clients.forEach(client => {
+            client.save();
+        });
     }
 }
 

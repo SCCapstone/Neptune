@@ -120,10 +120,10 @@ class ConfigurationManager {
 	 * @param {(string|boolean)} [newKey] The new encryption key. If true we'll generate one, if empty or undefined we will disable encryption.
 	 */
 	rekey(newKey) {
-		if (newKey === true) // Generate new key?
+		if (newKey == true) // Generate new key?
 			newKey = NeptuneCrypto.randomString(Neptune.Config.entries.encryptionKeyLength, 33, 220);
 		else
-			if (newKey === false)
+			if (newKey == false)
 				newKey == "";
 		if (typeof newKey !== "string" && newKey !== undefined)
 			throw new TypeError("newKey expected string got " + (typeof newKey).toString());

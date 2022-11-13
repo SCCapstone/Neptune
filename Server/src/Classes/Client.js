@@ -3,126 +3,129 @@ const IPAddess = require('IPAddress.js');
 
 class Client {
 
-    /** @typedef {IPAddress} */
-    #IPAddress;
-    /** @typedef {ConnectionManager} */
-    #connectionManager;
-    /** @typedef {ConfigItem} */
-    #configuration;
+	/** @typedef {IPAddress} */
+	#IPAddress;
+	/** @typedef {ConfigItem} */
+	config;
+	/** @typedef {string} */
+	clientId;
+	/** @typedef {string} */
+	friendlyName;
+	/** @typedef {Date} */
+	dateAdded;
+
+	/** @typedef {string} */
+	pairId;
     /** @typedef {string} */
-    #serverId;
-    /** @typedef {string} */
-    #friendlyName;
-    /** @typedef {DateTime} */
-    #dateAdded;
-    /** @typedef {string[]} */
-    #notifiableApps;
+    pairKey;
 
-    /**
-     * This is the default constructor
-     */
-    constructor() {
-        this.#IPAddress = this.#IPAddress;
-        this.#connectionManager = this.#connectionManager;
-        this.#configuration = this.#configuration;
-        this.#serverId = this.#serverId;
-        this.#friendlyName = this.#friendlyName;
-        this.#dateAdded = this.#dateAdded;
-        this.#notifiableApps = this.#notifiableApps;
-    }
 
-    /**
-     * This will contruct using a JSON
-     * @param {JSONObject} JSONObject 
-     */
-    Client(JSONObject) {
 
-    }
+	/**
+	 * @typedef {object} constructorData
+	 * @property {IPAddress} IPAddress 
+	 * @property {string} clientId Unique Id of the device (provided by the device)
+	 * @property {string} friendlyName Friendly name of the device
+     * @property {Date} dateAdded If null, current date time
+	 */
 
-    /**
-     * This will send the Notification
-     * @param {Notification} notification 
-     * @return {boolean}
-     */
-    sendNotification(notification) {
-        return false;
-    }
 
-    /**
-     * This will send the Client's clipboard
-     * @param {object} object 
-     * @return {boolean}
-     */
-    sendClipboard(object) {
-        return false;
-    }
+	/**
+	 * Initialize a new Client
+	 * @param {(string|ConfigItem|constructorData)} [data] Config name, ConfigItem, or the required constructor data (IP, clientId, friendlyName, dateAdded)  
+	 */
+	constructor(data) {
 
-    /**
-     * This will send a file
-     * @param {string} string 
-     * @return {boolean}
-     */
-    sendFile(string) {
-        return false;
-    }
+	}
 
-    /**
-     * This will send a ping to test connection
-     * @return {boolean}
-     */
-    sendPing() {
-        return false;
-    }
 
-    /**
-     * This will set the IPAddress
-     * @param {IPAddress} ipAddress 
-     * @return {void}
-     */
-    setIPAddress(ipAddress) {
-        this.#IPAddress = ipAddress;
-        return;
-    }
+	/**
+	 * This will send the Notification
+	 * @param {Notification} notification 
+	 * @return {boolean}
+	 */
+	sendNotification(notification) {
+		return false;
+	}
 
-    /**
-     * This will return the IPAdress
-     * @return {IPAddress}
-     */
-    getIPAddress() {
-        return this.#IPAddress;
-    }
+	/**
+	 * Send data to the client's clipboard
+	 * @param {object} object 
+	 * @return {boolean}
+	 */
+	sendClipboard(object) {
+		return false;
+	}
 
-    /**
-     * This will unpair a client
-     * @return {boolean}
-     */
-    unpair() {
-        return false;
-    }
+	/**
+	 * Send a file to the client
+	 * @param {string} string 
+	 * @return {boolean}
+	 */
+	sendFile(string) {
+		return false;
+	}
 
-    /**
-     * This will pair with a client
-     * @return {boolean}
-     */
-    pair() {
-        return false;
-    }
+	/**
+	 * Test device connection
+	 * @return {boolean}
+	 */
+	sendPing() {
+		return false;
+	}
 
-    /**
-     * This will return the client in a JSON format
-     * @return {JSONObject}
-     */
-    toJSON() {
-        return;
-    }
+	/**
+	 * This will set the IPAddress
+	 * @param {IPAddress} ipAddress 
+	 * @return {void}
+	 */
+	setIPAddress(ipAddress) {
+		this.#IPAddress = ipAddress;
+		return;
+	}
 
-    /**
-     * This will save the current configuration
-     * @return {void}
-     */
-    saveConfiguration() {
-        return false;
-    }
+	/**
+	 * This will return the IPAdress
+	 * @return {IPAddress}
+	 */
+	getIPAddress() {
+		return this.#IPAddress;
+	}
+
+	/**
+	 * This will unpair a client
+	 * @return {boolean}
+	 */
+	unpair() {
+		return false;
+	}
+
+	/**
+	 * This will pair with a client, generating the required pairId and pairKey
+	 * @return {boolean}
+	 */
+	pair() {
+		return false;
+	}
+
+	/**
+	 * This will return the client in a JSON format
+	 * @return {JSONObject}
+	 */
+	toJSON() {
+		return JSON.stringify({
+            IPAddress: this.#IPAddress,
+
+        })
+	}
+
+	/**
+	 * This will save the current configuration
+	 * @return {void}
+	 */
+	saveConfiguration() {
+		return false;
+	}
 }
 
 modules.export = Client;
