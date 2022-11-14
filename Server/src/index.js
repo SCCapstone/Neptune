@@ -94,7 +94,7 @@ Neptune.notificationManager;
 
 // Logging
 /** @type {LogMan} */
-Neptune.logMan = new LogMan("Neptune", "./logs", { fileWriteLevel: { silly: displaySilly }, consoleDisplayLevel: { silly: displaySilly }, cleanLog: true });
+Neptune.logMan = new LogMan("Neptune", "./logs", { fileWriteLevel: { silly: debug }, consoleDisplayLevel: { silly: displaySilly }, cleanLog: true });
 // Log name: Neptune, in the logs folder, do not display silly messages (event fired!)
 
 Neptune.log = Neptune.logMan.getLogger("Neptune"); // You can call this (log) to log as info
@@ -106,8 +106,6 @@ Neptune.logMan.on('close', () => { // Reopen log file if closed (and not shuttin
 	}
 });
 
-Neptune.log.debug("Hello world!"); // :wave:
-
 // For debugging, allows you to output a nasty object into console. Neat
 var utilLog = function(obj, depth) {
 	Neptune.log.debug(util.inspect(obj, {depth: (depth!=undefined)? depth : 2}));
@@ -115,13 +113,11 @@ var utilLog = function(obj, depth) {
 
 // This is our "error" handler. seeeesh
 process.on('unhandledRejection', (error) => {
-	if (debug) {
-		Neptune.log.error('=== UNHANDLED REJECTION ===');
-		Neptune.log.debug(error.stack);
-	} else {
-		Neptune.log.error('Unhandled rejection: ');
-		Neptune.log.debug(error.stack, false);
-	}
+	Neptune.log.error('Unhandled rejection: ' + error.message + "\n" + error.stack, debug);
+	// Should close now..
+});
+process.on('uncaughtException', (error) => {
+	Neptune.log.error('Unhandled exception: ' + error.message + "\n" + error.stack, debug);
 });
 
 
@@ -132,7 +128,7 @@ class EmitterLogger extends require('events') {
 	#name;
 	constructor(name) { super(); this.#name = name; }
 	emit(type, ...args) {
-		Neptune.log.silly("Event Neptune.events." + this.#name + "@" + type + " fired | " + util.inspect(arguments, {depth: 1}));
+		Neptune.log.debug("Event Neptune.events." + this.#name + "@" + type + " fired | " + util.inspect(arguments, {depth: 1}), false);
 		super.emit(type, ...args);
 	}
 }
@@ -169,7 +165,7 @@ process.on('beforeExit', code => {
 	Neptune.logMan.close();
 });
 process.on('SIGTERM', signal => {
-	Neptune.warn(`Process ${process.pid} received a SIGTERM signal`);
+	Neptune.log.warn(`Process ${process.pid} received a SIGTERM signal`);
 	Shutdown(500);
 })
 
@@ -207,18 +203,20 @@ const endTerminalCode = "\x1b[0m"; // Reset font color
 if (!debug) {
 	process.stdout.write("\x1B[0m\x1B[2;J\x1B[1;1H"); // Clear the terminal
 	console.clear();
+	console.log(endTerminalCode + "--== Neptune ==--");
 } else {
-	Neptune.log(endTerminalCode);
+	console.log(endTerminalCode);
 }
 
-console.log(endTerminalCode + "--== Neptune ==--");
+Neptune.log.info("Hello world!"); // :wave:
+
 if (!debug) {
-	Neptune.log("{ \x1b[1m\x1b[47m\x1b[34mProduction" + endTerminalCode + ", version: " + Neptune.version.toString() + " }"); // Production mode
+	Neptune.log("\x1b[1m\x1b[47m\x1b[34mProduction" + endTerminalCode + ", version: " + Neptune.version.toString()); // Production mode
 }
 else
-	Neptune.log("{ \x1b[1m\x1b[41m\x1b[33m**DEV MODE**" + endTerminalCode + ", version: " + Neptune.version.toString() + " }"); // Developer (debug) mode
+	Neptune.log("\x1b[1m\x1b[41m\x1b[33m**DEV MODE**" + endTerminalCode + ", version: " + Neptune.version.toString()); // Developer (debug) mode
 
-Neptune.log("] Running on \x1b[1m\x1b[34m" + process.platform);
+Neptune.log("Running on \x1b[1m\x1b[34m" + process.platform);
 
 
 
@@ -301,9 +299,9 @@ async function main() {
 
 
 	if (Neptune.config.entries.enableFileEncryption && (encryptionKey !== undefined || encryptionKey !== ""))
-		Neptune.log("] File encryption \x1b[1m\x1b[32mACTIVE" + endTerminalCode + ", file security enabled");
+		Neptune.log("File encryption \x1b[1m\x1b[32mACTIVE" + endTerminalCode + ", file security enabled");
 	else
-		Neptune.log("] File encryption \x1b[1m\x1b[33mDEACTIVE" + endTerminalCode + ", file security disabled.");
+		Neptune.log("File encryption \x1b[1m\x1b[33mDEACTIVE" + endTerminalCode + ", file security disabled.");
 
 
 
@@ -455,9 +453,10 @@ async function main() {
 
 
 	// Heartbeat
+	var sounds = ["Thoomp-thoomp", "Bump-bump", "Thump-bump"];
 	app.get("/heartbeat", (req, res) => {
-		let sound = ["Thoomp-thoomp", "Bump-bump", "Thump-bump"].at(Math.random()*3);
-		Neptune.webLog.verbose(sound);
+		let sound = sounds[Math.floor(Math.random()*sounds.length)];
+		Neptune.webLog.verbose(sound + " (heartbeat)");
 		res.status(200).send('ok');
 	});
 
@@ -487,8 +486,6 @@ async function main() {
 
 
 
-
-
 	// Command line listener
 
 
@@ -496,25 +493,28 @@ async function main() {
 
 	var output;
 	var defaultToEval = false; // use `eval defaultToEval=true` in the terminal to flip into eval only mode
+
+	var cLog = Neptune.logMan.getLogger("Console");
+
 	function processCMD(command) {
+		cLog.info("Received user input: " + command.toString(), false);
 		try {
 			if (defaultToEval) {
 				try {
 					output = eval(command);
-					Neptune.log("Output: ");
+					// cLog.info("Output: ");
 					utilLog(output, 2);
 				} catch(err) {
-					Neptune.log.error(err);
+					cLog.error(err);
 				}
-			}
-			else {
+			} else {
 				if (command == "exit" || command == "quit" || command == "end")
 					Shutdown();
 				else if (command == "showmain")
 					mainWindow.show()
 				else if (command.startsWith("rekey")) {
 					let cmd = command.substr(6);
-					Neptune.configManager.rekey(cmd).then((didIt) => Neptune.log("Successful: " + didIt)).catch(err => Neptune.log.error("Failed: " + err));
+					Neptune.configManager.rekey(cmd).then((didIt) => cLog.info("Successful: " + didIt)).catch(err => cLog.error("Failed: " + err));
 				}
 				else if (command.startsWith("eval ")) {
 					let cmd = command.substr(5);
@@ -522,11 +522,11 @@ async function main() {
 						output = eval(cmd);
 						utilLog(output, 2);
 					} catch(err) {
-						Neptune.log.error(err);
+						cLog.error(err);
 					}
 				}
 				else
-					ogLog("Received input: " + command + " . (not a command)");
+					console.log("Received input: " + command + " . (not a command)");
 			}
 		} catch(_) {
 			// do a thing or something
@@ -535,13 +535,14 @@ async function main() {
 
 	async function prompt() {
 		for await (const line of rl) {
-			processCMD(line)
+			processCMD(line);
 		}
 	}
 
 
 	// Operator input
 	prompt();
+	console.log("END")
 }
 
 if (debug) {

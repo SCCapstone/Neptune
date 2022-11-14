@@ -106,7 +106,7 @@ class ConfigItem {
 	 */
 	save() {
 		if (this.#isAlive) {
-			this.#log.silly("Saved: " + err.stack);
+			this.#log.silly("Saved");
 			return this.#configManager.writeFileContents(JSON.stringify(this.entries), this.#filePath);
 		}
 		else {

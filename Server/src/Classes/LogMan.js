@@ -11,7 +11,7 @@
 
 const EventEmitter = require("node:events");
 const fs = require("node:fs");
-
+const Util = require("node:util");
 
 class ExtensibleFunction extends Function { 
   constructor(f) {						  
@@ -38,7 +38,7 @@ class ExtensibleFunction extends Function {
  * miscLogger.warn("Something went wrong!"); // Outputs: [Misc][Warn] Something went wrong!
  * ```
  * 
- * You can log any string, but note if you pass an object we'll _try_ our best to print it using `util.inspect`
+ * You can log any string, but note if you pass an object we'll _try_ our best to print it using `Util.inspect`
  * 
  * 
  * Close event tells you this logger is done.
@@ -445,7 +445,7 @@ class LogMan extends EventEmitter {
 		if (typeof level !== "string")
 			throw new TypeError("level expected string got " + (typeof level).toString());
 		if (typeof msg === "object") {
-			msg = util.inspect(msg, {depth: (logMan.objectRenderDepth!=undefined)? logMan.objectRenderDepth : 2});
+			msg = Util.inspect(msg, {depth: (this.objectRenderDepth!=undefined)? this.objectRenderDepth : 2});
 		} else if (typeof msg !== "string") {
 			msg = (new String(msg)).toString();
 		}
@@ -504,8 +504,8 @@ class LogMan extends EventEmitter {
 			}
 		}
 
-		this.emit(l, sectionName, msg);
-		this.emit('log', level, sectionName, msg);
+		//this.emit(l, sectionName, msg.toString()); // If you had the error type it would crash the whole thing!
+		this.emit('log', l, sectionName, msg.toString());
 	}
 
 	/**
@@ -574,7 +574,9 @@ class Logger extends ExtensibleFunction {
 	 */
 	#logManLogFunction
 
-	#options;
+	#options = {
+		objectRenderDepth: 2,
+	};
 
 	/**
 	 * Constructor, pass the logging function and log name
@@ -584,15 +586,19 @@ class Logger extends ExtensibleFunction {
 	constructor(logManLogFunction, logName, options) {
 		super(function(msg, outputToConsole) {
 			// `this` isn't a thing here, we're in the shadow realm. Work around:
-
 			if (typeof msg === "object") {
-				msg = util.inspect(msg, {depth: (options.objectRenderDepth!=undefined)? options.objectRenderDepth : 2});
+				var uO = {depth: 2}
+				if (options !== undefined && typeof options === "object")
+					if (options.objectRenderDepth !== undefined)
+						uO.depth = options.objectRenderDepth;
+
+				msg = Util.inspect(msg, uO);
 			} else if (typeof msg !== "string") {
 				msg = (new String(msg)).toString();
 			}
 			outputToConsole = (outputToConsole===false)? false : true; // Set to false if false, true if literally anything else.
 
-			logManLogFunction(logName, "info", msg, outputToConsole);
+			logManLogFunction(logName, "Info", msg, outputToConsole);
 		});
 		
 
@@ -600,6 +606,10 @@ class Logger extends ExtensibleFunction {
 			throw new TypeError("logManLogFunction expected function, got " + (typeof logManLogFunction).toString() )
 		if (typeof logName !== "string")
 			throw new TypeError("logName expected string got " + (typeof logName).toString());
+
+		if (options !== undefined && typeof options === "object")
+			if (options.objectRenderDepth !== undefined)
+				this.#options.objectRenderDepth = options.objectRenderDepth
 
 		this.#logManLogFunction = logManLogFunction;
 		this.#name = logName;
@@ -615,7 +625,7 @@ class Logger extends ExtensibleFunction {
 	 */
 	#log(level, msg, outputToConsole) {
 		if (typeof msg === "object") {
-			msg = util.inspect(msg, {depth: (options.objectRenderDepth!=undefined)? options.objectRenderDepth : 2});
+			msg = Util.inspect(msg, {depth: (this.#options.objectRenderDepth!=undefined)? this.#options.objectRenderDepth : 2});
 		} else if (typeof msg !== "string") {
 			msg = (new String(msg)).toString();
 		}
@@ -687,15 +697,6 @@ class Logger extends ExtensibleFunction {
 	 */
 	silly(msg, outputToConsole) {
 		this.#log("Silly", msg, outputToConsole);
-	}
-
-	/**
-	 * Log data at level info
-	 * @param {(string|object|any)} msg - Message / data you wish to log
-	 * @param {boolean} [outputToConsole=true] - Output this particular message to the console. Defaults to true
-	 */
-	invoke(msg, outputToConsole) {
-		this.#log("Info", msg, outputToConsole);
 	}
 }
 
