@@ -82,7 +82,37 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 		return this.#widgets[name];
 	}
 
+	/**
+	 * Creates and adds a button to the window
+	 * @param {string} name Widget name of the button (used internally)
+	 * @param {string} text the button is showing
+	 * @returns {NodeGUI.QPushButton}
+	 */
+	createButton(name, text) {
+		let button = new NodeGUI.QPushButton();
+		button.setText(text);
+		button.setObjectName(name);
 
+		this.#widgets[name] = button;
+		this.#widgets["rootLayout"].addWidget(this.#widgets[name]);
+
+		return this.#widgets[name];
+	}
+
+	/**
+	 * 
+	 * @param {string} name 
+	 * @returns {NodeGUI.QLineEdit}
+	 */
+	createInput(name) {
+		let input = new NodeGUI.QLineEdit();
+		input.setObjectName(name);
+
+		this.#widgets[name] = input;
+		this.#widgets["rootLayout"].addWidget(this.#widgets[name]);
+
+		return this.#widgets[name];
+	}
 
 	// Getters
 	/**
