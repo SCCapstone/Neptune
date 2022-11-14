@@ -50,4 +50,4 @@ class NotificationManager {
 	}
 }
 
-modules.export = NotificationManager;
+module.exports = NotificationManager;

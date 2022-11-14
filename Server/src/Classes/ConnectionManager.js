@@ -7,12 +7,17 @@
  * 		Capstone Project 2022
  */
 
+const Client = require('./Client');
+
 
 /* Imports */
-const ipaddress = require('IPAddress.js');
+// const IPAddress = require('IPAddress.js');
 
 /**
- * @typedef {import('ConfigurationManager.js')}
+ * @typedef {import('./Client.js')} Client
+ */
+/**
+ * @typedef {import('./ConfigurationManager.js')} ConfigurationManager
  */
 
 
@@ -23,43 +28,35 @@ const ipaddress = require('IPAddress.js');
 class ConnectionManager {
 
 	/**
-	 * Whether we have
+	 * Whether we have setup the communication pipe (socket)
 	 * @type {boolean}
 	 */
 	#hasNegotiated;
 
 	/**
 	 * Last time we communicated with the client
-	 * @type {DateTime}
+	 * @type {Date}
 	 */
 	#lastCommunicatedTime;
 
 	/**
-	 * Little more complicated, likely the express instance so we can throw down sockets
-	 * @type {object}
+	 * Socket name, the URL the socket is hosted on
+	 * @type {string}
 	 */
-	#Socket;
-
-
-	// Note: UML incorrect, ServerSocket not a thing.
-	// Nor AsyncHttpClient*
-
-	/**
-	 * The client's IP
-	 * @type {ipaddress}
-	 */
-	#IPAddress;
+	#socketId;
 
 
 	/**
-	 * Configuration manager
-	 * @type {ConfigurationManager}
+	 * The client we're representing
+	 * @type {Client}
 	 */
-	#Configuration;
+	#client;
 
 
-	constructor(IPAddress, Config) {
-
+	constructor(client) {
+		if (!(client instanceof Client))
+			throw new TypeError("client expected Client got " + (typeof client).toString());
+		this.#client = client;
 	}
 	
 	/**

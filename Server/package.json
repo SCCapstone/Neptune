@@ -17,7 +17,7 @@
       "name": "Matthew Sprinkle"
     }
   ],
-  "main": "neptune.js",
+  "main": "index.js",
   "scripts": {
     "build": "webpack -p",
     "start": "webpack && fixBrokenBuildNames.bat && qode ./dist/index.js",

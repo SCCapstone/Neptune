@@ -20,10 +20,18 @@ class IPAddress {
 
 	/**
 	 * This is the constructor
-	 * @param {string} address 
-	 * @param {int} port 
+	 * @param {string} address Can either be the ip address, or the ip address with :port (in which case leave `port` blank)
+	 * @param {int} [port] The port, leave blank if appended to the ip address
 	 */
 	constructor(address, port) {
+		if (port === undefined) {
+			let split = address.split(":");
+			if (split.length == 2) {
+				address = split[0];
+				port = split[1];
+			}
+		}
+
 		if (this.isValidIPAddress(address))
 			this.#IPAddress = address;
 		if (this.isValidPort(port))

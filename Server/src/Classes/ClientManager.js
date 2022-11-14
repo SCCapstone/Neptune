@@ -1,5 +1,26 @@
-const NotificationManager = require('NotificationManager.js');
+/**
+ *      _  _ 
+ *     | \| |
+ *     | .` |
+ *     |_|\_|eptune
+ *
+ *      Capstone Project 2022
+ */
 
+const EventEmitter = require('node:events');
+
+/** @type {import('./NotificationManager.js')} */
+const NotificationManager = global.Neptune.notificationManager;
+
+/** @type {import('./ConfigurationManager.js')} */
+const ConfigurationManager = global.Neptune.configurationManager;
+
+/** @type {import('./ConfigItem.js')} */
+const NeptuneConfig = global.Neptune.config;
+
+/**
+ * Management class for clients
+ */
 class ClientManager {
     /** @typedef {import('./Client')} Client */
     /**
@@ -11,17 +32,21 @@ class ClientManager {
 
 
 
-    /** @typedef {Map<string, Client>} */
+    /** @type {Map<string, Client>} */
     #clients = new Map();
 
-    /** @typedef {Map<string, PairData>} */
-    #pairData = new Map();
+    /** @type {Map<string, string>} */
+    #pairIdMap = new Map(); // eh
+
+
+    Events = new EventEmitter();
+
 
     /**
      * This is the constructor
      */
     constructor() {
-        this.#clients = this.#clients;
+        this.loadClients();
     }
 
     /**
@@ -73,7 +98,7 @@ class ClientManager {
      * @returns {Client[]}
      */
     getClients() {
-        return;
+        return new Map(this.#clients);
     }
 
     /**
@@ -81,7 +106,7 @@ class ClientManager {
      * @returns {void}
      */
     loadClients() {
-        return;
+        
     }
 
     /**
@@ -95,4 +120,4 @@ class ClientManager {
     }
 }
 
-modules.export = ClientManager;
+module.exports = ClientManager;

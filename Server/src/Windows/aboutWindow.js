@@ -32,7 +32,7 @@ class aboutWindow extends NeptuneWindow {
 		let mainLabel = this.createLabel("lblTitle","Project Neptune");
 		mainLabel.setInlineStyle("font-size: 14px; qproperty-alignment: AlignCenter;");
 
-		let lblVersion = this.createLabel("lblVersion", "Version " + process.Neptune.Version.toString());
+		let lblVersion = this.createLabel("lblVersion", "Version " + global.Neptune.version.toString());
 		lblVersion.setInlineStyle("font-size: 11px; font-weight: light; qproperty-alignment: AlignCenter;");
 
 		// add button here :)

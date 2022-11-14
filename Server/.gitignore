@@ -1,10 +1,14 @@
 /node_modules/
+
 /dist/
 /deploy/
+
 /data/
+/logs/
+/tools/encryptionKey.txt
+
 /.idea/
 /.vs/
 /.vscode/
 *.sublime-project
 *.sublime-workspace
-encryptionKey.txt

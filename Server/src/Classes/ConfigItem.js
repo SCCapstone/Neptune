@@ -7,11 +7,6 @@
  * 		Capstone Project 2022
  */
 
-const { fileURLToPath } = require("url");
-
-const fs = require("node:fs");
-
-
 
 /**
  * Config item
@@ -43,6 +38,11 @@ class ConfigItem {
 	 */
 	#configManager;
 
+	/**
+	 * @type {import('./LogMan').Logger}
+	 */
+	#log;
+
 
 	/**
 	 * @param {string} filePath The path to the config file
@@ -59,6 +59,8 @@ class ConfigItem {
 
 		// load
 		this.loadSync();
+
+		this.#log = Neptune.logMan.getLogger("Config-" + filePath);
 	}
 
 	/**
@@ -82,6 +84,8 @@ class ConfigItem {
 				this.entries = data;
 				resolve(true);
 			}).catch(err => {
+				this.#log.error("Error loading, message: " + err.message, false);
+				this.#log.error("Stack: " + err.stack, false);
 				reject(err);
 			});
 		});
@@ -101,10 +105,14 @@ class ConfigItem {
 	 * @return {void}
 	 */
 	save() {
-		if (this.#isAlive)
+		if (this.#isAlive) {
+			this.#log.silly("Saved: " + err.stack);
 			return this.#configManager.writeFileContents(JSON.stringify(this.entries), this.#filePath);
-		else
+		}
+		else {
+			this.#log.warn("Failed to save, config file closed and not active.", false);
 			throw new Error("Config file closed, not active.");
+		}
 	}
 	
 	/**
