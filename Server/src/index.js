@@ -12,7 +12,6 @@
 // Which came first? Chicken or the egg?
 const Version = require('./Classes/Version.js');
 const Neptune = {};
-const defaults = {};
 const isWin = process.platform === "win32"; // Can change notification handling behavior
 
 
@@ -26,10 +25,6 @@ const displaySilly = false; // output the silly log level to console (it goes  e
 Error.stackTraceLimit = (debug)? 8 : 4;
 
 Neptune.version = new Version(0, 0, 1, ((debug)?"debug":"release"), "WeekEndNov13");
-defaults.enableFileEncryption = (debug)? false : true;
-defaults.encryptionKeyLength = 64;
-
-defaults.port = 25560;
 
 global.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune. Allows us to get around providing `Neptune` to everything
 
@@ -64,14 +59,14 @@ const multer = require('multer');
 
 
 // Classes
-const ConfigurationManager = require('./Classes/ConfigurationManager.js'); // The data directory
+const ConfigurationManager = require('./Classes/ConfigurationManager.js');
+const NeptuneConfig = require('./Classes/NeptuneConfig.js');
 const ClientManager = require('./Classes/ClientManager.js');
 const NotificationManager = require('./Classes/NotificationManager.js');
 /** @type {import('./Classes/LogMan').LogMan} */
 const LogMan = require('./Classes/LogMan.js').LogMan;
 
 const NeptuneCrypto = require('./Support/NeptuneCrypto.js');
-const { encrypt } = require('./Support/NeptuneCrypto.js');
 
 
 
@@ -83,7 +78,7 @@ Neptune.debugMode = debug;
 
 /** @type {ConfigurationManager} */
 Neptune.configManager;
-/** @type {import('./Classes/ConfigItem')} */
+/** @type {import('./Classes/NeptuneConfig')} */
 Neptune.config;
 /** @type {ClientManager} */
 Neptune.clientManager;
@@ -233,7 +228,7 @@ async function main() {
 	
 	try {
 		Neptune.configManager = new ConfigurationManager("./data/configs/", (keyFound)? encryptionKey : undefined);
-		Neptune.config = Neptune.configManager.loadConfig("./data/NeptuneConfig.json", true);
+		Neptune.config = Neptune.configManager.loadConfig("./data/NeptuneConfig.json", true, NeptuneConfig);
 
 		// For whatever reason, this try block just does not work! Very cool!
 		// manually check the encryption:
@@ -274,31 +269,40 @@ async function main() {
 	if (Object.keys(Neptune.config.entries).length < 1) {
 		firstRun = true
 		Neptune.log.verbose("Config is completely empty, setting as first run...");
+	} else {
+		if (Neptune.config.firstRun === true) {
+			firstRun = Neptune.config.firstRun;
+			Neptune.log.verbose("Config has firstRun set to true. Either a reset, or new config.");
+		}
 	}
 	if (firstRun) {
-		Neptune.config.entries = {...defaults};
 		Neptune.log.verbose("First run! Generated default config file.");
-		
-		if (!keyFound && Neptune.config.entries.enableFileEncryption) {
+	
+		Neptune.config = new NeptuneConfig(Neptune.configManager, "./data/NeptuneConfig.json");
+		Neptune.config.save();
+		Neptune.config.close();
+		Neptune.config = Neptune.configManager.loadConfig("./data/NeptuneConfig.json", true, NeptuneConfig);
+
+		if (!keyFound && Neptune.config.encryption.enabled) {
 			// Set a new key
 			Math.random(); // .. seed the machine later (roll own RNG ? Probably a bad idea.)
-			encryptionKey = NeptuneCrypto.randomString(Neptune.config.entries.encryptionKeyLength, 33, 220);
-			Neptune.log.verbose("Generated encryption key of length " + Neptune.config.entries.encryptionKeyLength);
+			encryptionKey = NeptuneCrypto.randomString(Neptune.config.encryption.newKeyLength, 33, 220);
+			Neptune.log.verbose("Generated encryption key of length " + Neptune.config.encryption.newKeyLength);
 			keytar.setPassword("Neptune","ConfigKey",encryptionKey);
 			Neptune.configManager.setEncryptionKey(encryptionKey);
 			Neptune.log.verbose("Encryption key loaded");
-		} else if (keyFound && Neptune.config.entries.enableFileEncryption) {
+		} else if (keyFound && Neptune.config.encryption.enabled) {
 			Neptune.log.verbose("Encryption key loaded from OS keychain");
 		}
 	}
 
-	if (keyFound && Neptune.config.entries.enableFileEncryption === false) {
+	if (keyFound && Neptune.config.encryption.enabled === false) {
 		Neptune.log.verbose("Key found, yet encryption is disabled. Odd. Running rekey to completely disable.")
 		Neptune.configManager.rekey(); // Encryption is set to off, but the key is there? Make sure to decrypt everything and remove key
 	}
 
 
-	if (Neptune.config.entries.enableFileEncryption && (encryptionKey !== undefined || encryptionKey !== ""))
+	if (Neptune.config.encryption.enabled && (encryptionKey !== undefined || encryptionKey !== ""))
 		Neptune.log("File encryption \x1b[1m\x1b[32mACTIVE" + endTerminalCode + ", file security enabled");
 	else
 		Neptune.log("File encryption \x1b[1m\x1b[33mDEACTIVE" + endTerminalCode + ", file security disabled.");
@@ -427,7 +431,9 @@ async function main() {
 	Neptune.webLog = Neptune.logMan.getLogger("Web");
 	
 	const app = Express();
-	// app.use(bodyParser.urlencoded({ extended: true }));
+	var ExpressWebSocket = require('express-ws')(app);
+	const WebSocketServer = require('ws').Server;
+	// app.use(Express.urlencoded());
 	app.use(Express.json());
 	// app.use(session({
 	// 	secret: "fThx4TVHS7XvW84274W0uoY4GvhmsDN7nN0W3mhRGH2fgFFEZUEZYIeCGoDNoGojW4YfCUlfNZupiekNiOXI1wuOeS2HICpRsrQdndecLCFKtYXr26jLTEtekpPJpFJ7gt8DSmtOYx8WRVz0Jbb211Vqiwnnc8ENl7Z8iDldh01cICNHBrG4F5E6Uz6IRBJonHOPbi3TiNjnW4nxCywjuhpOkzpDGKhox1A3EythsBLNEJp4Br6X3Uef8muOxKzN",
@@ -475,12 +481,125 @@ async function main() {
 	});
 
 
+	var conInitUUIDs = {};
+	
+
+
+	const crypto = require("node:crypto");
+
+	// https://nodejs.org/api/crypto.html#class-diffiehellman
+	app.post('/api/v1/server/newSocketConnection', (req, res) => {
+		let conInitUUID = crypto.randomUUID(); // NeptuneCrypto.convert(NeptuneCrypto.randomString(16), "utf8", "hex"); // string (len 16) -> HEX
+		Neptune.webLog.info("Initiating new client connection, uuid: " + conInitUUID);
+
+		let alice = crypto.createDiffieHellman(1024);
+		let alicePublic = alice.generateKeys();
+
+		conInitUUIDs[conInitUUID] = {
+			"enabled": true,
+			dhObject: alice,
+			"g1": alice.getGenerator().toString('base64'),
+			"p1": alice.getPrime().toString('base64'),
+			"a1": alice.getPublicKey().toString('base64'),
+			createdAt: new Date().toISOString(),
+		}
+
+		res.status(200).send(JSON.stringify({
+			"g1": conInitUUIDs[conInitUUID]["g1"],
+			"p1": conInitUUIDs[conInitUUID]["p1"],
+			"a1": conInitUUIDs[conInitUUID]["a1"],
+			"conInitUUID": conInitUUID,
+		}));
+	});
+
+
+	app.post('/api/v1/server/newSocketConnection/:conInitUUID', (req, res) => {
+		let conInitUUID = req.params.conInitUUID;
+		Neptune.webLog.silly("POST: /api/v1/server/newSocketConnection/" + conInitUUID + " .. body: " + JSON.stringify(req.body));
+		if (conInitUUIDs[conInitUUID] !== undefined) {
+			if (conInitUUIDs[conInitUUID].enabled !== true) {
+				Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
+				res.status(403).send('{ "error": "Invalid conInitUUID" }');
+				return;
+			}
+		} else {
+			res.status(401).send('{ "error": "Invalid conInitUUID" }');
+			return;
+		}
+
+		// Validate timestamp
+		let timeNow = new Date();
+		let createdTime = conInitUUIDs[conInitUUID].createdAt;
+
+		if (((timeNow - createdTime)/(60000)) >= 5) { // Older than 5 minutes
+			Neptune.webLog.warn("Attempt to use old conInitUUID! UUID: " + conInitUUID + " . createdAt: " + createdTime.toISOString());
+			delete conInitUUIDs[conInitUUID];
+			res.status(408).send('{ "error": "Request timeout for conInitUUID" }');
+		}
+
+		let socketUUID = crypto.randomUUID();
+
+		let aliceSecret = conInitUUIDs[conInitUUID].dhObject.computeSecret(Buffer.from(req.body.b1,'base64'));
+		conInitUUIDs[conInitUUID].secret = NeptuneCrypto.HKDF(aliceSecret.toString('utf8')).key;
+
+		var chkMsg = req.body.chkMsg;
+		try {
+			if (NeptuneCrypto.isEncrypted(chkMsg))
+				chkMsg = NeptuneCrypto.decrypt(chkMsg, conInitUUIDs[conInitUUID].secret.toString('utf8'));
+		} catch (err) {
+			if (err instanceof NeptuneCrypto.Errors.InvalidDecryptionKey || err instanceof NeptuneCrypto.Errors.MissingDecryptionKey) {
+				// bad key.
+				res.status(400).send(`{ "error": "Invalid encryption key" }`);
+			} else {
+				// Another error
+				Neptune.webLog.warn("Decryption of chkMsg failed, error: " + err.message);
+				res.status(400).send(`{ "error": "Decryption of chkMsg failed" }`);
+			}
+			return;
+		}
+		
+		let chkMsgHash = crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg).digest('hex');
+
+		if (chkMsgHash !== req.body.chkMsgHash) {
+			Neptune.webLog.warn(`Invalid chkMsg hash! chkMsg: ${chkMsg} ... ourHash: ${chkMsgHash} ... clientHash: ${req.body.chkMsgHash}`);
+			res.status(400).send(`{ "error": "Invalid chkMsgHash" }`);
+			return;
+		} else {
+			Neptune.webLog.info("Generating socket, id: " + socketUUID);
+			conInitUUIDs[conInitUUID].enabled = false; // Done
+			// Create the socket here.
+			// get the client
+			conInitUUIDs[conInitUUID].clientId = NeptuneCrypto.decrypt(req.body.clientId, conInitUUIDs[conInitUUID].secret.toString('utf8'));
+			let client = Neptune.clientManager.getClient(conInitUUIDs[conInitUUID].clientId)
+
+			var ws = new WebSocketServer({server: httpServer, path: '/api/v1/server/socket/' + socketUUID});
+
+			ws.on("connection", function(ws){
+				Neptune.webLog.info("Client connected to socket " + socketUUID);
+				client.setupConnectionManager(ws, conInitUUIDs[conInitUUID].secret, {
+					conInitUUID: conInitUUID,
+					createdAt: conInitUUIDs[conInitUUID].createdAt,
+				});
+			});
+
+			//app.ws('/api/v1/server/socket/' + socketUUID, (ws, req) => { // hmmm, this needs to removed in the future!
+				
+			//});
+			res.status(200).send(JSON.stringify({
+				confMsg: crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg + req.body.chkMsgHash).digest('hex'),
+				socketUUID: socketUUID,
+			}));
+		}
+	});
+
+
+
 
 
 
 	// Listener
-	httpServer.listen(Neptune.config.entries.port, () => {
-		Neptune.webLog("Express server listening on port " + Neptune.config.entries.port);
+	httpServer.listen(Neptune.config.web.port, () => {
+		Neptune.webLog("Express server listening on port " + Neptune.config.web.port);
 	});
 
 

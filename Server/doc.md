@@ -43,26 +43,33 @@ For server, (as in like the application running), Neptune.events will fire off f
 ## Configurations
 
 
-`Config.json`:
+`NeptuneConfig.js`: `Config.json`:
 ```JSON
 {
-	// If file encryption is enabled
-	"enableFileEncryption":false,
-	// What the key length should be when we generate the encryption key
-	"encryptionKeyLength":64,		
-	
-	// Express web server port (port we listen to)
-	"port":25560,
+	"encryption": {
+		"enabled": false,	// If file encryption is enabled
+		"active": false,	// Unused, reserved
+		"newKeyLength":64,	// What the key length should be when we generate the encryption key
+	},
+
+	"web": {
+		"port":25560,		// Express web server port (port we listen to)
+	},
 
 	// Appended to the end of the configuration directory (./data/). Requires "/" at the end!
-	"clientConfigurationsSubdirectory": "clients/",
+	"clientDirectory": "clients/",
+
 	// Array of client ids we're connected/paired with
 	"clients": ["exampleClient"],
+
+	// Application specific settings, advance tunables
+	"applicationSettings": {
+	}
 }
 ```
 
 
-Client example config:
+Client example config, `clientId.json`:
 ```JSON
 {
 	"IPAddress": "127.0.0.1:25565",

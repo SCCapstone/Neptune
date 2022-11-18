@@ -1,12 +1,16 @@
 const ConfigItem = require('./ConfigItem.js');
+const ConnectionManager = require('./ConnectionManager.js');
 const IPAddess = require('./IPAddress.js');
 
 /** @type {import('./NotificationManager.js')} */
 const NotificationManager = global.Neptune.notificationManager;
 /** @type {import('./ConfigurationManager.js')} */
 const ConfigurationManager = global.Neptune.configurationManager;
-/** @type {import('./ConfigItem.js')} */
+/** @type {import('./NeptuneConfig.js')} */
 const NeptuneConfig = global.Neptune.config;
+
+
+const ws = require('ws');
 
 
 /**
@@ -14,9 +18,13 @@ const NeptuneConfig = global.Neptune.config;
  * 
  */
 class Client {
+	/** @type {ConnectionManager} */
+	#connectionManager;
+
+
+
 	/** @type {ConfigItem} */
 	#config;
-
 
 	/** @type {IPAddress} */
 	#IPAddress;
@@ -45,15 +53,14 @@ class Client {
 		return this.#IPAddress;
 	}
 	/**@param {(string|IPAddress)} ip
-	 * @param {(string|number)} [port]
 	 */
-	set IPAddress(ip, port) {
+	set IPAddress(ip) {
 		if (ip instanceof IPAddess) {
 			this.#IPAddress = ip;
 			this.#config.entries.IPAddress = this.#IPAddress;
 			this.#config.save();
 		} else if (typeof ip === "string") {
-			this.#IPAddress = new IPAddess(ip, port);
+			this.#IPAddress = new IPAddess(ip);
 			this.#config.entries.IPAddress = this.#IPAddress;
 			this.#config.save();
 		} else {
@@ -160,7 +167,12 @@ class Client {
 	 * Any deviations will error out.
 	 * @param {(string|ConfigItem|constructorData)} [data] Config name, ConfigItem, or the required constructor data (IP, clientId, friendlyName, dateAdded)  
 	 */
-	constructor(data) {
+	constructor(data, loadConfig) {
+		if (loadConfig) {
+			if (typeof data !== "string")
+				throw new TypeError("data expected string got " + (typeof data).toString());
+			data = new global.Neptune.configManager.loadConfig(NeptuneConfig.clientDirectory + data);
+		}
 		if (data instanceof ConfigItem) {
 			if (this.#isValidConfigData(data.entries))
 				this.#config = data;
@@ -170,11 +182,11 @@ class Client {
 			let data = JSON.parse(data);
 			this.#isValidConfigData(data, true);
 			// Load config
-			this.#config = ConfigurationManager.loadConfig(NeptuneConfig.entries.clientConfigurationsSubdirectory + this.#clientId);
+			this.#config = ConfigurationManager.loadConfig(NeptuneConfig.clientDirectory + this.#clientId);
 		} else if (typeof data === "object") {
 			this.#isValidConfigData(data, true);
 			// Load config
-			this.#config = ConfigurationManager.loadConfig(NeptuneConfig.entries.clientConfigurationsSubdirectory + this.#clientId);
+			this.#config = ConfigurationManager.loadConfig(NeptuneConfig.clientDirectory + this.#clientId);
 		}
 	}
 
@@ -223,6 +235,25 @@ class Client {
 
 
 	/**
+	 * Called after a socket has been opened with this client
+	 * @param {ws} webSocket - Web socket client communicates over
+	 * @param {Buffer} secret - Shared secret key
+	 * @param {object} miscData - Misc data, such as the createdAt date
+	 */
+	setupConnectionManager(webSocket, secret, miscData) {
+		this.#connectionManager = new ConnectionManager(this, webSocket, secret, miscData);
+
+		this.#connectionManager.on('command', (command, data) => {
+			if (command == "/api/v1/echo") {
+				this.#connectionManager.sendRequest("/api/v1/echoed", data);
+			}
+			console.log("received command:" + command);
+		})
+	}
+
+
+
+	/**
 	 * This will send the Notification ??
 	 * @param {Notification} notification 
 	 * @return {boolean}
@@ -255,7 +286,10 @@ class Client {
 	 * @param {import('./Notification.js')} notification Notification received
 	 */
 	receiveNotification(notification) {
-
+		notification.on("dismissed", (notification)=> {
+			// dismiss the notification on the client device
+		});
+		NotificationManager.newNotification(notification);
 	}
 
 
@@ -265,7 +299,7 @@ class Client {
 	 * @return {boolean}
 	 */
 	ping() {
-		return false;
+		this.#connectionManager
 	}
 
 	/**

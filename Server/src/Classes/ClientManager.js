@@ -8,6 +8,7 @@
  */
 
 const EventEmitter = require('node:events');
+const Client = require('./Client');
 
 /** @type {import('./NotificationManager.js')} */
 const NotificationManager = global.Neptune.notificationManager;
@@ -15,8 +16,8 @@ const NotificationManager = global.Neptune.notificationManager;
 /** @type {import('./ConfigurationManager.js')} */
 const ConfigurationManager = global.Neptune.configurationManager;
 
-/** @type {import('./ConfigItem.js')} */
-const NeptuneConfig = global.Neptune.config;
+/** @type {import('./NeptuneConfig.js')} */
+var NeptuneConfig = global.Neptune.config;
 
 /**
  * Management class for clients
@@ -46,6 +47,7 @@ class ClientManager {
      * This is the constructor
      */
     constructor() {
+        NeptuneConfig = global.Neptune.config;
         this.loadClients();
     }
 
@@ -90,7 +92,10 @@ class ClientManager {
      * @returns {Client}
      */
     getClient(clientId) {
-        return this.#clients.get(clientId);
+        let client = this.#clients.get(clientId);
+        if (client === undefined)
+            client = new Client();
+        return client;
     }
 
     /**
@@ -106,6 +111,14 @@ class ClientManager {
      * @returns {void}
      */
     loadClients() {
+        /*
+            Clients are stored in Neptune.config.clientConfigurationSubdirectory + clientName
+            iterate through the Neptune.config.clients array, which is the clientIds, and load those clients in
+        */
+
+        NeptuneConfig.clients.forEach((clientId) => {
+            this.#clients.set(clientId, new Client(clientId));
+        });
         
     }
 

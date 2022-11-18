@@ -1,0 +1,388 @@
+{
+	"info": {
+		"_postman_id": "ba5db15a-e131-42e0-838b-2d7f193edab5",
+		"name": "Neptune",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "24496580"
+	},
+	"item": [
+		{
+			"name": "Client -> Server",
+			"item": [
+				{
+					"name": "Connect",
+					"item": [
+						{
+							"name": "Step1",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var data = JSON.parse(responseBody);\r",
+											"pm.environment.set(\"conInitUUID\",data.conInitUUID);\r",
+											"pm.environment.set(\"stepOneResponse\", responseBody);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"acceptedKeyGroups\": [\r\n        14,\r\n        16,\r\n        17\r\n    ],\r\n    \"acceptedHashTypes\": [\r\n        \"chacha20\",\r\n        \"aes-256-gcm\",\r\n        \"aes-192-gcm\"\r\n    ],\r\n    \"acceptedCrypto\": [\r\n        \"sha256\",\r\n        \"sha512\"\r\n    ],\r\n    \"useDynamicSalt\": false\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "localhost:25560/api/v1/client/newSocketConnection",
+									"host": [
+										"localhost"
+									],
+									"port": "25560",
+									"path": [
+										"api",
+										"v1",
+										"client",
+										"newSocketConnection"
+									]
+								},
+								"description": "Step1: \"Client sends HTTP post to `/api/v1/client/newSocketConnection`\"\n\n\n`acceptedKeyGroups`: DH key groups\n\n`acceptedHashTypes`: allowed hash functions\n\n`acceptedCrypto`: allowed crypto functions (AES256-GCM, ChaCha20, AES256-CBC, AES128-GCM, AES128-CBC)\n\n`useDynamicSalt`: use separate DH exchange to derive the salt used to derive the AES key/iv."
+							},
+							"response": [
+								{
+									"name": "Step1",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"acceptedKeyGroups\": [\r\n        14,\r\n        16,\r\n        17\r\n    ],\r\n    \"acceptedHashTypes\": [\r\n        \"chacha20\",\r\n        \"aes-256-gcm\",\r\n        \"aes-192-gcm\"\r\n    ],\r\n    \"acceptedCrypto\": [\r\n        \"sha256\",\r\n        \"sha512\"\r\n    ],\r\n    \"useDynamicSalt\": false\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:25560/api/v1/client/newSocketConnection",
+											"host": [
+												"localhost"
+											],
+											"port": "25560",
+											"path": [
+												"api",
+												"v1",
+												"client",
+												"newSocketConnection"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "html",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Content-Type",
+											"value": "text/html; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "426"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"1aa-Tc0r0neHt0FWSRgrL7uJatFxjds\""
+										},
+										{
+											"key": "Date",
+											"value": "Fri, 18 Nov 2022 02:43:16 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\"g1\":\"Ag==\",\"p1\":\"p6ZbwcMRuISLWdkBD4ZYylENsebSCSo8w1NiWheYFVQVTo42N/mV38Ln7HvgtDggJFiP7eAQtbA6b4xAp+LwNMu6RAuM4GgrxS3UUWGHsO+87A5epW6fPt8Q7evX6Pkb7qyTf0jBimqbZiX+y1Pm5Xfu9njkl5fpm9alCxnf72s=\",\"a1\":\"eGYowR1nDjx7mlFCtlu7yCkUi/q1WxZt2vPiqlS4rP2SDi61dJCRDeEi1YOD9YttADCCTFbm3DDLd3GoHCcD19T0Zk9n6EkmQOYuPwAaBKyzb5eOFasC6d75cZQ0EkIPiGZu6dqkCl5YFpQibAolZePF1mkVvWwfl3GHBKa7jqY=\",\"conInitUUID\":\"e94e706d-fa0e-40c0-b3b8-a68d94aaf688\"}"
+								}
+							]
+						},
+						{
+							"name": "GenerateStep2Request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.environment.set(\"stepTwoResponse\", responseBody);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{{stepOneResponse}}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "localhost:25561/respondTo/api/v1/client/newSocketConnection",
+									"host": [
+										"localhost"
+									],
+									"port": "25561",
+									"path": [
+										"respondTo",
+										"api",
+										"v1",
+										"client",
+										"newSocketConnection"
+									]
+								},
+								"description": "Uses clientImpersonator.js!"
+							},
+							"response": [
+								{
+									"name": "generate data for Step2",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\"g1\":\"Ag==\",\"p1\":\"p6ZbwcMRuISLWdkBD4ZYylENsebSCSo8w1NiWheYFVQVTo42N/mV38Ln7HvgtDggJFiP7eAQtbA6b4xAp+LwNMu6RAuM4GgrxS3UUWGHsO+87A5epW6fPt8Q7evX6Pkb7qyTf0jBimqbZiX+y1Pm5Xfu9njkl5fpm9alCxnf72s=\",\"a1\":\"eGYowR1nDjx7mlFCtlu7yCkUi/q1WxZt2vPiqlS4rP2SDi61dJCRDeEi1YOD9YttADCCTFbm3DDLd3GoHCcD19T0Zk9n6EkmQOYuPwAaBKyzb5eOFasC6d75cZQ0EkIPiGZu6dqkCl5YFpQibAolZePF1mkVvWwfl3GHBKa7jqY=\",\"conInitUUID\":\"e94e706d-fa0e-40c0-b3b8-a68d94aaf688\"}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:25561/respondTo/api/v1/client/newSocketConnection",
+											"host": [
+												"localhost"
+											],
+											"port": "25561",
+											"path": [
+												"respondTo",
+												"api",
+												"v1",
+												"client",
+												"newSocketConnection"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "html",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Content-Type",
+											"value": "text/html; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "558"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"22e-wNR9LdcWdRhB0cGVEKjl8Jahruw\""
+										},
+										{
+											"key": "Date",
+											"value": "Fri, 18 Nov 2022 02:44:08 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\"b1\":\"IO0CfN+C9SGCgCVkTBwqnKjCunL3Tgtileedc0QGzocKsaqHgNAQ7RR92rjvWoXfLOvmnYGq7NecbpWVRnxenLTdr8wC/GSt82gF0MuZv5AQu3uxM6jVI3DpVnxLLGngHumDO2hlSxECHtOjgLygdmPVHfh+0rXx8i2YwHkM6c4=\",\"newPair\":true,\"chkMsg\":\"ncrypt::1:chacha20-poly1305:sha256:MTIzNA==:aTxbcGotYTlqNi8/fikwMQ==:554c273a296f444a3f4c6d3e:igdIbdikLvIrjiDlOoPix+JHxPsPy/MjPJcsdWJ0N7hOEqB2A6+RfRvju/NmPl7Q+uKsb0RpWpOtg+NVR4hSkw==:LHJFOzJsdzIxVC18MmZocg==:5b6acc52c65468bb0dd6c2f2b1ce0a9f\",\"chkMsgHash\":\"05fa3a40026ec16917e967fbbd5351f6df78107620fe24e7c1389e075aaadfed\",\"chkMsgHashFunction\":\"sha256\"}"
+								}
+							]
+						},
+						{
+							"name": "Step2",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var data = JSON.parse(responseBody);\r",
+											"pm.environment.set(\"socketUUID\", data.socketUUID);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{{stepTwoResponse}}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "localhost:25560/api/v1/client/newSocketConnection/{{conInitUUID}}",
+									"host": [
+										"localhost"
+									],
+									"port": "25560",
+									"path": [
+										"api",
+										"v1",
+										"client",
+										"newSocketConnection",
+										"{{conInitUUID}}"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Step2",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\"b1\":\"IO0CfN+C9SGCgCVkTBwqnKjCunL3Tgtileedc0QGzocKsaqHgNAQ7RR92rjvWoXfLOvmnYGq7NecbpWVRnxenLTdr8wC/GSt82gF0MuZv5AQu3uxM6jVI3DpVnxLLGngHumDO2hlSxECHtOjgLygdmPVHfh+0rXx8i2YwHkM6c4=\",\"newPair\":true,\"chkMsg\":\"ncrypt::1:chacha20-poly1305:sha256:MTIzNA==:aTxbcGotYTlqNi8/fikwMQ==:554c273a296f444a3f4c6d3e:igdIbdikLvIrjiDlOoPix+JHxPsPy/MjPJcsdWJ0N7hOEqB2A6+RfRvju/NmPl7Q+uKsb0RpWpOtg+NVR4hSkw==:LHJFOzJsdzIxVC18MmZocg==:5b6acc52c65468bb0dd6c2f2b1ce0a9f\",\"chkMsgHash\":\"05fa3a40026ec16917e967fbbd5351f6df78107620fe24e7c1389e075aaadfed\",\"chkMsgHashFunction\":\"sha256\"}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:25560/api/v1/client/newSocketConnection/e94e706d-fa0e-40c0-b3b8-a68d94aaf688",
+											"host": [
+												"localhost"
+											],
+											"port": "25560",
+											"path": [
+												"api",
+												"v1",
+												"client",
+												"newSocketConnection",
+												"e94e706d-fa0e-40c0-b3b8-a68d94aaf688"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "html",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Content-Type",
+											"value": "text/html; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "130"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"82-bsU+GDfrsFM06uWSe09vXUnRoro\""
+										},
+										{
+											"key": "Date",
+											"value": "Fri, 18 Nov 2022 02:44:20 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\"confMsg\":\"e7d617a931df0b394c5c43335a3d66a0d3350ea634d39d8f49dc3332bf0672ac\",\"socketUUID\":\"d40ae0f3-fc6e-47ec-8ea9-c222bbababe0\"}"
+								}
+							]
+						}
+					]
+				}
+			],
+			"auth": {
+				"type": "noauth"
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "conInitUUID",
+			"value": "30d51d15-79df-4a37-9ae3-b297ed8bcf9b"
+		},
+		{
+			"key": "conInitUUID",
+			"value": ""
+		},
+		{
+			"key": "stepOneResponse",
+			"value": ""
+		},
+		{
+			"key": "stepTwoResponse",
+			"value": ""
+		}
+	]
+}

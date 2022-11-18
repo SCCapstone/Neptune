@@ -111,4 +111,4 @@ class IPAddress {
 
 }
 
-modules.exports = IPAddress;
+module.exports = IPAddress;
