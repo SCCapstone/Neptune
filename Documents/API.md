@@ -1,7 +1,7 @@
 # APIs
 
-`/api/v1/client/` <- Hosted by the server, client sends these commands.\
-`/api/v1/server/` <- Received by the client, server sends these.
+`/api/v1/client/` <- Hosted by the CLIENT, server sends these commands.\
+`/api/v1/server/` <- Received by the SERVER, client sends these.
 
 ## API "packet":
 
@@ -10,6 +10,7 @@
 ```json
 {
     "connectionId": "{currentConnectionId}",
+    "command": "{command being called (URL)}",
     "data": "{data being sent}",
 }
 ```
@@ -28,7 +29,9 @@ It is possible to host a socket server on the client side, and this may be a rea
 
 A new socket connection can be called thru an existing socket itself to reestablish a shared secret. This is done once we hit the TTL limit.
 
-1) Client sends HTTP post to `/api/v1/client/newSocketConnection`:\
+Data is set at the body. We do not use "the packet" for this.
+
+1) Client sends HTTP post to `/api/v1/server/newSocketConnection`:\
     POST (client sends):\
         `acceptedKeyGroups`: DH key groups\
         `acceptedHashTypes`: allowed hash functions\
@@ -42,10 +45,11 @@ A new socket connection can be called thru an existing socket itself to reestabl
         `conInitId`: random string of length 16, used to identify the client's next call\
         `g2`, `p2`, `A2`: Are the base, modulus, and server's public integer for deriving a shared _dynamic_ salt (_if `useDynamicSalt` was true in the client's request_).
 
-2) Client sends HTTP post to `/api/v1/client/newSocketConnection/{conInitId}`:\
+2) Client sends HTTP post to `/api/v1/server/newSocketConnection/{conInitId}`:\
     POST:\
         `B1`: client's public integer\
         `B2`: client's public integer (dynamic salt)\
+        `clientId`: the client identifier (this is who we are, this encrypted)\
         `pairId`: encrypted. Tells the server which client we are, used in deriving the salt used to create the AES key and iv. Provides the server with an assurance that we've talked before. If a client and server have not paired before, this will be empty.
         `newPair`: if the server and client have not paired before, this will be true, otherwise false or exempt. Singles that a pair request will follow after socket connection.
         `chkMsg`: encrypted random string of length 64. Encrypted using the derived AES key and iv created from the shared secret (DH). Used to validate encryption (both parties have the same key).\
@@ -53,43 +57,42 @@ A new socket connection can be called thru an existing socket itself to reestabl
         `chkMsgHashFunction`: sha256, sha1, md5. Function used to create `chkMsgHash`.
 
     REPLY:\
-        `socketId`: the socket id the client needs to connect to (`/api/v1/client/socket/{socketId}`).\
+        `socketId`: the socket id the client needs to connect to (`/api/v1/server/socket/{socketId}`).\
         `confMsg`: hash of the decrypted `chkMsg` concatenated with the `chkMsgHash`. Used to tell the client the server can decrypt and encrypt.
 
-3) Client connects to the socket `/api/v1/client/socket/{socketId}` and finalizes connection setup:\
+3) Client connects to the socket `/api/v1/server/socket/{socketId}` and finalizes connection setup:\
     Send (if already paired):\
-        `command`: `/api/v1/client/newClientConnection`,\
-        `clientId`: the client identifier (this is who we are)\
+        `command`: `/api/v1/server/newClientConnection`,\
         `pairId`: ensure the correct pair identifier was sent (likely redundant, pairIds used to derive salt/pepper)\
         `TTL`: time-to-live, how long until we require a renegotiation. (our maximum accepted time).
 
     Reply:\
-        `command`: `/api/v1/client/newClientConnection`,\
+        `command`: `/api/v1/server/newClientConnection`,\
         `TTL`: decided time-to-live (will be <= client's requested TTL)\
         `connectionId`: a unique identifier to represent this client connection. 
 
 
     Alternatively, if a new pair connection is needed, send:\
-        `command`: `/api/v1/client/newPairRequest`,\
+        `command`: `/api/v1/server/newPairRequest`,\
         `TTL`: time-to-live, how long until we require a renegotiation. (our maximum accepted time).
         `clientId`: the client identifier (unique, hopefully)\
         `friendlyName`: the client's display name (_John's Phone_)\
         `listeningIpAddress`: likely the current IP of the client device, whatever the SocketServer is bound to\
         `listeningPort`: port SocketServer is bound to\
-        `configuration`: the configuration data, JSON key value pair. Similar to `/api/v1/client/updateConfiguration`.
+        `configuration`: the configuration data, JSON key value pair. Similar to `/api/v1/server/updateConfiguration`.
 
     Reply:\
-        `command`: `/api/v1/client/newPairResponse`,\
+        `command`: `/api/v1/server/newPairResponse`,\
         `pairId`: the unique identifier to represent a pair relationship between two devices (server and client)\
         `pairKey`: a shared key used in encryption (think of this as the salt or the pepper used to derive the AES keys). Only the server and client know this. Persistent for as long as the devices are paired, however, can be changed via a request.\
         `TTL`: decided time-to-live (will be <= client's requested TTL)\
         `connectionId`: a unique identifier to represent this client connection. 
         
-At any time the client can send a scrap request to halt the connection `/api/v1/client/newSocketConnection/{conInitId}/scrap`. The server will delete any socket and remove any references.
+At any time the client can send a scrap request to halt the connection `/api/v1/server/newSocketConnection/{conInitId}/scrap`. The server will delete any socket and remove any references.
 
 
 ## Notifications
-Command: `/api/v1/client/image/newImageId`:
+Command: `/api/v1/server/image/newImageId`:
 Used to create a unique "imageId" so we can upload an image
 ```json
 {
@@ -103,14 +106,14 @@ Server replies with:
 }
 ```
 
-Images are then uploaded to the file endpoint via HTTPS `/api/v1/client/image/{imageId}/upload`.
-After successful upload, then we can reference that imageId. Client can request to delete an image with command: `/api/v1/client/image/{imageId}/delete`.
-Images can be pulled down via `/api/v1/client/image/{imageId}/get`
+Images are then uploaded to the file endpoint via HTTPS `/api/v1/server/image/{imageId}/upload`.
+After successful upload, then we can reference that imageId. Client can request to delete an image with command: `/api/v1/server/image/{imageId}/delete`.
+Images can be pulled down via `/api/v1/server/image/{imageId}/get`
 
 
 
 ### Sending data to the server:
-Command: `/api/v1/client/sendNotification`:
+Command: `/api/v1/server/sendNotification`:
 Used to send one or more notifications to the server. Update, create or remove.
 ```json
 [
@@ -155,7 +158,7 @@ Used to send one or more notifications to the server. Update, create or remove.
 
 
 ### Reacting to a notification (response to client):
-Command: `/api/v1/server/updateNotification`:
+Command: `/api/v1/client/updateNotification`:
 Used to activate or dismiss a notification on the client.
 ```json
 [
@@ -173,8 +176,8 @@ Used to activate or dismiss a notification on the client.
 
 
 ### Misc notification requests
-Command: `/api/v1/client/getNotifications`:
-Asks the client to send all active notifications over (via `/api/v1/client/sendNotification`).
+Command: `/api/v1/server/getNotifications`:
+Asks the client to send all active notifications over (via `/api/v1/server/sendNotification`).
 ```json
 {
     "ignoreList": [ // Don't send these
@@ -192,7 +195,7 @@ Asks the client to send all active notifications over (via `/api/v1/client/sendN
 
 ## Configuration
 ### Updating client config
-Command: `/api/v1/client/setConfiguration`:
+Command: `/api/v1/server/setConfiguration`:
 Used for the client to tell the server of configuration changes. Sent during a pair as the "configuration" item)
 Similar for server->client, just change client to server.
 ```json
@@ -222,7 +225,7 @@ Similar for server->client, just change client to server.
 
 
 ## Unpairing a device
-Command: `/api/v1/client/unpair` or `/api/v1/client/unpair`:
+Command: `/api/v1/server/unpair` or `/api/v1/server/unpair`:
 Used to unpair the server from the client or vice-versa.
 ```json
 {
@@ -236,9 +239,9 @@ Other end will respond with `200: OK`, allowing the device that sent the request
 
 
 ## Misc commands
-`/api/v1/client/getBatteryInfo`:
+`/api/v1/server/getBatteryInfo`:
 For server to request battery information of the client, no parameters.
-Reply (also the data the client sends with `/api/v1/server/sendBatteryLevel`):
+Reply (also the data the client sends with `/api/v1/client/sendBatteryLevel`):
 ```json
 {
     "level": 100, // Battery percentage
@@ -249,7 +252,7 @@ Reply (also the data the client sends with `/api/v1/server/sendBatteryLevel`):
 
 
 
-`/api/v1/client/ping`:
+`/api/v1/server/ping`:
 For pinging the client. Same for server, just change "client" to "server"
 ```json
 {
@@ -267,8 +270,8 @@ Reply:
 
 
 
-`/api/v1/client/destroyConnection`:
-Kills a connection, requires a new connection to be setup via `/api/v1/client/newClientConnection`.\
+`/api/v1/server/destroyConnection`:
+Kills a connection, requires a new connection to be setup via `/api/v1/server/newClientConnection`.\
 Client / server request.
 ```json
 {
@@ -278,8 +281,8 @@ Client / server request.
 
 
 
-`/api/v1/client/destroySocket`:
-Kills a socket and connection, requires a new connection to be setup via `/api/v1/client/newSocketConnection`.\
+`/api/v1/server/destroySocket`:
+Kills a socket and connection, requires a new connection to be setup via `/api/v1/server/newSocketConnection`.\
 Client / server request.
 ```json
 {

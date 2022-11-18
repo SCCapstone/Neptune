@@ -228,6 +228,9 @@ NeptuneCrypto.encrypt = function(plainText, key, salt, options) {
 			cipherAlgorithm = options.cipherAlgorithm;
 	}
 	
+	if (Buffer.isBuffer(key))
+		key = key.toString('utf8');
+
 	if (typeof cipherAlgorithm !== "string")
 		throw new TypeError("cipherAlgorithm expected string got " + (typeof cipherAlgorithm).toString());
 

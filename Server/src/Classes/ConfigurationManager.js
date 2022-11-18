@@ -9,13 +9,12 @@
 
 
 /* Imports */
-const ConfigItem = require('./ConfigItem.js');
 const fs = require("node:fs");
-// const { Neptune } = require('node:process');
-const NeptuneCrypto = require('./../Support/NeptuneCrypto.js');
 const keytar = require("keytar");
-const { Neptune } = require('node:process');
-const { encrypt } = require('./../Support/NeptuneCrypto.js');
+const NeptuneCrypto = require('./../Support/NeptuneCrypto.js');
+
+const ConfigItem = require('./ConfigItem.js');
+const Neptune = global.Neptune;
 
 
 /**
@@ -25,7 +24,7 @@ class ConfigurationManager {
 
 	/**
 	 * Cached configurations
-	 * @type {Map<string, ConfigItem>}
+	 * @type {Map<string, (ConfigItem|NeptuneConfig|ClientConfig)>}
 	 */
 	#cachedItems = new Map();
 
@@ -40,6 +39,11 @@ class ConfigurationManager {
 	 * @type {string}
 	 */
 	#configDirectory = "./../data/configs/";
+
+	/**
+	 * @type {import('./LogMan').Logger}
+	 */
+	#log;
 
 	/**
 	 * @param {string} [configDirectory = "./../data/configs/"] Base folder containing the config files
@@ -66,6 +70,9 @@ class ConfigurationManager {
 				throw new TypeError("encryptionKey expected string got " + (typeof encryptionKey).toString());
 			this.#encryptionKey = encryptionKey.toString();
 		}
+
+		this.#log = Neptune.logMan.getLogger("ConfigMan");
+		this.#log.debug("Loaded, using config dir: " + configDirectory);
 	}
 
 
@@ -73,6 +80,7 @@ class ConfigurationManager {
 	 * Close all config files
 	 */
 	destroy() {
+		this.#log.debug("Destroying...");
 		this.#cachedItems.forEach((config) => {
 			config.close(true);
 		});
@@ -84,6 +92,7 @@ class ConfigurationManager {
 	 * @param {string} newKey New (actual) encryption key
 	 */
 	setEncryptionKey(newKey) {
+		this.#log.warn("Encryption key updated (externally)");
 		this.#encryptionKey = newKey.toString();
 	}
 
@@ -91,9 +100,9 @@ class ConfigurationManager {
 	 * Load a configuration from disk
 	 * @param {string} configName The name of the configuration file (or path if isPath is set to true)
 	 * @param {boolean} isPath Indicates that configName is in fact the path to the config file. ONLY set this to true IF you are reading a known good file.
-	 * @return {ConfigItem}
+	 * @return {(ConfigItem|NeptuneConfig|ClientConfig)}
 	 */
-	loadConfig(configName, isPath) {
+	loadConfig(configName, isPath, configClass) {
 		if (typeof configName !== "string")
 			throw new TypeError("configName expected string got " + (typeof configName).toString());
 
@@ -102,8 +111,19 @@ class ConfigurationManager {
 			// if (isPath !== true) // Config name provided
 				// path = this.#configDirectory + configName.replace(/[^0-9a-zA-Z]/g, ""); // strip .. (maybe allow \ and / ?)
 			
-			let configItem = new ConfigItem(this, path);
+			if (this.#cachedItems.has(path)) {
+				this.#log.debug("Loaded config (cached): " + configName)
+				return this.#cachedItems.get(path);
+			}
+
+			var configItem;
+			if (configClass !== undefined)
+				configItem = new configClass(this, path);
+			else
+				configItem = new ConfigItem(this, path);
 			this.#cachedItems.set(path, configItem);
+
+
 			
 			return configItem;
 		} catch (err) {
@@ -120,10 +140,10 @@ class ConfigurationManager {
 	 * @param {(string|boolean)} [newKey] The new encryption key. If true we'll generate one, if empty or undefined we will disable encryption.
 	 */
 	rekey(newKey) {
-		if (newKey === true) // Generate new key?
-			newKey = NeptuneCrypto.randomString(Neptune.Config.entries.encryptionKeyLength, 33, 220);
+		if (newKey == true) // Generate new key?
+			newKey = NeptuneCrypto.randomString(Neptune.config.encryption.newKeyLength, 33, 220);
 		else
-			if (newKey === false)
+			if (newKey == false)
 				newKey == "";
 		if (typeof newKey !== "string" && newKey !== undefined)
 			throw new TypeError("newKey expected string got " + (typeof newKey).toString());
@@ -132,6 +152,8 @@ class ConfigurationManager {
 		var rekeyed = true;
 
 		let filesUpdated = []; // If something fails, revert!
+
+		this.#log.debug("Rekeying");
 
 		return new Promise((resolve, reject) => {
 			if (fs.existsSync(this.#configDirectory) === true) { // Exists
@@ -156,9 +178,9 @@ class ConfigurationManager {
 						contents = NeptuneCrypto.encrypt(contents, newKey); // if re-encrypting
 					fs.writeFileSync(file, contents);
 
-					console.log("Rekey'd: " + file + " to -: " + contents);
+					ugh.#log.silly("Rekey'd: " + file);
 				} catch (err) {
-					console.log("Cannot rekey: " + file + " to -: " + contents);
+					ugh.#log.warn("Cannot rekey: " + file, false);
 					revert();
 					reject(err);
 					return false;
@@ -166,6 +188,7 @@ class ConfigurationManager {
 			}
 
 			function revert() {
+				ugh.#log.error("Rekeying failed, reverting.");
 				rekeyed = false;
 				filesUpdated.forEach(file => {
 					updateFile(file);
@@ -196,19 +219,21 @@ class ConfigurationManager {
 					if (newKey === "" || newKey === undefined)
 						keytar.deletePassword("Neptune","ConfigKey").then(() => {
 							ugh.#encryptionKey = newKey;
-							Neptune.Config.entries.enableFileEncryption = false;
-							Neptune.Config.save();
+							Neptune.config.encryption.enabled = false;
+							Neptune.config.save();
 
-							console.log("[ConfigurationManager] Rekeyed configuration files in: " + ugh.#configDirectory);
+							ugh.#log.info("Encryption disabled");
+							ugh.#log.info("Rekeyed configuration files in: " + ugh.#configDirectory, false);
 							resolve(true);
 						});
 					else {
 						keytar.setPassword("Neptune","ConfigKey",newKey);
 						ugh.#encryptionKey = newKey;
-						Neptune.Config.entries.enableFileEncryption = true;
-						Neptune.Config.save();
+						Neptune.config.encryption.enabled = true;
+						Neptune.config.save();
+						ugh.#log.info("Encryption enabled");
 
-						console.log("[ConfigurationManager] Rekeyed configuration files in: " + ugh.#configDirectory);
+						ugh.#log.info("Rekeyed configuration files in: " + ugh.#configDirectory);
 						resolve(true);
 					}
 				}
@@ -282,7 +307,7 @@ class ConfigurationManager {
 				err.message += "--Path: " + path;
 				throw err;
 			}
-		}	
+		}
 	}
 
 	/**
@@ -329,7 +354,7 @@ class ConfigurationManager {
 			throw new TypeError("path expected string got " + (typeof path).toString());
 
 		// Encryption must be enabled + an encryption key must be present
-		if (Neptune.Config.entries.enableFileEncryption && (this.#encryptionKey !== undefined && this.#encryptionKey !== ""))
+		if (Neptune.config.encryption.enabled && (this.#encryptionKey !== undefined && this.#encryptionKey !== ""))
 			data = NeptuneCrypto.encrypt(data, this.#encryptionKey);
 		fs.writeFileSync(path, data);
 		return true;

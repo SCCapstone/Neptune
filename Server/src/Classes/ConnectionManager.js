@@ -7,82 +7,101 @@
  * 		Capstone Project 2022
  */
 
+const Client = require('./Client');
+
 
 /* Imports */
-const ipaddress = require('IPAddress.js');
+// const IPAddress = require('IPAddress.js');
 
 /**
- * @typedef {import('ConfigurationManager.js')}
+ * @typedef {import('./Client.js')} Client
  */
+/**
+ * @typedef {import('./ConfigurationManager.js')} ConfigurationManager
+ */
+
+const ws = require('ws');
+const EventEmitter = require('node:events');
+const NeptuneCrypto = require('../Support/NeptuneCrypto');
 
 
 /**
  * Manager class for a connection between server (us) and a client device.
  * Each instance of Client will have an instance of ConnectionManager.
  */
-class ConnectionManager {
+class ConnectionManager extends EventEmitter {
 
 	/**
-	 * Whether we have
+	 * Whether we have setup the communication pipe (socket)
 	 * @type {boolean}
 	 */
 	#hasNegotiated;
 
 	/**
 	 * Last time we communicated with the client
-	 * @type {DateTime}
+	 * @type {Date}
 	 */
 	#lastCommunicatedTime;
 
 	/**
-	 * Little more complicated, likely the express instance so we can throw down sockets
-	 * @type {object}
+	 * Socket name, the URL the socket is hosted on
+	 * @type {ws}
 	 */
-	#Socket;
-
-
-	// Note: UML incorrect, ServerSocket not a thing.
-	// Nor AsyncHttpClient*
-
-	/**
-	 * The client's IP
-	 * @type {ipaddress}
-	 */
-	#IPAddress;
+	#webSocket;
 
 
 	/**
-	 * Configuration manager
-	 * @type {ConfigurationManager}
+	 * The client we're representing
+	 * @type {Client}
 	 */
-	#Configuration;
+	#client;
+
+	/**
+	 * Shared secret key
+	 * @type {Buffer}
+	 */
+	#secret
+
+	#conInitUUID
 
 
-	constructor(IPAddress, Config) {
 
+	constructor(client, webSocket, sharedSecret, miscData) {
+		super();
+		// if (!(client instanceof Client))
+		// 	throw new TypeError("client expected Client got " + (typeof client).toString());
+
+		this.#client = client;
+		this.#webSocket = webSocket;
+		this.#secret = sharedSecret;
+
+		this.#conInitUUID = miscData.conInitUUID;
+
+		this.#setupWebsocketListeners();
 	}
+
+
 	
 	/**
 	 * @param {string} apiURL
-	 * @param {JSONObject} requestData
+	 * @param {object} requestData
 	 * @return {void}
 	 */
 	sendRequest(apiURL, requestData) {
-
+		let data = JSON.stringify(requestData);
+		let encryptedData = NeptuneCrypto.encrypt(data, this.#secret);
+		this.#webSocket.send(JSON.stringify({
+			"conInitUUID": this.#conInitUUID,
+			"command": apiURL,
+			"data": encryptedData,
+			"dataDecrypted": data,
+		}));
+		console.log("sent!");
 	}
 	
-	/**
-	 * @param {string} apiURL
-	 * @param {JSONObject} requestData
-	 * @param {function} callback
-	 * @return {void}
-	 */
-	sendRequest(apiURL, requestData, callback) {
 
-	}
-	
 	/**
-	 * 
+	 * Bless
 	 * @return {boolean}
 	 */
 	initiateConnection() {
@@ -104,23 +123,7 @@ class ConnectionManager {
 	destroy(force) {
 
 	}
-	
-	/**
-	 * @param {IPAddress} IPAddress
-	 * @return {void}
-	 */
-	setIPAddress(IPAddress) {
-
-	}
-	
-	/**
-	 * 
-	 * @return {IPAddress}
-	 */
-	getIPAddress() {
-		return this.#IPAddress;
-	}
-	
+		
 	
 	/**
 	 * 
@@ -128,6 +131,74 @@ class ConnectionManager {
 	 */
 	getLastCommunicatedTime() {
 		return this.#lastCommunicatedTime;
+	}
+
+
+	/**
+	 * Decrypt data (safe-ishly)
+	 */
+	#decryptMessage(data) {
+		try {
+			if (NeptuneCrypto.isEncrypted(data))
+				data = NeptuneCrypto.decrypt(data, this.#secret);
+			return JSON.parse(data);
+		} catch (err) {
+			console.log(err);
+			if (err instanceof NeptuneCrypto.Errors.InvalidDecryptionKey || err instanceof NeptuneCrypto.Errors.MissingDecryptionKey) {
+				// bad key.
+				throw err;
+			} else if (err instanceof SyntaxError) {
+				// yep, json is broken
+				return {};
+			} else {
+				// Another error
+				throw err;
+			}
+		}
+	}
+
+	/**
+	 * Verifies the packet, decrypts data
+	 */
+	#unwrapPacket(packet) {
+		packet = JSON.parse(packet);
+		if (packet.conInitUUID == this.#conInitUUID) {
+			return {command: packet.command, data: this.#decryptMessage(packet.data)};
+		} else {
+			console.log(packet.conInitUUID + "!=" + this.#conInitUUID)
+			return {};
+		}
+	}
+
+
+	#setupWebsocketListeners() {
+		// WS: https://github.com/websockets/ws/blob/master/doc/ws.md#class-websocket
+		this.#webSocket.on('message', (packet, isBinary) => {
+			packet = this.#unwrapPacket(packet);
+			this.emit('command', packet.command, packet.data);
+			console.log(packet.data);
+		});
+
+		this.#webSocket.on('close', (code, reason) => {
+			// clean up!
+			console.log("disconnected!")
+		});
+
+		this.#webSocket.on('pong', (data) => {
+			// pong response
+			console.log("got pong");
+		});
+
+		this.#webSocket.on('open', () => {
+			// opened up
+		});
+
+		this.#webSocket.on('ping', (data) => {
+			console.log("Pong!");
+			this.#webSocket.pong();
+		});
+
+		console.log("Listening...");
 	}
 }
 

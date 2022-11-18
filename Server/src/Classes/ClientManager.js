@@ -1,19 +1,58 @@
-const NotificationManager = require('NotificationManager.js');
+/**
+ *      _  _ 
+ *     | \| |
+ *     | .` |
+ *     |_|\_|eptune
+ *
+ *      Capstone Project 2022
+ */
 
+const EventEmitter = require('node:events');
+const Client = require('./Client');
+
+/** @type {import('./NotificationManager.js')} */
+const NotificationManager = global.Neptune.notificationManager;
+
+/** @type {import('./ConfigurationManager.js')} */
+const ConfigurationManager = global.Neptune.configurationManager;
+
+/** @type {import('./NeptuneConfig.js')} */
+var NeptuneConfig = global.Neptune.config;
+
+/**
+ * Management class for clients
+ */
 class ClientManager {
-    
-    /** @typedef {Map<clientId: string, Client} */
+    /** @typedef {import('./Client')} Client */
+    /**
+     * @typedef {object} PairData
+     * @property {string} pairId Id representing this pair
+     * @property {string} pairKey Shared secret used to enhance encryption
+     * @property {string} clientId Id of the client this pair is for
+     */
+
+
+
+    /** @type {Map<string, Client>} */
     #clients = new Map();
+
+    /** @type {Map<string, string>} */
+    #pairIdMap = new Map(); // eh
+
+
+    Events = new EventEmitter();
+
 
     /**
      * This is the constructor
      */
     constructor() {
-        this.#clients = this.#clients;
+        NeptuneConfig = global.Neptune.config;
+        this.loadClients();
     }
 
     /**
-     * This will remove a Client
+     * This will remove a Client, call after unpair. Literal cleanup.
      * @returns {void}
      */
     #removeClient() {
@@ -21,7 +60,7 @@ class ClientManager {
     }
 
     /**
-     * This will add a Client
+     * This will add a Client ??
      * @returns {void}
      */
     #addClient() {
@@ -53,7 +92,10 @@ class ClientManager {
      * @returns {Client}
      */
     getClient(clientId) {
-        return this.#clients.get(clientId);
+        let client = this.#clients.get(clientId);
+        if (client === undefined)
+            client = new Client();
+        return client;
     }
 
     /**
@@ -61,7 +103,7 @@ class ClientManager {
      * @returns {Client[]}
      */
     getClients() {
-        return;
+        return new Map(this.#clients);
     }
 
     /**
@@ -69,7 +111,15 @@ class ClientManager {
      * @returns {void}
      */
     loadClients() {
-        return;
+        /*
+            Clients are stored in Neptune.config.clientConfigurationSubdirectory + clientName
+            iterate through the Neptune.config.clients array, which is the clientIds, and load those clients in
+        */
+
+        NeptuneConfig.clients.forEach((clientId) => {
+            this.#clients.set(clientId, new Client(clientId));
+        });
+        
     }
 
     /**
@@ -77,8 +127,10 @@ class ClientManager {
      * @returns {void}
      */
     saveClients() {
-        return;
+        this.#clients.forEach(client => {
+            client.save();
+        });
     }
 }
 
-modules.export = ClientManager;
+module.exports = ClientManager;

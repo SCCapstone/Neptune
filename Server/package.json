@@ -17,7 +17,7 @@
       "name": "Matthew Sprinkle"
     }
   ],
-  "main": "neptune.js",
+  "main": "index.js",
   "scripts": {
     "build": "webpack -p",
     "start": "webpack && fixBrokenBuildNames.bat && qode ./dist/index.js",
@@ -42,6 +42,7 @@
     "ts-loader": "^9.3.1",
     "typescript": "^4.8.2",
     "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0"
+    "webpack-cli": "^4.10.0",
+    "ws": "^8.11.0"
   }
 }

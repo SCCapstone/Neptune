@@ -1,18 +1,18 @@
 'use strict';
 /**
- *      _  _ 
- *     | \| |
- *     | .` |
- *     |_|\_|eptune
+ *    _  _ 
+ *   | \| |
+ *   | .` |
+ *   |_|\_|eptune
  *
- * 		Capstone Project 2022
+ *   Capstone Project 2022
  */
 
 
 // Which came first? Chicken or the egg?
-const Version = require('./Support/version');
+const Version = require('./Classes/Version.js');
 const Neptune = {};
-const defaults = {};
+const isWin = process.platform === "win32"; // Can change notification handling behavior
 
 
 
@@ -21,20 +21,12 @@ const defaults = {};
 
 // Global behavioral changes (static stuff)
 const debug = true;
-Error.stackTraceLimit = 3;
+const displaySilly = false; // output the silly log level to console (it goes  every other level > silly, silly is the lowest priority, literal spam)
+Error.stackTraceLimit = (debug)? 8 : 4;
 
-Neptune.Version = new Version(0, 0, 1, ((debug)?"debug":"release"), "WkE_13");
-defaults.enableFileEncryption = (debug)? false : true;
-defaults.encryptionKeyLength = 64;
+Neptune.version = new Version(0, 0, 1, ((debug)?"debug":"release"), "WeekEndNov13");
 
-/** @type {import('./Classes/ConfigurationManager')} */
-Neptune.configManager;
-/** @type {import('./Classes/ConfigItem')} */
-Neptune.Config;
-
-defaults.port = 25560;
-
-process.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune. Allows us to get around providing `Neptune` to everything
+global.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune. Allows us to get around providing `Neptune` to everything
 
 
 
@@ -67,7 +59,12 @@ const multer = require('multer');
 
 
 // Classes
-const ConfigurationManager = require('./Classes/ConfigurationManager.js'); // The data directory
+const ConfigurationManager = require('./Classes/ConfigurationManager.js');
+const NeptuneConfig = require('./Classes/NeptuneConfig.js');
+const ClientManager = require('./Classes/ClientManager.js');
+const NotificationManager = require('./Classes/NotificationManager.js');
+/** @type {import('./Classes/LogMan').LogMan} */
+const LogMan = require('./Classes/LogMan.js').LogMan;
 
 const NeptuneCrypto = require('./Support/NeptuneCrypto.js');
 
@@ -75,131 +72,106 @@ const NeptuneCrypto = require('./Support/NeptuneCrypto.js');
 
 
 
-
-// Logic based changes
-if (debug)
-	var endTerminalCode = "\x1b[0m";
-else 
-	var endTerminalCode = "\x1b[0m\x1b[47m\x1b[30m"; // Default colors, \x1b[47m\x1b[30m: Black text, white background
-
-const isWin = process.platform === "win32"; // (must be true before we can use DPAPI. Do not change, okay thanks.)
-
+// Type definitions
 Neptune.isWindows = isWin;
 Neptune.debugMode = debug;
 
-const ogLog = console.log;
+/** @type {ConfigurationManager} */
+Neptune.configManager;
+/** @type {import('./Classes/NeptuneConfig')} */
+Neptune.config;
+/** @type {ClientManager} */
+Neptune.clientManager;
+/** @type {NotificationManager} */
+Neptune.notificationManager;
 
 
-const rl = readline.createInterface({
-	input: process.stdin,
-	output: process.stdout
-});
 
+// Logging
+/** @type {LogMan} */
+Neptune.logMan = new LogMan("Neptune", "./logs", { fileWriteLevel: { silly: debug }, consoleDisplayLevel: { silly: displaySilly }, cleanLog: true });
+// Log name: Neptune, in the logs folder, do not display silly messages (event fired!)
 
+Neptune.log = Neptune.logMan.getLogger("Neptune"); // You can call this (log) to log as info
 
-// would like the below to be "cleaner" but eh
-class EventEmitterN extends require('events') {
-	#name;
-	constructor(name) {
-		super();
-		this.#name = name;
+Neptune.logMan.on('close', () => { // Reopen log file if closed (and not shutting down)
+	if (!global.shuttingDown) {
+		console.warn("..log file unexpectedly closed..\nReopening ...");
+		Neptune.logMan.reopen();
 	}
-    emit(type, ...args) {
-        console.log("[Event] Neptune.Events." + this.#name + "@" + type + " fired | " + util.inspect(arguments, {depth: 1}));
-        super.emit(type, ...args);
-    }
-}
-Neptune.Events = {
-	application: new EventEmitterN("application"), // Application events (UI related, shutting down)
-	server: new EventEmitterN("server") // Server events (new device connected, device paired)
-}
-
-async function Shutdown() {
-	let shutdownTimeout = 1000;
-	if (typeof shutdownTimeout !== "number") {
-		shutdownTimeout = (debug)? 1000 : 5000;
-	}
-
-	// dlog("Fired @Neptune.Events.application#shutdown: " + shutdownTimeout);
-	Neptune.Events.application.emit('shutdown', shutdownTimeout)
-}
-
-Neptune.Events.application.on('shutdown', (shutdownTimeout) => {
-	console.log("\nShutting down");
-	setTimeout(()=>{
-		console.log("goodbye ...");
-		process.exit(0)
-	}, shutdownTimeout);
 });
-rl.on("close", function () {
-	Shutdown();
-});
-
-
-
-/***
- * Logs to the console
- * @param {string} Message to log
- */
-Neptune.log = function(msg) {
-	ogLog(msg + endTerminalCode);
-}
-
-console.log = Neptune.log; // ooooh risky
-
-console.error = function(msg) {
-	Neptune.log(endTerminalCode + "\x1b[31m" + msg); // cool red color, eh?
-}
-
-/**
- * Debug logging
- */
-function dlog(msg) {
-	if (debug)
-		Neptune.log("[Debug] " + msg);
-}
-
-
 
 // For debugging, allows you to output a nasty object into console. Neat
 var utilLog = function(obj, depth) {
-	console.log(util.inspect(obj, {depth: (depth!=undefined)? depth : 2}));
+	Neptune.log.debug(util.inspect(obj, {depth: (depth!=undefined)? depth : 2}));
 }
 
 // This is our "error" handler. seeeesh
 process.on('unhandledRejection', (error) => {
-	console.error('=== UNHANDLED REJECTION ===');
-	dlog(error.stack);
+	Neptune.log.error('Unhandled rejection: ' + error.message + "\n" + error.stack, debug);
+	// Should close now..
+});
+process.on('uncaughtException', (error) => {
+	Neptune.log.error('Unhandled exception: ' + error.message + "\n" + error.stack, debug);
 });
 
 
 
+// Events
+// would like the below to be "cleaner" but eh
+class EmitterLogger extends require('events') {
+	#name;
+	constructor(name) { super(); this.#name = name; }
+	emit(type, ...args) {
+		Neptune.log.debug("Event Neptune.events." + this.#name + "@" + type + " fired | " + util.inspect(arguments, {depth: 1}), false);
+		super.emit(type, ...args);
+	}
+}
+
+Neptune.events = {
+	application: new EmitterLogger("application"), // Application events (UI related, shutting down)
+	server: new EmitterLogger("server") // Server events (new device connected, device paired)
+}
 
 
+// Shutdown handling
+/**
+ * Call this function to initiate a clean shutdown
+ * @param {number} [shutdownTimeout=1500] - Time to wait before closing the process
+ */
+async function Shutdown(shutdownTimeout) {
+	if (typeof shutdownTimeout !== "number") {
+		shutdownTimeout = 1500;
+	}
 
+	global.shuttingDown = true; // For when we kill the logger
+	Neptune.events.application.emit('shutdown', shutdownTimeout)
+}
+Neptune.events.application.on('shutdown', (shutdownTimeout) => {
+	Neptune.log.info("Shutdown signal received, shutting down in " + (shutdownTimeout/1000) + " seconds.");
 
-ogLog(" " + endTerminalCode);
-ogLog();
-if (!debug) {
-	process.stdout.write("\x1B[0m\x1B[2;J\x1B[1;1H"); // Clear the terminal
-	console.clear();
-};
+	setTimeout(()=>{
+		Neptune.log.info("Goodbye world!");
+		process.exit(0);
+	}, shutdownTimeout);
+});
+process.on('beforeExit', code => {
+	Neptune.log("Exit code: " + code);
+	Neptune.logMan.close();
+});
+process.on('SIGTERM', signal => {
+	Neptune.log.warn(`Process ${process.pid} received a SIGTERM signal`);
+	Shutdown(500);
+})
 
-
-
-
-
-// Begin
-
-Neptune.log("--== Neptune ==--");
-if (!debug)
-	Neptune.log("{ \x1b[1m\x1b[47m\x1b[34mProduction" + endTerminalCode + ", version: " + Neptune.Version.toString() + " }"); // Production mode
-else
-	Neptune.log("{ \x1b[1m\x1b[41m\x1b[33m**DEV MODE**" + endTerminalCode + ", version: " + Neptune.Version.toString() + " }"); // Developer (debug) mode
-
-Neptune.log("] Running on \x1b[1m\x1b[34m" + process.platform);
-
-
+// User console input
+const rl = readline.createInterface({
+	input: process.stdin,
+	output: process.stdout
+});
+rl.on("close", function () {
+	Shutdown(); // Capture CTRL+C
+});
 async function promptUser(quetion) {
 	function getPromise() {
 		return new Promise(resolve => rl.question(question, ans => {
@@ -207,14 +179,48 @@ async function promptUser(quetion) {
 			resolve(ans);
 		}));
 	}
-
 	return await getPromise();
 }
 
+
+
+
+
+
+
+
+
+
+
+// Begin
+
+const endTerminalCode = "\x1b[0m"; // Reset font color
+if (!debug) {
+	process.stdout.write("\x1B[0m\x1B[2;J\x1B[1;1H"); // Clear the terminal
+	console.clear();
+	console.log(endTerminalCode + "--== Neptune ==--");
+} else {
+	console.log(endTerminalCode);
+}
+
+Neptune.log.info("Hello world!"); // :wave:
+
+if (!debug) {
+	Neptune.log("\x1b[1m\x1b[47m\x1b[34mProduction" + endTerminalCode + ", version: " + Neptune.version.toString()); // Production mode
+}
+else
+	Neptune.log("\x1b[1m\x1b[41m\x1b[33m**DEV MODE**" + endTerminalCode + ", version: " + Neptune.version.toString()); // Developer (debug) mode
+
+Neptune.log("Running on \x1b[1m\x1b[34m" + process.platform);
+
+
+
+
 var firstRun = (fs.existsSync("./data/NeptuneConfig.json") === false);
 
-
-keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do not start until we load that key. (also now we can use await)
+// two things: blah blah blah main function can't be async, catastrophic error catching
+async function main() {
+	let encryptionKey = await keytar.getPassword("Neptune","ConfigKey");
 	let keyFound = (encryptionKey !== null && encryptionKey !== "");
 	if (encryptionKey == null)
 		encryptionKey = undefined;
@@ -222,7 +228,7 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 	
 	try {
 		Neptune.configManager = new ConfigurationManager("./data/configs/", (keyFound)? encryptionKey : undefined);
-		Neptune.Config = Neptune.configManager.loadConfig("./data/NeptuneConfig.json", true);
+		Neptune.config = Neptune.configManager.loadConfig("./data/NeptuneConfig.json", true, NeptuneConfig);
 
 		// For whatever reason, this try block just does not work! Very cool!
 		// manually check the encryption:
@@ -234,74 +240,89 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 			encryptionCheck = {}; // good enough
 		}
 	} catch (err) {
-		console.log("\u0007");
 		if (err instanceof NeptuneCrypto.Errors.InvalidDecryptionKey) {
-			console.error("Encryption key is invalid! Data is in a limbo state, possibly corrupted.");
-			console.log("Neptune will halt. To load Neptune, please fix this error by deleting/moving the config files, fixing the encryption key, or fixing the configs.");
+			Neptune.log.error("Encryption key is invalid! Data is in a limbo state, possibly corrupted.");
+			Neptune.log.warn("Neptune will halt. To load Neptune, please fix this error by deleting/moving the config files, fixing the encryption key, or fixing the configs.");
 		} else if (err instanceof NeptuneCrypto.Errors.MissingDecryptionKey) {
-			console.error("Encryption key is missing! Data is still there, but good luck decrypting it !");
-			console.log("Neptune will halt. To load Neptune, please fix this error by deleting/moving the config files, fixing the encryption key, or fixing the configs.");
+			Neptune.log.error("Encryption key is missing! Data is still there, but good luck decrypting it !");
+			Neptune.log.warn("Neptune will halt. To load Neptune, please fix this error by deleting/moving the config files, fixing the encryption key, or fixing the configs.");
 		} else {
-			console.error("Config is completely broken!");
+			Neptune.log.error("Config is completely broken!");
 		}
 
-		dlog("Encryption KEY: " + encryptionKey);
+		Neptune.log.debug("Encryption KEY: " + encryptionKey);
 
 		console.log("")
-		console.log(" === ::error on read Neptune config:: === ");
-		console.error(err);
+		Neptune.log.critical(" === ::error on read Neptune config:: === ");
+		Neptune.log.critical(err);
 
 		console.log("");
-		console.log("Stack: ");
-		console.log(err.stack);
+		Neptune.log.error("Stack: ");
+		Neptune.log.error(err.stack);
 
 		process.exitCode = -1;
 		process.exit();
 	}
+	
 
-	if (Object.keys(Neptune.Config.entries).length < 1) {
+	// Config empty?
+	if (Object.keys(Neptune.config.entries).length < 1) {
 		firstRun = true
-		dlog("Config is completely empty, setting as first run...");
+		Neptune.log.verbose("Config is completely empty, setting as first run...");
+	} else {
+		if (Neptune.config.firstRun === true) {
+			firstRun = Neptune.config.firstRun;
+			Neptune.log.verbose("Config has firstRun set to true. Either a reset, or new config.");
+		}
 	}
 	if (firstRun) {
-		Neptune.Config.entries = {...defaults};
-		dlog("First run! Generated default config file.");
-		
-		if (!keyFound && Neptune.Config.entries.enableFileEncryption) {
+		Neptune.log.verbose("First run! Generated default config file.");
+	
+		Neptune.config = new NeptuneConfig(Neptune.configManager, "./data/NeptuneConfig.json");
+		Neptune.config.save();
+		Neptune.config.close();
+		Neptune.config = Neptune.configManager.loadConfig("./data/NeptuneConfig.json", true, NeptuneConfig);
+
+		if (!keyFound && Neptune.config.encryption.enabled) {
 			// Set a new key
-			encryptionKey = NeptuneCrypto.randomString(Neptune.Config.entries.encryptionKeyLength, 33, 220);
-			dlog("Generated encryption key of length " + Neptune.Config.entries.encryptionKeyLength);
+			Math.random(); // .. seed the machine later (roll own RNG ? Probably a bad idea.)
+			encryptionKey = NeptuneCrypto.randomString(Neptune.config.encryption.newKeyLength, 33, 220);
+			Neptune.log.verbose("Generated encryption key of length " + Neptune.config.encryption.newKeyLength);
 			keytar.setPassword("Neptune","ConfigKey",encryptionKey);
 			Neptune.configManager.setEncryptionKey(encryptionKey);
-			dlog("Encryption key loaded");
-		} else if (keyFound && Neptune.Config.entries.enableFileEncryption) {
-			dlog("Encryption key loaded from OS keychain");
+			Neptune.log.verbose("Encryption key loaded");
+		} else if (keyFound && Neptune.config.encryption.enabled) {
+			Neptune.log.verbose("Encryption key loaded from OS keychain");
 		}
 	}
 
-	if (keyFound && Neptune.Config.entries.enableFileEncryption === false) {
-		dlog("Key found, yet encryption is disabled. Odd. Running rekey to completely disable.")
+	if (keyFound && Neptune.config.encryption.enabled === false) {
+		Neptune.log.verbose("Key found, yet encryption is disabled. Odd. Running rekey to completely disable.")
 		Neptune.configManager.rekey(); // Encryption is set to off, but the key is there? Make sure to decrypt everything and remove key
 	}
 
 
-	if (Neptune.Config.entries.enableFileEncryption && (encryptionKey !== undefined || encryptionKey !== ""))
-		Neptune.log("] File encryption \x1b[1m\x1b[32mACTIVE" + endTerminalCode + ", file security enabled");
+	if (Neptune.config.encryption.enabled && (encryptionKey !== undefined || encryptionKey !== ""))
+		Neptune.log("File encryption \x1b[1m\x1b[32mACTIVE" + endTerminalCode + ", file security enabled");
 	else
-		Neptune.log("] File encryption \x1b[1m\x1b[33mDEACTIVE" + endTerminalCode + ", file security disabled.");
+		Neptune.log("File encryption \x1b[1m\x1b[33mDEACTIVE" + endTerminalCode + ", file security disabled.");
 
 
 
-	utilLog(Neptune.Config.entries);
-	Neptune.Config.setProperty("testKey", true);
-	Neptune.Config.entries["thisIsATest"] = { passed: true }
-	Neptune.Config.save();
+	Neptune.log.debug("Neptune config:");
+	utilLog(Neptune.config.entries);
 
-	dlog("Encryption KEY: " + encryptionKey);
+	Neptune.log.debug("Encryption KEY: " + encryptionKey);
+	if (encryptionKey !== undefined)
+		encryptionKey = NeptuneCrypto.randomString(encryptionKey.length*2); // Don't need that, configuration manager has it now
 
-	Neptune.Events.application.on('shutdown', (shutdownTimeout) => {
+	Neptune.events.application.on('shutdown', (shutdownTimeout) => {
 		Neptune.configManager.destroy(); // Save all configs!
 	});
+
+	Neptune.log("Loading previous clients...");
+	Neptune.clientManager = new ClientManager();
+
 
 
 	/**
@@ -340,7 +361,7 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 				break;
 		}
 	});
-	Neptune.Events.application.on('shutdown', ()=>{
+	Neptune.events.application.on('shutdown', ()=>{
 		tray.hide();
 	});
 	
@@ -371,6 +392,7 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 	tMenu.addAction(tActions.quit);
 
 	tray.setContextMenu(tMenu);
+	Neptune.log.debug("Tray shown");
 	tray.show();
 	global.tray = tray; // prevents garbage collection of tray (not a fan!)
 
@@ -378,15 +400,16 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 	// Main window
 	const mainWindow = new (require('./Windows/mainWindow.js'))();
 	// https://docs.nodegui.org/docs/api/generated/enums/widgeteventtypes
-	// mainWindow.addEventListener(NodeGUI.WidgetEventTypes.Close, (abc) => console.log("close")); // redundant
+	// mainWindow.addEventListener(NodeGUI.WidgetEventTypes.Close, (abc) => Neptune.log("close")); // redundant
 	mainWindow.addEventListener(NodeGUI.WidgetEventTypes.Hide, () => {
 		tActions.showMainWindow.setText("Show");
-		dlog("mainWindow@Hide");
+		Neptune.log.silly("mainWindow@Hide");
 	});
 	mainWindow.addEventListener(NodeGUI.WidgetEventTypes.Show, () => {
 		tActions.showMainWindow.setText("Hide");
-		dlog("mainWindow@Show");
+		Neptune.log.silly("mainWindow@Show");
 	});
+	Neptune.log.debug("Main open");
 	mainWindow.show();
 
 
@@ -405,8 +428,12 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 	 * 
 	 */
 
+	Neptune.webLog = Neptune.logMan.getLogger("Web");
+	
 	const app = Express();
-	// app.use(bodyParser.urlencoded({ extended: true }));
+	var ExpressWebSocket = require('express-ws')(app);
+	const WebSocketServer = require('ws').Server;
+	// app.use(Express.urlencoded());
 	app.use(Express.json());
 	// app.use(session({
 	// 	secret: "fThx4TVHS7XvW84274W0uoY4GvhmsDN7nN0W3mhRGH2fgFFEZUEZYIeCGoDNoGojW4YfCUlfNZupiekNiOXI1wuOeS2HICpRsrQdndecLCFKtYXr26jLTEtekpPJpFJ7gt8DSmtOYx8WRVz0Jbb211Vqiwnnc8ENl7Z8iDldh01cICNHBrG4F5E6Uz6IRBJonHOPbi3TiNjnW4nxCywjuhpOkzpDGKhox1A3EythsBLNEJp4Br6X3Uef8muOxKzN",
@@ -419,17 +446,25 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 			fileSize: 40000000, // 40MB
 		},
 		fileFilter: function (req, file, callback) {
-	        var ext = path.extname(file.originalname);
-	        if(ext !== '.png' && ext !== '.jpg' && ext !== '.jpeg') { // Only allow JPG's
-	            return callback(new Error('Only images are allowed'))
-	        }
-	        callback(null, true)
-	    },
+			var ext = path.extname(file.originalname);
+			if(ext !== '.png' && ext !== '.jpg' && ext !== '.jpeg') { // Only allow JPG's
+				return callback(new Error('Only images are allowed'))
+			}
+			callback(null, true)
+		},
 	}); // For uploads
 
 
 	const httpServer = http.createServer(app);
 
+
+	// Heartbeat
+	var sounds = ["Thoomp-thoomp", "Bump-bump", "Thump-bump"];
+	app.get("/heartbeat", (req, res) => {
+		let sound = sounds[Math.floor(Math.random()*sounds.length)];
+		Neptune.webLog.verbose(sound + " (heartbeat)");
+		res.status(200).send('ok');
+	});
 
 	// Web page
 	app.get("/", (req, res) => {
@@ -446,12 +481,126 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 	});
 
 
-	// Listener
-	httpServer.listen(Neptune.Config.entries.port, () => {
-		console.log("[Web] Express server listening on port " + Neptune.Config.entries.port);
+	var conInitUUIDs = {};
+	
+
+
+	const crypto = require("node:crypto");
+
+	// https://nodejs.org/api/crypto.html#class-diffiehellman
+	app.post('/api/v1/server/newSocketConnection', (req, res) => {
+		let conInitUUID = crypto.randomUUID(); // NeptuneCrypto.convert(NeptuneCrypto.randomString(16), "utf8", "hex"); // string (len 16) -> HEX
+		Neptune.webLog.info("Initiating new client connection, uuid: " + conInitUUID);
+
+		let alice = crypto.createDiffieHellman(1024);
+		let alicePublic = alice.generateKeys();
+
+		conInitUUIDs[conInitUUID] = {
+			"enabled": true,
+			dhObject: alice,
+			"g1": alice.getGenerator().toString('base64'),
+			"p1": alice.getPrime().toString('base64'),
+			"a1": alice.getPublicKey().toString('base64'),
+			createdAt: new Date().toISOString(),
+		}
+
+		res.status(200).send(JSON.stringify({
+			"g1": conInitUUIDs[conInitUUID]["g1"],
+			"p1": conInitUUIDs[conInitUUID]["p1"],
+			"a1": conInitUUIDs[conInitUUID]["a1"],
+			"conInitUUID": conInitUUID,
+		}));
 	});
 
 
+	app.post('/api/v1/server/newSocketConnection/:conInitUUID', (req, res) => {
+		let conInitUUID = req.params.conInitUUID;
+		Neptune.webLog.silly("POST: /api/v1/server/newSocketConnection/" + conInitUUID + " .. body: " + JSON.stringify(req.body));
+		if (conInitUUIDs[conInitUUID] !== undefined) {
+			if (conInitUUIDs[conInitUUID].enabled !== true) {
+				Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
+				res.status(403).send('{ "error": "Invalid conInitUUID" }');
+				return;
+			}
+		} else {
+			res.status(401).send('{ "error": "Invalid conInitUUID" }');
+			return;
+		}
+
+		// Validate timestamp
+		let timeNow = new Date();
+		let createdTime = conInitUUIDs[conInitUUID].createdAt;
+
+		if (((timeNow - createdTime)/(60000)) >= 5) { // Older than 5 minutes
+			Neptune.webLog.warn("Attempt to use old conInitUUID! UUID: " + conInitUUID + " . createdAt: " + createdTime.toISOString());
+			delete conInitUUIDs[conInitUUID];
+			res.status(408).send('{ "error": "Request timeout for conInitUUID" }');
+		}
+
+		let socketUUID = crypto.randomUUID();
+
+		let aliceSecret = conInitUUIDs[conInitUUID].dhObject.computeSecret(Buffer.from(req.body.b1,'base64'));
+		conInitUUIDs[conInitUUID].secret = NeptuneCrypto.HKDF(aliceSecret.toString('utf8')).key;
+
+		var chkMsg = req.body.chkMsg;
+		try {
+			if (NeptuneCrypto.isEncrypted(chkMsg))
+				chkMsg = NeptuneCrypto.decrypt(chkMsg, conInitUUIDs[conInitUUID].secret.toString('utf8'));
+		} catch (err) {
+			if (err instanceof NeptuneCrypto.Errors.InvalidDecryptionKey || err instanceof NeptuneCrypto.Errors.MissingDecryptionKey) {
+				// bad key.
+				res.status(400).send(`{ "error": "Invalid encryption key" }`);
+			} else {
+				// Another error
+				Neptune.webLog.warn("Decryption of chkMsg failed, error: " + err.message);
+				res.status(400).send(`{ "error": "Decryption of chkMsg failed" }`);
+			}
+			return;
+		}
+		
+		let chkMsgHash = crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg).digest('hex');
+
+		if (chkMsgHash !== req.body.chkMsgHash) {
+			Neptune.webLog.warn(`Invalid chkMsg hash! chkMsg: ${chkMsg} ... ourHash: ${chkMsgHash} ... clientHash: ${req.body.chkMsgHash}`);
+			res.status(400).send(`{ "error": "Invalid chkMsgHash" }`);
+			return;
+		} else {
+			Neptune.webLog.info("Generating socket, id: " + socketUUID);
+			conInitUUIDs[conInitUUID].enabled = false; // Done
+			// Create the socket here.
+			// get the client
+			conInitUUIDs[conInitUUID].clientId = NeptuneCrypto.decrypt(req.body.clientId, conInitUUIDs[conInitUUID].secret.toString('utf8'));
+			let client = Neptune.clientManager.getClient(conInitUUIDs[conInitUUID].clientId)
+
+			var ws = new WebSocketServer({server: httpServer, path: '/api/v1/server/socket/' + socketUUID});
+
+			ws.on("connection", function(ws){
+				Neptune.webLog.info("Client connected to socket " + socketUUID);
+				client.setupConnectionManager(ws, conInitUUIDs[conInitUUID].secret, {
+					conInitUUID: conInitUUID,
+					createdAt: conInitUUIDs[conInitUUID].createdAt,
+				});
+			});
+
+			//app.ws('/api/v1/server/socket/' + socketUUID, (ws, req) => { // hmmm, this needs to removed in the future!
+				
+			//});
+			res.status(200).send(JSON.stringify({
+				confMsg: crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg + req.body.chkMsgHash).digest('hex'),
+				socketUUID: socketUUID,
+			}));
+		}
+	});
+
+
+
+
+
+
+	// Listener
+	httpServer.listen(Neptune.config.web.port, () => {
+		Neptune.webLog("Express server listening on port " + Neptune.config.web.port);
+	});
 
 
 
@@ -463,25 +612,28 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 
 	var output;
 	var defaultToEval = false; // use `eval defaultToEval=true` in the terminal to flip into eval only mode
+
+	var cLog = Neptune.logMan.getLogger("Console");
+
 	function processCMD(command) {
+		cLog.info("Received user input: " + command.toString(), false);
 		try {
 			if (defaultToEval) {
 				try {
 					output = eval(command);
-					console.log("Output: ");
+					// cLog.info("Output: ");
 					utilLog(output, 2);
 				} catch(err) {
-					console.error(err);
+					cLog.error(err);
 				}
-			}
-			else {
+			} else {
 				if (command == "exit" || command == "quit" || command == "end")
 					Shutdown();
 				else if (command == "showmain")
 					mainWindow.show()
 				else if (command.startsWith("rekey")) {
 					let cmd = command.substr(6);
-					Neptune.configManager.rekey(cmd).then((didIt) => console.log("Successful: " + didIt)).catch(err => console.error("Failed: " + err));
+					Neptune.configManager.rekey(cmd).then((didIt) => cLog.info("Successful: " + didIt)).catch(err => cLog.error("Failed: " + err));
 				}
 				else if (command.startsWith("eval ")) {
 					let cmd = command.substr(5);
@@ -489,11 +641,11 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 						output = eval(cmd);
 						utilLog(output, 2);
 					} catch(err) {
-						console.error(err);
+						cLog.error(err);
 					}
 				}
 				else
-					ogLog("Received input: " + command + " . (not a command)");
+					console.log("Received input: " + command + " . (not a command)");
 			}
 		} catch(_) {
 			// do a thing or something
@@ -502,11 +654,130 @@ keytar.getPassword("Neptune","ConfigKey").then(async (encryptionKey) => { // Do 
 
 	async function prompt() {
 		for await (const line of rl) {
-			processCMD(line)
+			processCMD(line);
 		}
 	}
 
 
 	// Operator input
 	prompt();
+	console.log("END")
+}
+
+if (debug) {
+	main(); // I don't want that stupid crash report
+} else
+main().catch((err) => {
+	// Catastrophic failure!
+
+	var crashReportWritten = false;
+	try {
+		// Write crash report
+		let dateTime = new Date();
+		let date = dateTime.toISOString().split('T')[0];
+		let time = dateTime.toISOString().split('T')[1].split('.')[0]; // very cool
+		
+		let crashReport = `He's dead, Jim.
+
+Neptune has crashed catastrophically, here's what we know:
+
+DateTime: ${dateTime.toISOString()}\\
+Neptune version: ${Neptune.version}\\
+Debug: ${debug}
+Platform: ${process.platform}
+
+
+== Error info ==
+Message: ${err.message}\\
+Stack: \`${err.stack}\`
+
+
+== Process info ==\\
+arch: ${process.arch}\\
+platform: ${process.platform}
+exitCode: ${process.exitCode}\\
+env.NODE_ENV: "${process.env.NODE_ENV}"\\
+debugPort: ${process.debugPort}
+
+
+title: "${process.title}"\\
+argv: "${process.argv.toString()}"
+execArgv: ${process.execArgv}\\
+pid: ${process.pid}\\
+ppid: ${process.ppid}\\
+
+
+
+versions:
+\`\`\`JSON
+  {
+    "node": "${process.versions.node}",
+    "v8": "${process.versions.v8}",
+    "uv": "${process.versions.uv}",
+    "zlib": "${process.versions.zlib}",
+    "brotli": "${process.versions.brotli}",
+    "ares": "${process.versions.ares}",
+    "modules": "${process.versions.modules}",
+    "nghttp2": "${process.versions.nghttp2}",
+    "napi": "${process.versions.napi}",
+    "llhttp": "${process.versions.llhttp}",
+    "openssl": "${process.versions.openssl}",
+    "cldr": "${process.versions.cldr}",
+    "icu": "${process.versions.icu}",
+    "tz": "${process.versions.tz}",
+    "unicode": "${process.versions.unicode}",
+    "ngtcp2": "${process.versions.ngtcp2}",
+    "nghttp3": "${process.versions.nghttp3}"
+  }
+\`\`\`
+
+process.features:
+\`\`\`JSON
+  {
+    "inspector": ${process.features.inspector},
+    "debug": ${process.features.debug},
+    "uv": ${process.features.uv},
+    "ipv6": ${process.features.ipv6},
+    "tls_alpn": ${process.features.tls_alpn},
+    "tls_sni": ${process.features.tls_sni},
+    "tls_ocsp": ${process.features.tls_ocsp},
+    "tls": ${process.features.tls}
+  }
+\`\`\``;
+
+		fs.writeFileSync(__dirname + "/crashReport-" + date + "T" + time.replace(/:/g,"_") + ".md", crashReport);
+		crashReportWritten = true;
+		Neptune.logMan.open();
+		Neptune.log.critical(crashReport.replace(/`/g,'').replace(/\\/g,'').replace(/JSON/g,''))
+		console.log("");
+		Neptune.log.critical("Please send the crash report and Neptune log to the team and we'll look into it.");
+		Neptune.log.info("The crash report was written to \"" + __dirname + "/crashReport-" + date + "T" + time.replace(/:/g,"_") + ".md\" (and in the Neptune log file ./logs/Neptune.log)");
+		console.log("")
+		Neptune.log.info("Exiting now", false);
+		global.shuttingDown = true;
+		Neptune.logMan.close();
+	} catch(error) {
+		Neptune.log("\n\nGee billy, your mom lets you have TWO errors?");
+		Neptune.log.error(`Neptune has crashed catastrophically, and then crashed trying to tell you it crashed. Go figure.
+
+Please send any data over to the team and we'll look into it.
+If the crash report was written, it'll be at ./crashReport-<date>.md (./ signifying the current running directory).
+Crash report written: ${crashReportWritten}
+
+---
+First error: ${err.message}
+
+First error stack: ${err.stack}
+
+---
+
+Second error: ${error.message}
+
+Second error stack: ${error.stack}`);
+	} finally {
+		console.log("Exiting... (using abort, expect a bunch of junk below)");
+		if (process.exitCode === undefined)
+			process.exitCode = -9001;
+		process.abort();
+	}
 });
