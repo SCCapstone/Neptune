@@ -431,7 +431,6 @@ async function main() {
 	Neptune.webLog = Neptune.logMan.getLogger("Web");
 	
 	const app = Express();
-	var ExpressWebSocket = require('express-ws')(app);
 	const WebSocketServer = require('ws').Server;
 	// app.use(Express.urlencoded());
 	app.use(Express.json());
