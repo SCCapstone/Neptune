@@ -4,7 +4,7 @@ import java.util.Map;
 
 public class ServerManager {
 
-    private Map<String, Server> servers;
+    private static Map<String, Server> servers;
 
     private void removeServer() {
 
@@ -15,8 +15,8 @@ public class ServerManager {
     }
 
     public ServerManager serverManager() {
-        this.servers = this.servers;
-
+        this.servers = this.servers; //I think we should set this equal to a new HashMap or something. A type of map that lets the frontend access the info and
+                                        //add, delete, or edit the information the easiest.
         return null;
     }
 

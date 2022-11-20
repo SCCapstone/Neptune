@@ -28,6 +28,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     private AlertDialog addDialog;
     private LinearLayout addLine;
     private Button notifListTest;
+    private ImageView delete;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,7 +100,8 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         final View view = getLayoutInflater().inflate(R.layout.name_line, null);
 
         devName = view.findViewById(R.id.name);
-        editName = view.findViewById(R.id.editName1);
+        editName = view.findViewById(R.id.editName);
+        delete = view.findViewById(R.id.delete);
 
         devName.setText(name);
         devName.setOnClickListener(new View.OnClickListener() {
@@ -113,6 +115,13 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             @Override
             public void onClick(View v) {
                 openDialog();
+            }
+        });
+
+        delete.setOnClickListener(new ImageView.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                addLine.removeView(view);
             }
         });
 
