@@ -17,6 +17,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.content.Intent;
 
+import com.neptune.app.Backend.NotificationListenerService;
+
 public class MainActivity extends AppCompatActivity implements RenameDialog.RenameDialogListener{
     //public ServerManager serverManager;
     //public Config config
@@ -25,6 +27,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     private Button add;
     private AlertDialog addDialog;
     private LinearLayout addLine;
+    private Button notifListTest;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,6 +38,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         editName = (ImageView) findViewById(R.id.editDevName);
         add = (Button) findViewById(R.id.addDev);
         addLine = findViewById(R.id.container);
+        notifListTest = findViewById(R.id.notifTest);
         buildAddDialog();
 
         devName.setOnClickListener(new TextView.OnClickListener(){
@@ -55,6 +59,14 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             @Override
             public void onClick(View view) {
                 addDialog.show();
+            }
+        });
+
+        notifListTest.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //startActivity(new Intent(MainActivity.this, NotificationListenerService.class));
+                new NotificationListenerService().onCreate();
             }
         });
     }

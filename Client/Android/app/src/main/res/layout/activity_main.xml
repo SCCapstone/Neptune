@@ -101,11 +101,11 @@
 
     <TextView
         android:id="@+id/name"
-        android:layout_width="310dp"
-        android:layout_height="25dp"
+        android:layout_width="244dp"
+        android:layout_height="24dp"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
-        android:layout_marginEnd="60dp"
+        android:layout_marginEnd="128dp"
         android:clickable="true"
         android:text="Desktop-24Sf4"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -131,5 +131,15 @@
 
         </LinearLayout>
     </ScrollView>
+
+    <Button
+        android:id="@+id/notifTest"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="1dp"
+        android:layout_marginEnd="41dp"
+        android:text="Button"
+        app:layout_constraintEnd_toStartOf="@+id/editDevName"
+        app:layout_constraintTop_toBottomOf="@+id/addDev" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
