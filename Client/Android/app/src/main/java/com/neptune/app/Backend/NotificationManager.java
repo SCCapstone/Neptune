@@ -1,8 +1,8 @@
 package com.neptune.app.Backend;
 
 import android.app.Notification;
-
 import java.util.Map;
+
 
 public class NotificationManager {
 
@@ -10,7 +10,8 @@ public class NotificationManager {
     private ServerManager serverManager;
 
     public NotificationManager notificationManager() {
-
+        this.serverManager = this.serverManager;
+        this.notifications = this.notifications;
         return null;
     }
 

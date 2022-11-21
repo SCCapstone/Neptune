@@ -1,10 +1,13 @@
 package com.neptune.app.Backend;
 
+
 import android.app.Notification;
 
 import org.json.JSONObject;
 
 import java.util.Date;
+
+import kotlin.NotImplementedError;
 
 public class Server {
     private IPAddress ipAddress;
@@ -54,13 +57,25 @@ public class Server {
         return false;
     }
 
-    public IPAddress setIPAddress() {
-        this.ipAddress = ipAddress;
-
-        return null;
+    public IPAddress setIPAddress(IPAddress ip) {
+        if (ip != null) {
+            this.ipAddress = ip;
+            //this.configuartion.configEntries.IPAddress = this.ipAddress;
+            this.configuartion.saveConfig();
+        }
+        else if (ip.equals("string")) {
+            //.ipAddress = new IPAddress(ip);
+            //this.configuartion.configEntries.IPAddress = this.ipAddress;
+            this.configuartion.saveConfig();
+        }
+        else {
+            throw new NotImplementedError("IPAddress expected string or IPAddress, got " + (ip));
+        }
+        return ipAddress;
     }
 
     public IPAddress getIpAddress() {
+
 
         return ipAddress;
     }
@@ -83,6 +98,44 @@ public class Server {
     public boolean saveConfiguration() {
 
         return false;
+    }
+
+    public String getFriendlyName() {
+        return this.friendlyName;
+    }
+
+    public String setFriendlyName(String friendlyName) {
+        if (friendlyName != "string") {
+            throw new NotImplementedError("friendlyName expected string got " + (friendlyName));
+        }
+
+        this.friendlyName = friendlyName;
+        //this.configuartion.configEntries.friendlyName = friendlyName;
+        this.configuartion.saveConfig();
+
+        return friendlyName;
+    }
+
+    public Date getDateAdded () {
+        return this.dateAdded;
+    }
+
+    public Date setDateAdded(Date dateAdded) {
+        if (dateAdded != null) {
+            this.dateAdded = dateAdded;
+        }
+        else {
+            Date dateTime = new Date();
+            if (dateTime != null) {
+                this.dateAdded = dateTime;
+            }
+            else {
+                throw new NotImplementedError("Invalid time value");
+            }
+        }
+        //this.configuartion.configEntries.dateAdded = this.dateAdded;
+        this.configuartion.saveConfig();
+        return dateAdded;
     }
 
 }
