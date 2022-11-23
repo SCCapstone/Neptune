@@ -6,7 +6,42 @@
     android:layout_height="match_parent"
     tools:context=".NotificationsActivity">
 
-    <CheckBox
+    <TextView
+        android:id="@+id/notifDesc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Notifications will be synched for the selected apps"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.515"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.007" />
+
+    <Button
+        android:id="@+id/check"
+        android:layout_width="312dp"
+        android:layout_height="11dp"
+        android:layout_marginTop="704dp"
+        android:onClick="getallapps"
+        android:text="Get Installed Apps"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.494"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="TouchTargetSizeCheck" />
+
+    <ListView
+        android:id="@+id/listview"
+        android:layout_width="387dp"
+        android:layout_height="690dp"
+        android:layout_marginTop="36dp"
+        android:choiceMode="multipleChoice"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!--<CheckBox
         android:id="@+id/checkBox4"
         android:layout_width="351dp"
         android:layout_height="24dp"
@@ -59,18 +94,6 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.143"
         app:srcCompat="@drawable/discord" />
-
-    <TextView
-        android:id="@+id/textView10"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Notifications will be synched for the selected apps"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.515"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.007" />
 
     <CheckBox
         android:id="@+id/checkBox14"
@@ -321,6 +344,6 @@
         android:layout_marginTop="72dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/bb" />
+        app:srcCompat="@drawable/bb" />-->
 
 </androidx.constraintlayout.widget.ConstraintLayout>
