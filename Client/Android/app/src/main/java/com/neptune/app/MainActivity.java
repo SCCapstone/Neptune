@@ -5,9 +5,14 @@ package com.neptune.app;
 // you will have to delete the entries from the list or the entire views when removing a device.
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.fragment.app.DialogFragment;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.DialogInterface;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -63,11 +68,27 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             }
         });
 
+        //Part of the Notification Button
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel("My notification", "My notification", NotificationManager.IMPORTANCE_DEFAULT);
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(channel);
+        }
+        //Notification Button
         notifListTest.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 //startActivity(new Intent(MainActivity.this, NotificationListenerService.class));
-                new NotificationListenerService().onCreate();
+                //new NotificationListenerService().onCreate();
+                NotificationCompat.Builder buidler = new NotificationCompat.Builder(MainActivity.this, "My notification");
+                buidler.setContentTitle("My title");
+                buidler.setContentText("Content from Notification");
+                buidler.setSmallIcon(R.drawable.ic_launcher_background);
+                buidler.setAutoCancel(true);
+
+                NotificationManagerCompat notificationManagerCompat = NotificationManagerCompat.from(MainActivity.this);
+                notificationManagerCompat.notify(1,buidler.build());
+
             }
         });
     }
