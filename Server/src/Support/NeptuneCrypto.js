@@ -12,7 +12,7 @@ const encryptedPrefix = "ncrypt::";
 // A list of "supported" (we know the proper key lengths) ciphers for encrypting data
 const encryptionCipherKeyLengths = { // algorithm: [keyLenght (bytes), iv/secondary (bytes)]
 	'chacha20-poly1305': [32, 12], // 256 bit key, 96 bit nonce
-	'chacha20': [32, 16], // 256 bit key, 128 bit nonce
+	'chacha20': [32, 12], // 256 bit key, 96 bit nonce
 	'aes-256-gcm': [32, 16], // 256 bit key, 128 bit iv
 	'aes-256-cbc': [32, 16], // See above
 	'aes256': [32, 16], // See above

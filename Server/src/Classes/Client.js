@@ -1,9 +1,10 @@
 const ConfigItem = require('./ConfigItem.js');
 const ConnectionManager = require('./ConnectionManager.js');
+const NotificationManager = require('./NotificationManager.js');
 const IPAddess = require('./IPAddress.js');
+const Notification = require('./Notification.js');
 
-/** @type {import('./NotificationManager.js')} */
-const NotificationManager = global.Neptune.notificationManager;
+
 /** @type {import('./ConfigurationManager.js')} */
 const ConfigurationManager = global.Neptune.configurationManager;
 /** @type {import('./NeptuneConfig.js')} */
@@ -21,6 +22,9 @@ class Client {
 	/** @type {ConnectionManager} */
 	#connectionManager;
 
+
+	/** @type {NotificationManager} */
+	#notificationManager;
 
 
 	/** @type {ConfigItem} */
@@ -188,6 +192,8 @@ class Client {
 			// Load config
 			this.#config = ConfigurationManager.loadConfig(NeptuneConfig.clientDirectory + this.#clientId);
 		}
+
+		this.#notificationManager = new NotificationManager(this);
 	}
 
 	/**
@@ -244,11 +250,21 @@ class Client {
 		this.#connectionManager = new ConnectionManager(this, webSocket, secret, miscData);
 
 		this.#connectionManager.on('command', (command, data) => {
+			//this.#log.debug("Received command:" + command);
+
 			if (command == "/api/v1/echo") {
 				this.#connectionManager.sendRequest("/api/v1/echoed", data);
+			} else if (command == "/api/v1/server/sendNotification") {
+				if (Array.isArray(data)) {
+					for (var i = 0; i<data.length; i++) {
+						this.receiveNotification(new Notification(data[i]));
+					}
+				} else {
+					// invalid data.. should be array but whatever
+					this.receiveNotification(new Notification(data));
+				}
 			}
-			console.log("received command:" + command);
-		})
+		});
 	}
 
 
@@ -286,10 +302,24 @@ class Client {
 	 * @param {import('./Notification.js')} notification Notification received
 	 */
 	receiveNotification(notification) {
-		notification.on("dismissed", (notification)=> {
-			// dismiss the notification on the client device
+		notification.on("dismissed", (notifierMetadata)=> {
+			this.#connectionManager.sendRequest("/api/v1/client/updateNotification", [{
+				applicationName: notification.data.applicationName,
+				applicationPackage: notification.data.applicationPackage,
+				notificationId: notification.data.notificationId,
+				action: "dismiss"
+			}]);
 		});
-		NotificationManager.newNotification(notification);
+		notification.on('activate', (notifierMetadata)=> {
+			// activate the notification on the client device
+			this.#connectionManager.sendRequest("/api/v1/client/updateNotification", [{
+				applicationName: notification.data.applicationName,
+				applicationPackage: notification.data.applicationPackage,
+				notificationId: notification.data.notificationId,
+				action: "activate"
+			}]);
+		});
+		this.#notificationManager.newNotification(notification);
 	}
 
 
@@ -299,7 +329,7 @@ class Client {
 	 * @return {boolean}
 	 */
 	ping() {
-		this.#connectionManager
+		this.#connectionManager.ping();
 	}
 
 	/**

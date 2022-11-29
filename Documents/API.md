@@ -121,7 +121,7 @@ Used to send one or more notifications to the server. Update, create or remove.
     "action": "create", // What to do with this data, how to process (create, remove, update)
     "applicationName": "Notification Tester", // The app that created the notification
     "applicationPackage": "com.cnewb.notificationtester", // The package name of that application
-    "notificationId": "23", // Notification ID provided by Android
+    "notificationId": 23, // Notification ID provided by Android, used to refer to this notification on either end
     "notificationIcon": "base64:image", // Base64 representation of the notification icon
     "title": "Testing", // Title of the notification
     "type": "text", // Notification type (text, image, inline, chronometer)
@@ -147,10 +147,10 @@ Used to send one or more notifications to the server. Update, create or remove.
     "extras": {}, // Extra data.
     "persistent": false, // Notification is persistent
     "color": 64132, // Color of the notification (Notification#Color)
-    "onlyAlretOnce": true, // only like the sound, vibrate and ticker to be played if the notification is not already showing.
+    "onlyAlertOnce": true, // only like the sound, vibrate and ticker to be played if the notification is not already showing.
     "priority": 0, // #setImportance
     "timestamp": "2040-04-23T18:25:43.511Z", // When this item was displayed
-    "timeoutAfter": "0", // duration in milliseconds after which this notification should be canceled, if it is not already canceled.
+    "timeoutAfter": 0, // duration in milliseconds after which this notification should be canceled, if it is not already canceled.
     "isActive": true // Display this.
  }   
 ]

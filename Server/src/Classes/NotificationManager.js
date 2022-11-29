@@ -1,16 +1,20 @@
+
+const Notification = require('./Notification.js');
+const Client = require('./Client.js');
+
 class NotificationManager {
 	
-	/** @typedef {ClientManager} */
-	#clientManager;
-	/** @typedef {Map<notificationId: string, Notification>} */
+	/** @typedef {Client} */
+	#client;
+	/** @typedef {Map<string, Notification>} */
 	#notifications = new Map();
 	
 	/**
-	 * This is the constuctor
+	 * Creates a new notification manager. Kinda pointless for now.. and likely later too
+	 * @param {Client} client - Client we represent
 	 */
-	constructor() {
-		this.#clientManager = this.#clientManager;
-		this.#notifications = this.#notifications;
+	constructor(client) {
+		this.#client = client;
 	}
 
 	/**
@@ -19,7 +23,7 @@ class NotificationManager {
 	 * @return {void}
 	 */
 	newNotification(notification) {
-		return
+		this.#notifications.set(notification.id, notification);
 	}
 
 	/**
@@ -33,20 +37,20 @@ class NotificationManager {
 
 	/**
 	 * 
-	 * @param {string} string 
+	 * @param {number} id - Id of the notification that was dismissed
 	 * @return {void}
 	 */
-	notificationDismissed(string) {
-		return;
+	notificationDismissed(id) {
+		this.#notifications.delete(id);
 	}
 
 	/**
 	 * 
-	 * @param {string} string 
+	 * @param {number} id - Id of the notification that was activated
 	 * @return {void}
 	 */
 	notificationActivated(string) {
-		return;
+		this.#notifications.delete(id);
 	}
 }
 

@@ -7,7 +7,7 @@
  * 		Capstone Project 2022
  */
 
-const Events = require("node:events");
+const EventEmitter = require('node:events');
 const Notifier = require("node-notifier"); // does not work with windows action center!
 
 /**
@@ -30,6 +30,8 @@ const Notifier = require("node-notifier"); // does not work with windows action 
  * 
  */
 
+const Neptune = global.Neptune;
+
 /**
  * Neptune Server Notification class
  * 
@@ -37,8 +39,127 @@ const Notifier = require("node-notifier"); // does not work with windows action 
  * You create the notification, push it out, and the Notification class handles the notification from there and emits Events to notify you of changes. 
  * 
  */
-class Notification {
-	
+class Notification extends EventEmitter {
+    /**
+     * Notification Id shared between the server and client, used to reference a notification
+     * @type {number}
+     */
+    #id;
+    get id() {
+        return this.#id;
+    }
+
+
+    /**
+     * Notifier id, provided by node-notify. *Should* be the same as the id.
+     * @type {number}
+     */
+    #notifierId
+
+
+    /**
+     * Data returned by Notifier.notify().
+     */
+    #notifierNotification;
+
+
+    /**
+     * @type {import('./LogMan').Logger}
+     */
+    #log;
+
+
+    /**
+     * Might be pulled directly into this class later, for now I am lazy
+     * @type {NotificationData}
+     */
+    data;
+
+
+    /**
+     * Notification actions (cancel, mark as read, etc)
+     * @typedef {object} NotificationAction
+     * @property {string} id - 'Name' of the action
+     * @property {string} text - Text displayed on the button
+     * @property {string} type - Type of action (almost always button) 
+     */
+
+    /**
+     * Text based notification
+     * @typedef {object} TextNotification
+     * @property {string} text - The main contents of the notification (body)
+     * @property {string} subtext - This is additional data shown on notifications next to the application name ([icon] MyCoolApp - SubText)
+     * @property {NotificationAction[]} actions - Available actions (mark as read, cancel, etc) 
+     */
+
+
+    /**
+     * Data provided by the client
+     * @typedef {object} NotificationData
+     * @property {string} action - What the do with this data, how to process (create, remove, update)
+     * @property {string} applicationName - The app that created the notification (it's friendly name)
+     * @property {string} applicationPackage - The package name of the application that created the notification
+     * @property {number} notificationId - Notification Id provided by Android, used to refer to this notification on either end
+     * @property {string} notificationIcon - Base64 representation of the notification icon. This must be saved to the disk before being used (Windows only accepts URIs to icons)
+     * @property {string} title - Title of the notification
+     * @property {string} type - Notification type (text, image, inline, chronometer, progress bar). This will determine the data in `contents`.
+     * @property {(TextNotification)} contents - Content of the notification (type set by above)
+     * @property {object} extras - Unused currently, reserved for misc data
+     * @property {boolean} persistent - Notification is persistent
+     * @property {number} color - Color of the notification
+     * @property {boolean} onlyAlertOnce - Only let the sound, vibration and ticker to be played if the notification is not already showing.
+     * @property {number} priority - Android #setImportance
+     * @property {string} timestamp - ISO date time stamp
+     * @property {number} timeoutAfter - Duration in milliseconds after which this notification should be canceled, if it is not already canceled
+     * @property {boolean} isActive - Display this notification
+     */
+
+    /**
+     * @param {NotificationData} data - The notification data provided by the client
+     */
+	constructor(data) {
+        super();
+
+
+        // not testing if data is proper just yet, but hoping it follows the API doc
+
+        this.#log = Neptune.logMan.getLogger("Notification-" + data.notificationId);
+        this.#log.debug("New notification created. Title: " + data.title + " .. type: " + data.type + " .. text: " + data.contents.text);
+        this.#log.silly(data);
+
+        var logger = this.#log;
+        var maybeThis = this;
+
+        this.data = data;
+
+
+        // send the notification
+        this.#notifierNotification = Notifier.notify({
+            title: data.title,
+            message: data.contents.subtext + "\n" + data.contents.text,
+            id: data.notificationId,
+        }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
+            if (err) {
+                logger.error(err);
+            } else {
+                logger.debug("Action received: " + response);
+                logger.silly("action metadata: ");
+                logger.silly(metadata);
+                maybeThis.emit(response, metadata);
+            }
+        });
+    }
+
+    activate() {
+        // Simulate a click (activation)
+        // for now we just emit
+        this.emit("activate");
+    }
+
+    dismiss() {
+        // Simulate a dismiss (swiped away)
+        this.emit("dismissed");
+    }
 }
 
 module.exports = Notification;

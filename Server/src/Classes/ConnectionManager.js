@@ -64,12 +64,19 @@ class ConnectionManager extends EventEmitter {
 
 	#conInitUUID
 
+	/**
+     * @type {import('./LogMan').Logger}
+     */
+    #log;
+
 
 
 	constructor(client, webSocket, sharedSecret, miscData) {
 		super();
 		// if (!(client instanceof Client))
 		// 	throw new TypeError("client expected Client got " + (typeof client).toString());
+
+		this.#log = Neptune.logMan.getLogger("ConManager-" + client.clientId);
 
 		this.#client = client;
 		this.#webSocket = webSocket;
@@ -88,6 +95,8 @@ class ConnectionManager extends EventEmitter {
 	 * @return {void}
 	 */
 	sendRequest(apiURL, requestData) {
+		this.#log.debug("Sending request to client: " + apiURL);
+
 		let data = JSON.stringify(requestData);
 		let encryptedData = NeptuneCrypto.encrypt(data, this.#secret);
 		this.#webSocket.send(JSON.stringify({
@@ -96,7 +105,6 @@ class ConnectionManager extends EventEmitter {
 			"data": encryptedData,
 			"dataDecrypted": data,
 		}));
-		console.log("sent!");
 	}
 	
 
@@ -143,11 +151,12 @@ class ConnectionManager extends EventEmitter {
 				data = NeptuneCrypto.decrypt(data, this.#secret);
 			return JSON.parse(data);
 		} catch (err) {
-			console.log(err);
+			this.#log.error(err);
 			if (err instanceof NeptuneCrypto.Errors.InvalidDecryptionKey || err instanceof NeptuneCrypto.Errors.MissingDecryptionKey) {
 				// bad key.
 				throw err;
 			} else if (err instanceof SyntaxError) {
+				this.#log.silly(data);
 				// yep, json is broken
 				return {};
 			} else {
@@ -161,11 +170,13 @@ class ConnectionManager extends EventEmitter {
 	 * Verifies the packet, decrypts data
 	 */
 	#unwrapPacket(packet) {
-		packet = JSON.parse(packet);
+		packet = JSON.parse(packet); // first stage, has conInitUUID, command and data (should be encrypted)
 		if (packet.conInitUUID == this.#conInitUUID) {
 			return {command: packet.command, data: this.#decryptMessage(packet.data)};
 		} else {
-			console.log(packet.conInitUUID + "!=" + this.#conInitUUID)
+			this.#log.error("Unable to accept socket packet: conInitUUID mismatch! Packet conInitUUID " + packet.conInitUUID + "!=" + this.#conInitUUID);
+			// This is unofficial, add doc for it later
+			this.sendRequest("/api/v1/error/socket", {"error": "invalidConInitUUID", "errorText": "Previous packet contains an invalid conInitUUID, cannot process."});
 			return {};
 		}
 	}
@@ -175,18 +186,19 @@ class ConnectionManager extends EventEmitter {
 		// WS: https://github.com/websockets/ws/blob/master/doc/ws.md#class-websocket
 		this.#webSocket.on('message', (packet, isBinary) => {
 			packet = this.#unwrapPacket(packet);
+			this.#log.silly(packet.data);
+
 			this.emit('command', packet.command, packet.data);
-			console.log(packet.data);
 		});
 
 		this.#webSocket.on('close', (code, reason) => {
 			// clean up!
-			console.log("disconnected!")
+			this.#log.info("Client disconnected");
 		});
 
 		this.#webSocket.on('pong', (data) => {
 			// pong response
-			console.log("got pong");
+			this.#log.debug("Client sent pong response");
 		});
 
 		this.#webSocket.on('open', () => {
@@ -194,11 +206,11 @@ class ConnectionManager extends EventEmitter {
 		});
 
 		this.#webSocket.on('ping', (data) => {
-			console.log("Pong!");
+			this.#log.debug("Pong!");
 			this.#webSocket.pong();
 		});
 
-		console.log("Listening...");
+		this.#log.info("Listening...");
 	}
 }
 
