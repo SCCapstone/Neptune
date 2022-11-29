@@ -35,37 +35,6 @@ public class ConnectionManager {
     }
 
 
-    /**
-     * Uses HKDF to derive a AES key and IV from a shared secret
-     * @param sharedSecret your DH key
-     * @param salt Little bit of salt (shared)
-     * @return AES key
-     */
-    private AESKey hkdf(@NonNull byte[] sharedSecret, @NonNull byte[] salt) {
-      // could use separate DH exchange to generate a salt. . ?
-        if (salt.length == 0)
-          salt = "SuperSecureSaltg8pLcriqI#istlsWu".getBytes(StandardCharsets.UTF_8);
-
-        HKDF hkdf = HKDF.fromHmacSha256();
-        //extract the "raw" data to create output with concentrated entropy
-        byte[] pseudoRandomKey = hkdf.extract(salt, sharedSecret);
-
-        //create expanded bytes for e.g. AES secret key and IV
-        byte[] expandedAesKey = hkdf.expand(pseudoRandomKey, "aes-key".getBytes(StandardCharsets.UTF_8), 16);
-        byte[] expandedIv = hkdf.expand(pseudoRandomKey, "aes-iv".getBytes(StandardCharsets.UTF_8), 16);
-
-        return new AESKey(expandedAesKey, expandedIv);
-    }
-
-    /**
-     * Uses HKDF to derive a AES key and IV from a shared secret
-     * @param sharedSecret your DH key
-     * @return AES key
-     */
-    private AESKey hkdf(byte[] sharedSecret) {
-        return hkdf(sharedSecret, "SuperSecureSaltg8pLcriqI#istlsWu".getBytes(StandardCharsets.UTF_8));
-    }
-
     public IPAddress ConnectionManager(IPAddress ipAddress, ConfigItem configItem) {
         throw new NotImplementedError();
     }
