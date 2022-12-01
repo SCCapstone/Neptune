@@ -1,17 +1,22 @@
 package com.neptune.app.Backend;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class ServerManager {
 
     private static Map<String, Server> servers;
 
-    private void removeServer() {
-
+    public ServerManager () {
+        servers = new HashMap<String, Server>();
     }
 
-    private void addServer() {
+    public void removeServer(Server s) {
+        servers.remove(s.getFriendlyName());
+    }
 
+    public void addServer(Server s) {
+        servers.put(s.getFriendlyName(), s);
     }
 
     public ServerManager serverManager() {
