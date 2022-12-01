@@ -8,7 +8,15 @@ Node.JS can be downloaded [here](https://nodejs.org/en/download/current/) (be su
 
 Install all dependencies (node_modules) by running `Install node modules.bat` or typing `npm i`\
 To run, just open this directory in your command prompt of the month and type `npm start`\
-Configuration options available in `./dist/data/config.json` (probably)
+Configuration options available in `./data/NeptuneConfig.json` (may be encrypted, disabled in debug mode.)
+
+
+To build (as in the full executable): run `npm run build`\
+this will build the packed executable and other files, explorer will automatically open.
+
+To run: `npm start`
+
+
 
 
 Since this is a Node.JS application, `npm` will be used as our package manager for modules.

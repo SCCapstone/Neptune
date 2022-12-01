@@ -1,1 +1,2 @@
-qode ./dist/index.js
+npm start
+rem qode ./dist/index.js

@@ -20,7 +20,7 @@ const isWin = process.platform === "win32"; // Can change notification handling 
 
 
 // Global behavioral changes (static stuff)
-const debug = true;
+const debug = process.env;
 const displaySilly = false; // output the silly log level to console (it goes  every other level > silly, silly is the lowest priority, literal spam)
 Error.stackTraceLimit = (debug)? 8 : 4;
 
@@ -169,8 +169,9 @@ const rl = readline.createInterface({
 	input: process.stdin,
 	output: process.stdout
 });
-rl.on("close", function () {
-	Shutdown(); // Capture CTRL+C
+rl.on("close", function () { // to-do: realize, hey, there's no console.
+	Neptune.log.warn("Captured CTRL+C");
+	//Shutdown(); // Capture CTRL+C
 });
 async function promptUser(quetion) {
 	function getPromise() {
@@ -214,6 +215,8 @@ else
 Neptune.log("Running on \x1b[1m\x1b[34m" + process.platform);
 
 
+if (!fs.existsSync("./data/"))
+	fs.mkdirSync("./data/")
 
 
 var firstRun = (fs.existsSync("./data/NeptuneConfig.json") === false);

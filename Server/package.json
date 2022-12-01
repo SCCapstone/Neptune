@@ -19,14 +19,13 @@
   ],
   "main": "index.js",
   "scripts": {
-    "build": "webpack -p",
+    "build": "webpack --env production && fixBrokenBuildNames.bat && npx nodegui-packer --pack dist && call tools\\postBuild.bat",
     "start": "webpack && fixBrokenBuildNames.bat && qode ./dist/index.js",
-    "debug": "webpack && qode --inspect ./dist/index.js"
+    "debug": "webpack && fixBrokenBuildNames.bat && qode --inspect ./dist/index.js"
   },
   "homepage": "https://github.com/SCCapstone/Neptune",
   "dependencies": {
     "@nodegui/nodegui": "^0.57.1",
-    "@nodegui/packer": "^1.5.0",
     "@types/node": "^18.7.14",
     "clean-webpack-plugin": "^4.0.0",
     "express": "^4.18.2",
@@ -44,5 +43,8 @@
     "webpack": "^5.74.0",
     "webpack-cli": "^4.10.0",
     "ws": "^8.11.0"
+  },
+  "devDependencies": {
+    "@nodegui/packer": "^1.5.0"
   }
 }

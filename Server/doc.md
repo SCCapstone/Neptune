@@ -12,6 +12,15 @@ and output to the log file (./logs/Neptune.log) and console (if outputToConsole 
 
 
 
+## To build/run:
+Run this ONCE: `npx nodegui-packer --init NeptuneServer`
+
+Then to rebuild run this command: `npm run build`\
+this will build the packed executable and other files, explorer will automatically open.
+
+To run: `npm start`
+
+
 ## Application
 Most things are stored in the `Neptune` object, which is accessible globally via `global.Neptune`.
 Using this you can gain access to the NotificationManager `Neptune.notificationManager`, ConfigurationManager `Neptune.configurationManager`, and ClientManager `Neptune.clientManager` in addition to the application's config `Neptune.config`.
