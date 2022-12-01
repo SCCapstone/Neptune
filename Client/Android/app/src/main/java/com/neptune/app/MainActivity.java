@@ -151,6 +151,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         delete.setOnClickListener(new ImageView.OnClickListener() {
             @Override
             public void onClick(View v) {
+                server = serverManager.getServer(devName.getText().toString());
                 serverManager.removeServer(server);
                 server.unpair();
                 addLine.removeView(view);
