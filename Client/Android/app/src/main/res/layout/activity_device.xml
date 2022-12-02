@@ -218,20 +218,25 @@
 
     <RadioGroup
         android:id="@+id/radioGroup"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_width="417dp"
+        android:layout_height="58dp"
         android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
         android:orientation="horizontal"
+        app:layout_constraintBottom_toTopOf="@+id/textView13"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:ignore="MissingConstraints"
-        tools:layout_editor_absoluteX="0dp">
+        app:layout_constraintVertical_bias="1.0"
+        tools:ignore="MissingConstraints">
 
         <RadioButton
             android:id="@+id/radio_auto"
             android:layout_width="135dp"
             android:layout_height="28dp"
             android:layout_marginStart="28dp"
-            android:layout_marginTop="432dp"
+            android:layout_marginTop="30dp"
             android:onClick="onRadioButtonClicked"
             android:text="Auto negotiate"
             app:layout_constraintStart_toStartOf="parent"
@@ -240,14 +245,13 @@
 
         <RadioButton
             android:id="@+id/radio_key"
-            android:layout_width="135dp"
+            android:layout_width="137dp"
             android:layout_height="28dp"
-            android:layout_marginStart="-136dp"
-            android:layout_marginTop="460dp"
+            android:layout_marginStart="-135dp"
+            android:layout_marginTop="5dp"
             android:onClick="onRadioButtonClicked"
             android:text="Pre-shared key"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
             tools:ignore="ExtraText,OnClick,TouchTargetSizeCheck" />
     </RadioGroup>
 
