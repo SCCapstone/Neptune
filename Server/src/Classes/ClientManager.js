@@ -10,11 +10,8 @@
 const EventEmitter = require('node:events');
 const Client = require('./Client');
 
-/** @type {import('./NotificationManager.js')} */
-const NotificationManager = global.Neptune.notificationManager;
-
 /** @type {import('./ConfigurationManager.js')} */
-const ConfigurationManager = global.Neptune.configurationManager;
+var ConfigurationManager = global.Neptune.configManager;
 
 /** @type {import('./NeptuneConfig.js')} */
 var NeptuneConfig = global.Neptune.config;
@@ -43,11 +40,16 @@ class ClientManager {
     Events = new EventEmitter();
 
 
+    #log;
+
+
     /**
      * This is the constructor
      */
     constructor() {
+        this.#log = global.Neptune.logMan.getLogger("ClientManager");
         NeptuneConfig = global.Neptune.config;
+        ConfigurationManager = global.Neptune.configManager;
         this.loadClients();
     }
 
@@ -92,9 +94,12 @@ class ClientManager {
      * @returns {Client}
      */
     getClient(clientId) {
+        this.#log.info("Grabbing client " + clientId);
         let client = this.#clients.get(clientId);
-        if (client === undefined)
-            client = new Client();
+        if (client === undefined) {
+            let config = ConfigurationManager.loadConfig(global.Neptune.config.clientDirectory + clientId);
+            client = new Client(config);
+        }
         return client;
     }
 
@@ -116,8 +121,11 @@ class ClientManager {
             iterate through the Neptune.config.clients array, which is the clientIds, and load those clients in
         */
 
+        this.#log.info("Loading clients ...");
+
         NeptuneConfig.clients.forEach((clientId) => {
-            this.#clients.set(clientId, new Client(clientId));
+            this.getClient(clientId);
+            // this.#clients.set(clientId, new Client(clientId));
         });
         
     }
@@ -127,6 +135,8 @@ class ClientManager {
      * @returns {void}
      */
     saveClients() {
+        this.#log.info("Loading clients ...");
+        // ehh
         this.#clients.forEach(client => {
             client.save();
         });

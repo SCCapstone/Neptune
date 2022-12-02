@@ -2,6 +2,7 @@ package com.neptune.app.Backend;
 
 
 import android.app.Notification;
+import android.util.Log;
 
 import org.json.JSONObject;
 
@@ -30,7 +31,8 @@ public class Server {
         this.notifiableApps = notifiableApps;
     }
 
-    public Server() {
+    public Server(String friendlyName) {
+        this.configuartion = new ConfigItem(friendlyName);
     }
 
     public Server(JSONObject jsonObject) {
@@ -38,6 +40,8 @@ public class Server {
 
     public void setupConnectionManager() {
         connectionManager = new ConnectionManager(this.ipAddress, this.configuartion);
+        Log.d("SERVER", "setupConnectionManager: we did something");
+        connectionManager.initiateConnection();
     }
 
     public boolean sendNotification(Notification notification) {
@@ -65,14 +69,8 @@ public class Server {
             this.ipAddress = ip;
             //this.configuartion.configEntries.IPAddress = this.ipAddress;
             this.configuartion.saveConfig();
-        }
-        else if (ip.equals("string")) {
-            //.ipAddress = new IPAddress(ip);
-            //this.configuartion.configEntries.IPAddress = this.ipAddress;
-            this.configuartion.saveConfig();
-        }
-        else {
-            throw new NotImplementedError("IPAddress expected string or IPAddress, got " + (ip));
+        } else {
+            throw new NotImplementedError("IPAddress expected string or IPAddress, got");
         }
         return ipAddress;
     }

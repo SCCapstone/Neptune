@@ -38,7 +38,7 @@ class ConfigurationManager {
 	 * Path to the configuration files
 	 * @type {string}
 	 */
-	#configDirectory = "./../data/configs/";
+	#configDirectory = "./../data/";
 
 	/**
 	 * @type {import('./LogMan').Logger}
@@ -46,7 +46,7 @@ class ConfigurationManager {
 	#log;
 
 	/**
-	 * @param {string} [configDirectory = "./../data/configs/"] Base folder containing the config files
+	 * @param {string} [configDirectory = "./../data/"] Base folder containing the config files
 	 * @param {(string|Buffer)} [encryptionKey] Encryption key used (if applicable)
 	 */
 	constructor(configDirectory, encryptionKey) {
@@ -108,12 +108,15 @@ class ConfigurationManager {
 
 		try {
 			let path = configName; // Might consider adding a check to ensure we do not read files outside our working directory.
-			// if (isPath !== true) // Config name provided
-				// path = this.#configDirectory + configName.replace(/[^0-9a-zA-Z]/g, ""); // strip .. (maybe allow \ and / ?)
+			if (isPath !== true) // Config name provided
+				path = this.#configDirectory + configName + ".json"; // strip .. (maybe allow \ and / ?)
+				//path = this.#configDirectory + configName.replace(/[^0-9a-zA-Z]/g, ""); // strip .. (maybe allow \ and / ?)
 			
 			if (this.#cachedItems.has(path)) {
 				this.#log.debug("Loaded config (cached): " + configName)
 				return this.#cachedItems.get(path);
+			} else {
+				this.#log.debug("Loading config: " + configName);
 			}
 
 			var configItem;
@@ -282,7 +285,7 @@ class ConfigurationManager {
 			throw new TypeError("path expected string got " + (typeof path).toString());
 
 		if (!fs.existsSync(path)) {
-			console.log("creating " + path)
+			this.#log.debug("(reading) Creating config file: " + path)
 			fs.writeFileSync(path, "{}"); // Creates the config
 			return {};
 		}

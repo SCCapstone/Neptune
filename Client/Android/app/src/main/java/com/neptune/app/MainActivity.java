@@ -22,6 +22,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.content.Intent;
 
+import com.neptune.app.Backend.IPAddress;
 import com.neptune.app.Backend.NotificationListenerService;
 import com.neptune.app.Backend.Server;
 import com.neptune.app.Backend.ServerManager;
@@ -101,6 +102,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         View view = getLayoutInflater().inflate(R.layout.add_dialog, null);
 
         final EditText name = view.findViewById(R.id.nameEdit);
+        final EditText ipAddr = view.findViewById(R.id.ipEdit);
 
         builder.setView(view);
         builder.setTitle("Enter name")
@@ -108,9 +110,11 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         addNameLine(name.getText().toString());
-                        server = new Server();
-                        server.setFriendlyName(name.getText().toString());
+                        server = new Server(name.getText().toString());
+                        server.setIPAddress(new IPAddress(ipAddr.getText().toString(), 25560));
+                        server.setupConnectionManager();
                         serverManager.addServer(server);
+
                         //Maybe set IP address here, this would need to be grabbed from the server when the connection is made so probably just calling something like
                         //server.setIPAddress(something); Maybe the setIPAddress should have no params, or its param is getIPAddress and that gets the IP somehow
                         //It's that or getting+setting the IP directly here, but feels more like a backend thing.

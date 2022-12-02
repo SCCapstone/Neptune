@@ -142,6 +142,10 @@ class Client {
 	}
 
 
+	// Temp
+	#secret;
+
+
 
 
 
@@ -178,10 +182,17 @@ class Client {
 			data = new global.Neptune.configManager.loadConfig(global.Neptune.config.clientDirectory + data);
 		}
 		if (data instanceof ConfigItem) {
-			if (this.#isValidConfigData(data.entries))
-				this.#config = data;
-			else
-				throw new TypeError("ConfigItem is invalid, does not represent the config of a client.");
+			this.#config = data;
+			try {
+				if (this.#isValidConfigData(data.entries))
+					this.#config = data;
+				else {
+
+					//throw new TypeError("ConfigItem is invalid, does not represent the config of a client.");
+				}
+			} catch (e) {
+				// yep, it's broken
+			}
 		} else if (typeof data === "string") {
 			let data = JSON.parse(data);
 			this.#isValidConfigData(data, true);
@@ -245,6 +256,7 @@ class Client {
 	 * @param {object} miscData - Misc data, such as the createdAt date
 	 */
 	setupConnectionManager(secret, miscData) {
+		this.#secret = secret;
 		this.#connectionManager = new ConnectionManager(this, secret, miscData);
 
 		this.#connectionManager.on('command', (command, data) => {
@@ -266,7 +278,7 @@ class Client {
 	}
 
 	setupConnectionManagerWebsocket(webSocket) {
-		this.#connectionManager.setWebsocket(websocket);
+		this.#connectionManager.setWebsocket(webSocket);
 	}
 
 	processHTTPRequest(data, callback) { // ehh
@@ -366,6 +378,11 @@ class Client {
 			IPAddress: this.#IPAddress,
 
 		})
+	}
+
+	// Temp
+	getSecret() {
+		return this.#secret;
 	}
 
 	/**

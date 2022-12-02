@@ -74,7 +74,7 @@ class ConnectionManager extends EventEmitter {
 
 
 
-	constructor(client, webSocket, sharedSecret, miscData) {
+	constructor(client, sharedSecret, miscData) {
 		super();
 		// if (!(client instanceof Client))
 		// 	throw new TypeError("client expected Client got " + (typeof client).toString());
@@ -88,7 +88,7 @@ class ConnectionManager extends EventEmitter {
 	}
 
 
-	setupWebsocket(webSocket) {
+	setWebsocket(webSocket) {
 		this.#webSocket = webSocket;
 		this.#setupWebsocketListeners();
 	}
@@ -113,7 +113,9 @@ class ConnectionManager extends EventEmitter {
 			"dataDecrypted": data,
 		});
 
-		this.#webSocket.send(packet);
+		if (this.#webSocket !== undefined)
+			this.#webSocket.send(packet);
+	
 		if (this.#sendRequestCallback !== undefined) {
 			if (typeof this.#sendRequestCallback === "function") {
 				this.#sendRequestCallback(packet);
@@ -201,9 +203,8 @@ class ConnectionManager extends EventEmitter {
 		packet = this.#unwrapPacket(packet);
 		this.#log.debug("HTTP request received.");
 		this.#log.silly(packet.data);
-		this.emit('command', packet.command, packet.data);
-
 		this.#sendRequestCallback = callback;
+		this.emit('command', packet.command, packet.data);
 	}
 
 	#setupWebsocketListeners() {

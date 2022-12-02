@@ -40,7 +40,6 @@ class mainWindow extends NeptuneWindow {
 		aboutButton.addEventListener('clicked', () => this.openAbout());
 
 		connectButton.addEventListener('clicked', () => {
-			global.Neptune.connected = true;
 			this.openConnect();
 		});
 
@@ -78,11 +77,11 @@ class mainWindow extends NeptuneWindow {
 	}
 
 	openConnectionDetails(connected) {
-		if (connected == false) {
+		if (connected == false || global.client === undefined) {
 			let errorWindow = this.newChildWindow('errorWindow');
 			errorWindow.show();
 		} else {
-			let connectionDetails = this.newChildWindow('connectionDetails');
+			let connectionDetails = this.newChildWindow('ConnectionDetails');
 			connectionDetails.show();
 		}
 	}

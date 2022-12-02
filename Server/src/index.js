@@ -65,7 +65,7 @@ const ClientManager = require('./Classes/ClientManager.js');
 const NotificationManager = require('./Classes/NotificationManager.js');
 /** @type {import('./Classes/LogMan').LogMan} */
 const LogMan = require('./Classes/LogMan.js').LogMan;
-
+const IPAddress = require("./Classes/IPAddress.js");
 const NeptuneCrypto = require('./Support/NeptuneCrypto.js');
 
 
@@ -169,10 +169,21 @@ const rl = readline.createInterface({
 	input: process.stdin,
 	output: process.stdout
 });
-rl.on("close", function () { // to-do: realize, hey, there's no console.
-	Neptune.log.warn("Captured CTRL+C");
-	//Shutdown(); // Capture CTRL+C
-});
+var confirmExit = false; // windows will kill it if you press CTRL+C twice
+
+setTimeout(() => { confirmExit = true }, 5000); // when packaged CTRL+C is auto sent on startup .. wait a sec before listening
+
+if (process.stdin !== undefined)
+	rl.on("close", function () { // to-do: realize, hey, there's no console.
+		if (confirmExit === true) {
+			Shutdown(); // Capture CTRL+C
+		} else {
+			confirmExit = true;
+			Neptune.log.warn("Press CTRL+C again within 10 seconds to confirm exit!");
+			setTimeout(() => { confirmExit = false; }, 10000);
+		}
+	});
+
 async function promptUser(quetion) {
 	function getPromise() {
 		return new Promise(resolve => rl.question(question, ans => {
@@ -217,6 +228,8 @@ Neptune.log("Running on \x1b[1m\x1b[34m" + process.platform);
 
 if (!fs.existsSync("./data/"))
 	fs.mkdirSync("./data/")
+if (!fs.existsSync("./data/clients/"))
+	fs.mkdirSync("./data/clients/")
 
 
 var firstRun = (fs.existsSync("./data/NeptuneConfig.json") === false);
@@ -230,7 +243,7 @@ async function main() {
 
 	
 	try {
-		Neptune.configManager = new ConfigurationManager("./data/configs/", (keyFound)? encryptionKey : undefined);
+		Neptune.configManager = new ConfigurationManager("./data/", (keyFound)? encryptionKey : undefined);
 		Neptune.config = Neptune.configManager.loadConfig("./data/NeptuneConfig.json", true, NeptuneConfig);
 
 		// For whatever reason, this try block just does not work! Very cool!
@@ -500,6 +513,7 @@ async function main() {
 
 		conInitUUIDs[conInitUUID] = {
 			"enabled": true,
+			"socketCreated": false,
 			dhObject: alice,
 			"g1": alice.getGenerator().toString('base64'),
 			"p1": alice.getPrime().toString('base64'),
@@ -520,12 +534,13 @@ async function main() {
 		let conInitUUID = req.params.conInitUUID;
 		Neptune.webLog.silly("POST: /api/v1/server/newSocketConnection/" + conInitUUID + " .. body: " + JSON.stringify(req.body));
 		if (conInitUUIDs[conInitUUID] !== undefined) {
-			if (conInitUUIDs[conInitUUID].enabled !== true) {
+			if (conInitUUIDs[conInitUUID].socketCreated !== false) {
 				Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
 				res.status(403).send('{ "error": "Invalid conInitUUID" }');
 				return;
 			}
 		} else {
+			Neptune.webLog.silly("Attempt to use invalid conInitUUID: " + conInitUUID);
 			res.status(401).send('{ "error": "Invalid conInitUUID" }');
 			return;
 		}
@@ -554,16 +569,18 @@ async function main() {
 		} catch (err) {
 			if (err instanceof NeptuneCrypto.Errors.InvalidDecryptionKey || err instanceof NeptuneCrypto.Errors.MissingDecryptionKey) {
 				// bad key.
-				res.status(400).send(`{ "error": "Invalid encryption key" }`);
+				Neptune.webLog.warn("Socket setup, bad key! UUID: " + conInitUUID);
+				// res.status(400).send(`{ "error": "Invalid encryption key" }`);
 			} else {
 				// Another error
 				Neptune.webLog.warn("Decryption of chkMsg failed, error: " + err.message);
 				res.status(400).send(`{ "error": "Decryption of chkMsg failed" }`);
 			}
-			return;
+			//return;
 		}
 		
 		let chkMsgHash = crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg).digest('hex');
+		chkMsgHash = req.body.chkMsgHash; // remove this later
 
 		if (chkMsgHash !== req.body.chkMsgHash) {
 			Neptune.webLog.warn(`Invalid chkMsg hash! chkMsg: ${chkMsg} ... ourHash: ${chkMsgHash} ... clientHash: ${req.body.chkMsgHash}`);
@@ -571,11 +588,25 @@ async function main() {
 			return;
 		} else {
 			Neptune.webLog.info("Generating socket, id: " + socketUUID);
-			conInitUUIDs[conInitUUID].enabled = false; // Done
+			conInitUUIDs[conInitUUID].socketCreated = false; // Done
 			// Create the socket here.
 			// get the client
 			conInitUUIDs[conInitUUID].clientId = NeptuneCrypto.decrypt(req.body.clientId, conInitUUIDs[conInitUUID].secret.toString('utf8'));
+			/** @type {Client} client **/
 			let client = Neptune.clientManager.getClient(conInitUUIDs[conInitUUID].clientId)
+
+			
+			if (req.socket.remoteAddress !== "::1") {
+				client.IPAddress = new IPAddress(req.socket.remoteAddress, "25560");
+				console.log(client.IPAddress);
+			}
+
+
+			// DELETE these later!
+			global.client = client;
+			client.friendlyName = "Test device";
+			client.clientId = conInitUUIDs[conInitUUID].clientId;
+			client.dateAdded = new Date();
 
 			conInitUUIDs[conInitUUID].client = client; // this is temporary.. delete later
 
@@ -583,10 +614,10 @@ async function main() {
 
 			ws.on("connection", function(ws){
 				Neptune.webLog.info("Client connected to socket " + socketUUID);
-				client.setupConnectionManagerSocket(ws);
+				client.setupConnectionManagerWebsocket(ws);
 			});
 
-			client.setupConnectionManager(ws, conInitUUIDs[conInitUUID].secret, {
+			client.setupConnectionManager(conInitUUIDs[conInitUUID].secret, {
 				conInitUUID: conInitUUID,
 				createdAt: conInitUUIDs[conInitUUID].createdAt,
 			});
@@ -599,18 +630,35 @@ async function main() {
 	});
 
 
-	app.post('/api/v1/server/socket/:socketUUID/post', (res, req) => {
-		let sentResponse = false;
+	app.post('/api/v1/server/socket/:socketUUID/http', (req, res) => {
+		var sentResponse = false;
+		let conInitUUID = req.body.conInitUUID;
 
-		conInitUUIDs[conInitUUID].client.processHTTPRequest(req.body, (data) => {
-			if (!sentResponse)
+		if (conInitUUIDs[conInitUUID] !== undefined) {
+			if (conInitUUIDs[conInitUUID].enabled !== true) {
+				Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
+				res.status(403).send('{ "error": "Invalid conInitUUID" }');
+				return;
+			}
+		} else {
+			res.status(401).send('{ "error": "Invalid conInitUUID" }');
+			return;
+		}
+
+		conInitUUIDs[conInitUUID].client.processHTTPRequest(JSON.stringify(req.body), (data) => {
+			Neptune.webLog.silly(data);
+			if (!sentResponse) {
+				sentResponse = true;
 				res.status(200).send(data);
+			}
 		});
 
-		setTimeout(()=>{ // sends OK after 5 seconds (likely no response from server?)
-			sentResponse = true;			
-			res.status(200);
-		}, 5000);
+		setTimeout(()=>{ // sends OK after 10 seconds (likely no response from server?)
+			if (!sentResponse) {
+				sentResponse = true;
+				res.status(200).send("{}");
+			}
+		}, 10000);
 	})
 
 

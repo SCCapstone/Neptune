@@ -329,8 +329,10 @@ NeptuneCrypto.decrypt = function(encryptedText, key) {
 		throw new TypeError("key expected string got " + (typeof key).toString());
 
 
-	if (encryptedText.substring(0, encryptedPrefix.length) != encryptedPrefix) // Check for prefix
-		throw new DataNotEncrypted();
+	if (encryptedText.substring(0, encryptedPrefix.length) != encryptedPrefix) {// Check for prefix
+		return encryptedText;
+		//throw new DataNotEncrypted();
+	}
 	else if (key === undefined || key === "")
 		throw new MissingDecryptionKey();
 

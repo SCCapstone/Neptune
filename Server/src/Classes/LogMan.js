@@ -464,7 +464,9 @@ class LogMan extends EventEmitter {
 		consolePrefix = consolePrefix.replace("%time%", time)
 		consolePrefix = consolePrefix.replace("%logName%", this.#logName);
 
-		var message = ((sectionName!==undefined)? ("[" + sectionName + "]") : "") + "[" + level + "] " + msg; // Only display section name if defined
+		var message = ((sectionName!==undefined)? ("[" + sectionName + "]") : "") + "[" + level + "] " + msg;				// Only display section name if defined
+		var messageFile = "[" + level + "]" + ((sectionName!==undefined)? ("[" + sectionName + "] ") : " ") + msg; 	// Only display section name if defined
+		// File: [Debug][Section] msg... || console: [Section][Debug] msg ...
 
 		var consoleSufix = "";
 		if (this.consoleSufixes[l] !== undefined)
@@ -500,7 +502,7 @@ class LogMan extends EventEmitter {
 					fileSufix += this.fileSufixes[l].toString();
 				fileSufix += this.fileSufix.toString();
 				// the regex strips any ansi stuff
-				this.#logFile.write(filePrefix + message.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "") + fileSufix + this.fileLineTerminator);
+				this.#logFile.write(filePrefix + messageFile.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "") + fileSufix + this.fileLineTerminator);
 			}
 		}
 

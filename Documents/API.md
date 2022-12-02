@@ -61,6 +61,7 @@ Data is set at the body. We do not use "the packet" for this.
         `confMsg`: hash of the decrypted `chkMsg` concatenated with the `chkMsgHash`. Used to tell the client the server can decrypt and encrypt.
 
 3) Client connects to the socket `/api/v1/server/socket/{socketId}` and finalizes connection setup:\
+_client can also use HTTP POST to `localhost:25560/api/v1/server/socket/{{socketUUID}}/http` rather than a socket_
     Send (if already paired):\
         `command`: `/api/v1/server/newClientConnection`,\
         `pairId`: ensure the correct pair identifier was sent (likely redundant, pairIds used to derive salt/pepper)\

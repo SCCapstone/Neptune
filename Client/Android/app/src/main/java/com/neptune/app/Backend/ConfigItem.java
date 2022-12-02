@@ -27,8 +27,7 @@ public class ConfigItem {
     }
 
     public void saveConfig() {
-        throw new NotImplementedError();
-
+        //throw new NotImplementedError();
     }
 
     public Object getProperty(String key) {

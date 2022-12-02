@@ -30,29 +30,32 @@ class connectionDetails extends NeptuneWindow {
 			`
 		);
 
+        /** @type {import(./../Classes/Client.js)} **/
+		var client = global.client;
+
 		const clientSection = this.createLabel("clientLabel", "Connected Client");
 		clientSection.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter");
 
-		let name = "Device Name: " + connectWindow.data.clientName;
+		let name = "Device Name: " + client.friendlyName;
 		const nameLabel = this.createLabel("name", name);
 		nameLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter");
 
-		let ip = "Device IP: " + connectWindow.data.clientAddress
+		let ip = "Device IP: " + client.IPAddress
 		const ipLabel = this.createLabel("ipName", ip);
 		ipLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter");
 
-        let dateAdded = "Date Added: " + connectWindow.data.added;
+        let dateAdded = "Date Added: " + client.dateAdded;
         const dateLabel = this.createLabel("date", dateAdded);
         dateLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter");
 
-        let clientId = "Client Id: " + connectWindow.data.id;
+        let clientId = "Client Id: " + client.id;
         const idLabel = this.createLabel("clientId", clientId);
         idLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter");
 
-		const keyLabel = this.createLabel("keyLabel", "Key Negotiation: Auto [DHKE]");
+		const keyLabel = this.createLabel("keyLabel", "Key Negotiation: Auto [DH]");
 		keyLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter");
 
-		let actualKey = "Key: " + global.Neptune.secret;
+		let actualKey = "Key: " + client.getSecret();
 		const actualKeyaLabel = this.createLabel("actualKeyLabel", actualKey);
 		actualKeyaLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter");
 

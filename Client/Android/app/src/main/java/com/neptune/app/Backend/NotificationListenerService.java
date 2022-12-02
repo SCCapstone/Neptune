@@ -28,6 +28,8 @@ public class NotificationListenerService extends android.service.notification.No
     public void onCreate() {
         super.onCreate();
         context = getApplicationContext();
+
+        startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
        // notificationServiceReceiver = new NotificationServiceReceiver();
         //IntentFilter filter = new IntentFilter();
         //filter.addAction("com.neptune.app.Backend");

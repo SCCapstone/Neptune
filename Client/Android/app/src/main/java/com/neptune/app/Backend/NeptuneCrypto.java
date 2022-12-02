@@ -36,8 +36,9 @@ public class NeptuneCrypto {
         public static int[] chaCha20Poly1305 = {32, 12}; // 256 bit key, 96 bit nonce
         public static int[] chaCha20 = {32, 12}; // 256 bit key, 96 bit nonce
         public static int[] aes256 = {32, 16}; // 256 bit key, 128 bit iv
-        public static int[] aes192 = {24, 16};
-        public static int[] aes128 = {16, 16};
+        public static int[] aes256CBC = {32, 16}; // 256 bit key, 128 bit iv
+        public static int[] aes192 = {24, 12};
+        public static int[] aes128 = {16, 12};
 
         // Pass this to Cipher.getInstance to get the cipher instance
         public String cipherTransformation = "ChaCha20/None/NoPadding";
@@ -82,7 +83,7 @@ public class NeptuneCrypto {
             else if (cipher.equalsIgnoreCase("aes-256-cbc")) {
                 this.keyLengths = this.aes256;
                 this.family = "AES";
-                this.cipherTransformation = "AES_256/CBC/NoPadding";
+                this.cipherTransformation = "AES_256/CBC/PKCS5PADDING";
             }
             else if (cipher.equalsIgnoreCase("aes-128-gcm")) {
                 this.keyLengths = this.aes128;
@@ -92,7 +93,7 @@ public class NeptuneCrypto {
             else if (cipher.equalsIgnoreCase("aes-128-cbc")) {
                 this.keyLengths = this.aes128;
                 this.family = "AES";
-                this.cipherTransformation = "AES_128/CBC/NoPadding";
+                this.cipherTransformation = "AES_128/CBC/PKCS5PADDING";
             }
             else if (cipher.equalsIgnoreCase("aes128")) {
                 this.keyLengths = this.aes128;
@@ -268,7 +269,7 @@ public class NeptuneCrypto {
             byte[] cipherText = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
             // So Java, for whatever reason, actually helps us out here by slapping the authentication tag on
             // but... for ncrypt we do not actually want that! so we need to chop it up ..:
-            int tagSize = 128; // uhh, I pulled it from thin air
+            int tagSize = 128; // uhh, I pulled it from thin air .. 16 bytes
             byte[] authTag = new byte[0];
             byte[] encryptedData;
             if (useAAD) {
@@ -293,8 +294,10 @@ public class NeptuneCrypto {
 
             return output;
         } catch (InvalidKeyException e) { // Wrong key!
+            e.printStackTrace();
             throw new InvalidDecryptionKey();
         } catch (BadPaddingException | IllegalBlockSizeException | NoSuchPaddingException | NoSuchAlgorithmException e) {
+            e.printStackTrace();
             throw new UnsupportedCipher(options.cipher); // Bad cipher data. wait how'd you get here??? this shouldn't be possible
         }
     }
