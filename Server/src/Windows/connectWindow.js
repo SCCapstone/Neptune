@@ -13,6 +13,7 @@ const NeptuneWindow = require("./NeptuneWindow");
 const NodeGUI = require("@nodegui/nodegui");
 const ResourceManager = new (require("../ResourceManager"))();
 const Client = require("../Classes/Client.js");
+const IPAddress = require("../Classes/IPAddress");
 
 class connectWindow extends NeptuneWindow {
 
@@ -55,16 +56,26 @@ class connectWindow extends NeptuneWindow {
         connectButton.addEventListener('clicked', (checked) => {
             const ipAdress = connectInput.text();
             const name = nameInput.text();
+            const dateAdded = new Date();
             console.log(ipAdress);
             console.log(name);
             module.exports.data = {
                 clientAddress: ipAdress,
                 clientName: name,
-                added: new Date(),
+                added: dateAdded,
                 id: "001"
             };
-
+            const realIpAddress = new IPAddress(ipAdress, "25560");
+            const newClient = {
+                "IPAddress": realIpAddress,
+                "clientId": "001",
+                "friendlyName": name,
+                "dateAdded": dateAdded
+            }
+            console.log(newClient);
+            global.Neptune.client = new Client(newClient, false);
         });
+        
         closeButton.addEventListener('clicked', (checked) => this.hideWindow());
 
     }

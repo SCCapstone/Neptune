@@ -49,6 +49,16 @@ class connectionDetails extends NeptuneWindow {
         const idLabel = this.createLabel("clientId", clientId);
         idLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter");
 
+		const keyLabel = this.createLabel("keyLabel", "Key Negotiation: Auto [DHKE]");
+		keyLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter");
+
+		let actualKey = "Key: " + global.Neptune.secret;
+		const actualKeyaLabel = this.createLabel("actualKeyLabel", actualKey);
+		actualKeyaLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter");
+
+		const pingLabel = this.createLabel("pingLabel", "Latency: 000ms");
+		pingLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter");
+
 		const pingButton = this.createButton("pingButton", "Ping Device");
 		pingButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
 

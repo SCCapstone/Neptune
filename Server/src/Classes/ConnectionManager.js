@@ -20,7 +20,7 @@ const Client = require('./Client');
  * @typedef {import('./ConfigurationManager.js')} ConfigurationManager
  */
 
-//const ws = require('ws');
+const ws = require('ws');
 const EventEmitter = require('node:events');
 const NeptuneCrypto = require('../Support/NeptuneCrypto');
 

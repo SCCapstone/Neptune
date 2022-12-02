@@ -42,7 +42,6 @@ class mainWindow extends NeptuneWindow {
 		connectButton.addEventListener('clicked', () => {
 			global.Neptune.connected = true;
 			this.openConnect();
-			console.log(connected);
 		});
 
 		detailButton.addEventListener('clicked', () => this.openConnectionDetails(global.Neptune.connected));

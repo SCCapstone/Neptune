@@ -55,8 +55,8 @@ class IPAddress {
 	 * @return {boolean}
 	 */
 	isValidPort(port) {
-		if (typeof address !== "string")
-			throw new TypeError("address expected string got " + (typeof address).toString());
+		if (typeof port !== "string")
+			throw new TypeError("port expected string got " + (typeof port).toString());
 		return (port > 1000 && port < 65535);
 	}
 
