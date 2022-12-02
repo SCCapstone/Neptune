@@ -5,14 +5,21 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.DialogFragment;
 
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.TextView;
 import android.content.Intent;
 import android.view.View;
 
+import com.neptune.app.Backend.ConnectionManager;
+
 
 public class DeviceActivity extends AppCompatActivity {
+    public Button connect;
+    public Button temp;
+    public ConnectionManager cm;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,6 +42,22 @@ public class DeviceActivity extends AppCompatActivity {
         files.setOnClickListener(new View.OnClickListener(){
             public void onClick(View v) {
                 startActivity(new Intent(DeviceActivity.this, FileActivity.class));
+            }
+        });
+
+        connect = (Button) findViewById(R.id.connec);
+        connect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                cm.initiateConnection();
+            }
+        });
+
+        temp = (Button) findViewById(R.id.tba);
+        temp.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
             }
         });
     }
