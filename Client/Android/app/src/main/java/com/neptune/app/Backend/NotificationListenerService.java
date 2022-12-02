@@ -29,7 +29,10 @@ public class NotificationListenerService extends android.service.notification.No
         super.onCreate();
         context = getApplicationContext();
 
-        startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
+        Log.d("NotificationListener", "Created.");
+
+        // Call this activity to ask the user to allow access .. but not from here, do it from the main activity or setup
+        //startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
        // notificationServiceReceiver = new NotificationServiceReceiver();
         //IntentFilter filter = new IntentFilter();
         //filter.addAction("com.neptune.app.Backend");
@@ -78,13 +81,22 @@ public class NotificationListenerService extends android.service.notification.No
             ticker = notification.getNotification().tickerText.toString();
         }
 
+
         Bundle extras = notification.getNotification().extras;
+
+        Log.d("NotificationListener", "Notification from package: " + notification.getPackageName());
+        if (extras.getString("android.title") == null) { //Some notifications are not handled correctly, so we'll just skip em
+            return;
+        }
+
         String title = extras.getString("android.title");
-        String text = extras.getCharSequence("android.text").toString();
+        String text = "";
+        if (extras.getCharSequence("android.text") != null) {
+            text = extras.getCharSequence("android.text").toString();
+        }
         int id1 = extras.getInt(Notification.EXTRA_SMALL_ICON);
         Bitmap id = notification.getNotification().largeIcon;
 
-        Log.i("Package", pack);
         Log.i("Ticker", ticker);
         Log.i("Title", title);
         Log.i("Text", text);

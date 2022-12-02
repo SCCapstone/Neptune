@@ -37,11 +37,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name=".Backend.NotificationListenerService"
+        <service android:name="com.neptune.app.Backend.NotificationListenerService"
+            android:label="Neptune Notification Listener"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:exported="false">
             <intent-filter>
-                <action android:name="android.service.notification.NotifcationListenerService" />
+                <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
     </application>
