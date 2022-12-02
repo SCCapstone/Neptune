@@ -65,15 +65,15 @@ app.post('/respondTo/api/v1/server/newSocketConnection', (req, res) => {
     let chkMsgEncrypted = NeptuneCrypto.encrypt(chkMsg, conInitUUIDs[conInitUUID].secret); // generates a "ncrypt" string!
 
     res.status(200).send(JSON.stringify({
-        "b1": bob.getPublicKey().toString('base64'),
-        "newPair": true,
-        "chkMsg": chkMsgEncrypted,
-        "chkMsgHash": chkMsgHash,
-        "chkMsgHashFunction": "sha256",
+        "b1": bob.getPublicKey().toString('base64'), // Base64, our key
+        "newPair": true,                             // New pair
+        "chkMsg": chkMsgEncrypted,                   // chkMsgEncrypted (string)
+        "chkMsgHash": chkMsgHash,                    // chkMsgHsah (hex)
+        "chkMsgHashFunction": "sha256",              // Created via sha256
 
-        "clientId": NeptuneCrypto.encrypt("testClient", conInitUUIDs[conInitUUID].secret),
+        "clientId": NeptuneCrypto.encrypt("testClient", conInitUUIDs[conInitUUID].secret), // Our name (encrypted)
 
-        "anticipatedConfMsg": crypto.createHash("sha256").update(chkMsg + chkMsgHash).digest('hex'),
+        "anticipatedConfMsg": crypto.createHash("sha256").update(chkMsg + chkMsgHash).digest('hex'), // for testing
     }));
 });
 

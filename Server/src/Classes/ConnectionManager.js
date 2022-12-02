@@ -69,6 +69,9 @@ class ConnectionManager extends EventEmitter {
      */
     #log;
 
+    // temp, for sending response via HTTP
+    #sendRequestCallback
+
 
 
 	constructor(client, webSocket, sharedSecret, miscData) {
@@ -79,11 +82,14 @@ class ConnectionManager extends EventEmitter {
 		this.#log = Neptune.logMan.getLogger("ConManager-" + client.clientId);
 
 		this.#client = client;
-		this.#webSocket = webSocket;
 		this.#secret = sharedSecret;
 
 		this.#conInitUUID = miscData.conInitUUID;
+	}
 
+
+	setupWebsocket(webSocket) {
+		this.#webSocket = webSocket;
 		this.#setupWebsocketListeners();
 	}
 
@@ -99,12 +105,21 @@ class ConnectionManager extends EventEmitter {
 
 		let data = JSON.stringify(requestData);
 		let encryptedData = NeptuneCrypto.encrypt(data, this.#secret);
-		this.#webSocket.send(JSON.stringify({
+
+		let packet = JSON.stringify({
 			"conInitUUID": this.#conInitUUID,
 			"command": apiURL,
 			"data": encryptedData,
 			"dataDecrypted": data,
-		}));
+		});
+
+		this.#webSocket.send(packet);
+		if (this.#sendRequestCallback !== undefined) {
+			if (typeof this.#sendRequestCallback === "function") {
+				this.#sendRequestCallback(packet);
+				this.#sendRequestCallback = undefined;
+			}
+		}
 	}
 	
 
@@ -113,7 +128,7 @@ class ConnectionManager extends EventEmitter {
 	 * @return {boolean}
 	 */
 	initiateConnection() {
-
+		// good question
 	}
 	
 	/**
@@ -182,10 +197,20 @@ class ConnectionManager extends EventEmitter {
 	}
 
 
+	processHTTPRequest(packet, callback) {
+		packet = this.#unwrapPacket(packet);
+		this.#log.debug("HTTP request received.");
+		this.#log.silly(packet.data);
+		this.emit('command', packet.command, packet.data);
+
+		this.#sendRequestCallback = callback;
+	}
+
 	#setupWebsocketListeners() {
 		// WS: https://github.com/websockets/ws/blob/master/doc/ws.md#class-websocket
 		this.#webSocket.on('message', (packet, isBinary) => {
 			packet = this.#unwrapPacket(packet);
+			this.#log.debug("Web socket request received.");
 			this.#log.silly(packet.data);
 
 			this.emit('command', packet.command, packet.data);

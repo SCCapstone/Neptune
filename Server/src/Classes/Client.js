@@ -1,7 +1,7 @@
 const ConfigItem = require('./ConfigItem.js');
 const ConnectionManager = require('./ConnectionManager.js');
 const NotificationManager = require('./NotificationManager.js');
-const IPAddess = require('./IPAddress.js');
+const IPAddress = require('./IPAddress.js');
 const Notification = require('./Notification.js');
 
 
@@ -206,7 +206,7 @@ class Client {
 			throw new TypeError("data cannot be undefined.");
 
 		if (typeof obj.IPAddress === "string") {
-			obj.IPAddress = new IPAddess(obj.IPAddress);
+			obj.IPAddress = new IPAddress(obj.IPAddress);
 		} else if (!(obj.IPAddress instanceof IPAddress))
 			throw new TypeError("IPAddress expected instance of IPAddress, got " + (typeof obj.IPAddress).toString());
 
@@ -227,27 +227,25 @@ class Client {
 		// pairId and pairKey not needed?
 		if (setData) {
 			// This technically validates the data .. but eh
-			this.IPAddress = obj.IPAddress;
-			this.clientId = obj.clientId;
-			this.friendlyName = obj.friendlyName;
-			this.dateAdded = obj.dateAdded;
+			this.#IPAddress = obj.IPAddress;
+			this.#clientId = obj.clientId;
+			this.#friendlyName = obj.friendlyName;
+			this.#dateAdded = obj.dateAdded;
 			if (typeof obj.pairId === "string")
-				this.pairId = obj.pairId;
+				this.#pairId = obj.pairId;
 			if (typeof obj.pairKey === "string")
-				this.pairKey = obj.pairKey;
+				this.#pairKey = obj.pairKey;
 		}
-
 	}
 
 
 	/**
 	 * Called after a socket has been opened with this client
-	 * @param {ws} webSocket - Web socket client communicates over
 	 * @param {Buffer} secret - Shared secret key
 	 * @param {object} miscData - Misc data, such as the createdAt date
 	 */
-	setupConnectionManager(webSocket, secret, miscData) {
-		this.#connectionManager = new ConnectionManager(this, webSocket, secret, miscData);
+	setupConnectionManager(secret, miscData) {
+		this.#connectionManager = new ConnectionManager(this, secret, miscData);
 
 		this.#connectionManager.on('command', (command, data) => {
 			//this.#log.debug("Received command:" + command);
@@ -265,6 +263,17 @@ class Client {
 				}
 			}
 		});
+	}
+
+	setupConnectionManagerWebsocket(webSocket) {
+		this.#connectionManager.setWebsocket(websocket);
+	}
+
+	processHTTPRequest(data, callback) { // ehh
+		this.#connectionManager.processHTTPRequest(data, callback);
+	}
+	sendRequest(command, data) { // Refine later
+		this.#connectionManager.sendRequest(command, data);
 	}
 
 

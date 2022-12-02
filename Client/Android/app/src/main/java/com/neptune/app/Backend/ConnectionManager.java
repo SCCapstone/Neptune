@@ -1,14 +1,41 @@
 package com.neptune.app.Backend;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.math.BigInteger;
+import java.net.HttpURLConnection;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.SecureRandom;
 import java.util.Date;
 import java.util.concurrent.Callable;
+
+import javax.crypto.KeyAgreement;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.interfaces.DHPublicKey;
+import javax.crypto.spec.DHParameterSpec;
+import javax.crypto.spec.DHPublicKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 
 import at.favre.lib.crypto.HKDF;
 import kotlin.NotImplementedError;
@@ -16,39 +43,174 @@ import kotlin.NotImplementedError;
 public class ConnectionManager {
     protected boolean hasNegotiated;
     protected Date lastCommunicatedTime;
-    protected ServerSocket ServerScoket;
     protected java.net.Socket Socket;
     // protected AsyncHttpClient AsyncHttpClient; // Eh maybe not
 
     private IPAddress IPAddress;
     private ConfigItem Configuration;
 
-    private static final char[] HEX_ARRAY = "0123456789abcdef".toCharArray();
-    public static String bytesToHex(byte[] bytes) {
-        char[] hexChars = new char[bytes.length * 2];
-        for (int j = 0; j < bytes.length; j++) {
-            int v = bytes[j] & 0xFF;
-            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
-        }
-        return new String(hexChars);
+    /**
+     * This is the connection initiation Id, used to identify the connection
+     */
+    private String conInitUUID;
+    private String socketUUID; // socketId, used for POST requests and socket connection
+
+    private SecretKey sharedSecret;
+    private NeptuneCrypto.CipherData cipherData;
+
+    public ConnectionManager(IPAddress ipAddress, ConfigItem configItem) {
+        this.IPAddress = ipAddress;
+        this.Configuration = configItem;
     }
 
-
-    public IPAddress ConnectionManager(IPAddress ipAddress, ConfigItem configItem) {
+    // This sends a request ... somehow ... probably over socket do not use
+    public void sendRequest(JSONObject requestData) {
         throw new NotImplementedError();
     }
 
-    public void sendRequest(JSONObject requestData) {
+    // This sends a POST request
+    // apiURL is the 'api' or command you're calling, request data the ... data, and callback ... nothing for now
+    public JSONObject sendRequest(String apiURL, JSONObject requestData) throws JSONException { //, Callable<Void> callback) {
 
-    }
 
-    public void sendRequest(String apiURL, JSONObject requestData, Callable<Void> callback) {
-
+        return new JSONObject("{}");
     }
 
     public boolean initiateConnection() {
-        throw new NotImplementedError();
+        // Step 1: send
+        /*
+        {
+            "acceptedKeyGroups": [
+                14,
+                16,
+                17
+            ],
+            "acceptedHashTypes": [
+                "chacha20",
+                "aes-256-gcm",
+                "aes-192-gcm"
+            ],
+            "acceptedCrypto": [
+                "sha256",
+                "sha512"
+            ],
+            "useDynamicSalt": false
+        }
+         */
+
+        try {
+            URL url = new URL("http://" + this.IPAddress.toString() + "/api/v1/server/newSocketConnection");
+            Log.d("Connection-Manager", "Initiating connection: http://" + this.IPAddress.toString() + "/api/v1/server/newSocketConnection");
+            HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setDoOutput(true);
+
+            String connectionParameters = "{\"acceptedKeyGroups\": [14,16,17],\"acceptedHashTypes\": [\"aes-256-cbc\"],\"acceptedCrypto\": [\"sha256\"], \"useDynamicSalt\": false }";
+
+            try(OutputStream stream = connection.getOutputStream()) { // dump the string into output
+                byte[] input = connectionParameters.getBytes(StandardCharsets.UTF_8);
+                stream.write(input, 0, input.length);
+            }
+
+            StringBuilder response = new StringBuilder();
+            try(BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                String responseLine = null;
+                while ((responseLine = br.readLine()) != null) {
+                    response.append(responseLine.trim());
+                }
+            }
+
+            Log.d("Connection-Manager", "Received response: " + response.toString());
+
+            JSONObject serverResponse = new JSONObject(response.toString());
+
+            // We need g1, p1, a1, and conInitUUID (all in b64, except uuid)
+            BigInteger g1 = new BigInteger(NeptuneCrypto.convertBase64ToString(serverResponse.getString("g1")));
+            BigInteger p1 = new BigInteger(NeptuneCrypto.convertBase64ToString(serverResponse.getString("p1")));
+            BigInteger a1 = new BigInteger(NeptuneCrypto.convertBase64ToString(serverResponse.getString("a1")));
+            this.conInitUUID = serverResponse.getString("conInitUUID");
+
+            // generate response (input for step2)
+            DHParameterSpec dhParams = new DHParameterSpec(p1, g1);
+            KeyAgreement keyAgreement = KeyAgreement.getInstance("DH");
+
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH");
+            keyGen.initialize(dhParams, new SecureRandom());
+            KeyPair keyPair = keyGen.generateKeyPair();
+            keyAgreement.init(keyPair.getPrivate());
+            keyAgreement.doPhase((Key) a1, true);
+            this.cipherData = new NeptuneCrypto.CipherData("aes-256-cbc", "sha256");
+            AESKey sharedAESKey = NeptuneCrypto.HKDF(keyAgreement.generateSecret(), this.cipherData);
+            this.sharedSecret = sharedAESKey.getKey();
+
+            String chkMsg = NeptuneCrypto.convertStringToBase64(NeptuneCrypto.randomString(64)); // idk why b64
+
+            // hash
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] chkMsgEncodedHash = digest.digest(chkMsg.getBytes(StandardCharsets.UTF_8));
+            String chkMsgHash = NeptuneCrypto.convertBytesToHex(chkMsgEncodedHash);
+
+            // Encrypted
+            String chkMsgEncyrpted = NeptuneCrypto.encrypt(chkMsg, this.sharedSecret, null, this.cipherData);
+
+            // the response.. needs b1, newPair, chkMsg, chkMsgHash, chkMsgHashFunction
+            String step2 = "{\"b1\": " + keyPair.getPublic().getEncoded() + ",\"newPair\": true, \"chkMsg\": \"" + chkMsgEncyrpted + "\", \"chkMsgHash\": \"" + chkMsgHash + "\", \"chkMsgHashFunction\": \"sha256\", \"clientId\": \"testClient\"}";
+            Log.d("Connection-Manager", "Sending step2 data: " + step2);
+
+            // Send step2
+            URL url2 = new URL("http://" + this.IPAddress.toString() + "/api/v1/server/newSocketConnection/" + this.conInitUUID);
+            Log.d("Connection-Manager", "Initiating connection: http://" + this.IPAddress.toString() + "/api/v1/server/newSocketConnection/" + this.conInitUUID);
+            HttpURLConnection connection2 = (HttpURLConnection)url.openConnection();
+            connection2.setRequestMethod("POST");
+            connection2.setRequestProperty("Content-Type", "application/json");
+            connection2.setRequestProperty("Accept", "application/json");
+            connection2.setDoOutput(true);
+
+            try(OutputStream stream = connection2.getOutputStream()) { // dump the string into output
+                byte[] input = step2.getBytes(StandardCharsets.UTF_8);
+                stream.write(input, 0, input.length);
+            }
+
+            StringBuilder response2 = new StringBuilder();
+            try(BufferedReader br = new BufferedReader(new InputStreamReader(connection2.getInputStream(), StandardCharsets.UTF_8))) {
+                String responseLine = null;
+                while ((responseLine = br.readLine()) != null) {
+                    response2.append(responseLine.trim());
+                }
+            }
+
+            Log.d("Connection-Manager", "Received response: " + response2.toString());
+
+            JSONObject serverResponse2 = new JSONObject(response2.toString());
+
+
+            // connect to the socket
+            this.socketUUID = serverResponse2.getString("serverUUID");
+
+            // we good
+            return true;
+        } catch (IOException e) {
+            // damn
+            e.printStackTrace();
+        } catch (JSONException e) {
+            // damn, shouldn't happen tho
+            e.printStackTrace();
+        } catch (NumberFormatException e) {
+            // damn, shouldn't happen tho
+            e.printStackTrace();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (InvalidAlgorithmParameterException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        } catch (NoSuchPaddingException e) {
+            e.printStackTrace();
+        }
+
+        return false;
     }
 
     public float ping() {
@@ -78,10 +240,6 @@ public class ConnectionManager {
 
     public Socket getSocket() {
         return Socket;
-    }
-
-    public ServerSocket getServerSocket() {
-        return ServerScoket;
     }
 
     public Date getLastCommunicatedTime() {

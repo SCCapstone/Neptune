@@ -214,6 +214,10 @@ public class NeptuneCrypto {
         return HKDF(sharedSecret.toString().getBytes(StandardCharsets.UTF_8), salt.getBytes(StandardCharsets.UTF_8), options);
     }
 
+    public static AESKey HKDF(byte[] sharedSecret, CipherData cipherData) {
+        return HKDF(sharedSecret, "mySalt1234".getBytes(StandardCharsets.UTF_8), new HKDFOptions(cipherData));
+    }
+
     /**
      * Uses HKDF to derive a AES key and IV from a shared secret
      * @param sharedSecret your DH key
@@ -295,6 +299,11 @@ public class NeptuneCrypto {
         }
     }
 
+    public static String encrypt(String plainText, SecretKey key) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException {
+        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("chacha20", "sha256");
+        return encrypt(plainText, key, null, cipherData);
+    }
+
     public static String decrypt(String encryptedText, SecretKey key) throws NoSuchPaddingException, NoSuchAlgorithmException {
         int AESKeyLength; // ?
 
@@ -339,7 +348,7 @@ public class NeptuneCrypto {
 
             Cipher cipher = Cipher.getInstance(cipherData.cipherTransformation);
 
-            if (cipherData.family.equalsIgnoreCase("chacha20")) {
+            if (cipherData.family.equalsIgnoreCase("chacha20") || cipherData.family.equalsIgnoreCase("chacha20-poly1305")) {
                 //cipher.init(Cipher.ENCRYPT_MODE, encryptionKey.getKey(), new javax.crypto.spec.ChaCha20ParameterSpec(iv.getBytes(StandardCharsets.UTF_8), 1));
             } else if (!cipherData.family.equalsIgnoreCase("aes-256-cbc") && !cipherData.family.equalsIgnoreCase("aes-128-cbc")) {
                 cipher.init(Cipher.DECRYPT_MODE, encryptionKey.getKey(), new GCMParameterSpec(128, iv.getBytes(StandardCharsets.UTF_8)));

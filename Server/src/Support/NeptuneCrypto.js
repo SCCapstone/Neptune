@@ -150,6 +150,8 @@ NeptuneCrypto.HKDF = function(sharedSecret, salt, options) {
 	if (salt !== undefined) {
 		if (typeof salt !== "string")
 			throw new TypeError("salt expected string got " + (typeof salt).toString());
+	} else {
+		salt = "mySalt1234";
 	}
 	if (options == undefined)
 		options = {}

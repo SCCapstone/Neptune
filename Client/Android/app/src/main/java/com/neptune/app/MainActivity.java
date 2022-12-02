@@ -27,7 +27,7 @@ import com.neptune.app.Backend.Server;
 import com.neptune.app.Backend.ServerManager;
 
 public class MainActivity extends AppCompatActivity implements RenameDialog.RenameDialogListener{
-    public ServerManager serverManager;
+    public ServerManager serverManager = new ServerManager();
     public Server server;
     //public Config config
     private TextView devName;
@@ -108,6 +108,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         addNameLine(name.getText().toString());
+                        server = new Server();
                         server.setFriendlyName(name.getText().toString());
                         serverManager.addServer(server);
                         //Maybe set IP address here, this would need to be grabbed from the server when the connection is made so probably just calling something like

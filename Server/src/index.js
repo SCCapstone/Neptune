@@ -434,7 +434,8 @@ async function main() {
 	Neptune.webLog = Neptune.logMan.getLogger("Web");
 	
 	const app = Express();
-	//const WebSocketServer = require('ws').Server;
+	const WebSocketServer = require('ws').Server;
+	app.set('trust proxy', true);
 	// app.use(Express.urlencoded());
 	app.use(Express.json());
 	// app.use(session({
@@ -544,6 +545,8 @@ async function main() {
 		let aliceSecret = conInitUUIDs[conInitUUID].dhObject.computeSecret(Buffer.from(req.body.b1,'base64'));
 		conInitUUIDs[conInitUUID].secret = NeptuneCrypto.HKDF(aliceSecret.toString('utf8')).key;
 
+		
+
 		var chkMsg = req.body.chkMsg;
 		try {
 			if (NeptuneCrypto.isEncrypted(chkMsg))
@@ -574,25 +577,41 @@ async function main() {
 			conInitUUIDs[conInitUUID].clientId = NeptuneCrypto.decrypt(req.body.clientId, conInitUUIDs[conInitUUID].secret.toString('utf8'));
 			let client = Neptune.clientManager.getClient(conInitUUIDs[conInitUUID].clientId)
 
+			conInitUUIDs[conInitUUID].client = client; // this is temporary.. delete later
+
 			var ws = new WebSocketServer({server: httpServer, path: '/api/v1/server/socket/' + socketUUID});
 
 			ws.on("connection", function(ws){
 				Neptune.webLog.info("Client connected to socket " + socketUUID);
-				client.setupConnectionManager(ws, conInitUUIDs[conInitUUID].secret, {
-					conInitUUID: conInitUUID,
-					createdAt: conInitUUIDs[conInitUUID].createdAt,
-				});
+				client.setupConnectionManagerSocket(ws);
 			});
 
-			//app.ws('/api/v1/server/socket/' + socketUUID, (ws, req) => { // hmmm, this needs to removed in the future!
-				
-			//});
+			client.setupConnectionManager(ws, conInitUUIDs[conInitUUID].secret, {
+				conInitUUID: conInitUUID,
+				createdAt: conInitUUIDs[conInitUUID].createdAt,
+			});
+			
 			res.status(200).send(JSON.stringify({
 				confMsg: crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg + req.body.chkMsgHash).digest('hex'),
 				socketUUID: socketUUID,
 			}));
 		}
 	});
+
+
+	app.post('/api/v1/server/socket/:socketUUID/post', (res, req) => {
+		let sentResponse = false;
+
+		conInitUUIDs[conInitUUID].client.processHTTPRequest(req.body, (data) => {
+			if (!sentResponse)
+				res.status(200).send(data);
+		});
+
+		setTimeout(()=>{ // sends OK after 5 seconds (likely no response from server?)
+			sentResponse = true;			
+			res.status(200);
+		}, 5000);
+	})
 
 
 	// Listener

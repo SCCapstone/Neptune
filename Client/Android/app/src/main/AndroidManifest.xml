@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.neptune.app">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -24,7 +26,7 @@
         <activity
             android:name=".DeviceActivity"
             android:exported="false"
-            android:label = "Desktop-24Sf4"/>
+            android:label = "Server settings page"/>
         <activity
             android:name=".MainActivity"
             android:exported="true">

@@ -19,7 +19,7 @@ public class Server {
     private Date dateAdded;
     private String[] notifiableApps;
 
-    public Server server(IPAddress ipAddress, ConnectionManager connectionManager, ConfigItem configuartion, String serverId, String name,  String friendlyName, Date dateAdded, String[] notifiableApps) {
+    public Server(IPAddress ipAddress, ConnectionManager connectionManager, ConfigItem configuartion, String serverId, String name,  String friendlyName, Date dateAdded, String[] notifiableApps) {
         this.ipAddress = ipAddress;
         this.connectionManager = connectionManager;
         this.configuartion = configuartion;
@@ -28,13 +28,16 @@ public class Server {
         this.friendlyName = friendlyName;
         this.dateAdded = dateAdded;
         this.notifiableApps = notifiableApps;
-
-        return null;
     }
 
-    public Server server(JSONObject jsonObject) {
+    public Server() {
+    }
 
-        return null;
+    public Server(JSONObject jsonObject) {
+    }
+
+    public void setupConnectionManager() {
+        connectionManager = new ConnectionManager(this.ipAddress, this.configuartion);
     }
 
     public boolean sendNotification(Notification notification) {
@@ -105,13 +108,9 @@ public class Server {
     }
 
     public String setFriendlyName(String friendlyName) {
-        if (friendlyName != "string") {
-            throw new NotImplementedError("friendlyName expected string got " + (friendlyName));
-        }
-
         this.friendlyName = friendlyName;
         //this.configuartion.configEntries.friendlyName = friendlyName;
-        this.configuartion.saveConfig();
+        //this.configuartion.saveConfig();
 
         return friendlyName;
     }
