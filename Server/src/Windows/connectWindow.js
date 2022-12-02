@@ -1,7 +1,18 @@
+/**
+ *      _  _ 
+ *     | \| |
+ *     | .` |
+ *     |_|\_|eptune
+ *
+ *     Capstone Project 2022
+ * 
+ *     About Window
+ */
 
 const NeptuneWindow = require("./NeptuneWindow");
 const NodeGUI = require("@nodegui/nodegui");
 const ResourceManager = new (require("../ResourceManager"))();
+const Client = require("../Classes/Client.js");
 
 class connectWindow extends NeptuneWindow {
 
@@ -9,7 +20,7 @@ class connectWindow extends NeptuneWindow {
         super(arg);
 
         this.setWindowTitle('Connection Window');
-        this.resize(400, 200);
+        this.resize(800, 600);
         
         this.setStyleSheet( 
             `
@@ -20,59 +31,41 @@ class connectWindow extends NeptuneWindow {
 
         );
 
+        let tLabel = this.createLabel("title", "Connect Your Device Here");
+        tLabel.setInlineStyle("font-size: 24px; font-weight: light; qproperty-alignment: AlignCenter; margin: 10px;");
+
         let qLabel = this.createLabel("question", "Input Connection IP");
-        qLabel.setInlineStyle("font-size: 12px; font-weight: light; qproperty-alignment: AlignCenter;");
+        qLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter;");
 
         let connectInput = this.createInput("input");
-        connectInput.setInlineStyle("font-size: 12px; font-weight: light; qproperty-alignment: AlignCenter;");
+        connectInput.setInlineStyle("font-size: 18px; font-weight: light; min-width: 250px; max-width: 250px; qproperty-alignment: AlignCenter; padding: 3px; margin-left: 137px;");
+
+        let nameLabel = this.createLabel("nameQ", "Input Device Name");
+        nameLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter;");
+
+        let nameInput = this.createInput("name");
+        nameInput.setInlineStyle("font-size: 18px; font-weight: light; min-width: 250px; max-width: 250px; qproperty-alignment: AlignCenter; padding: 3px; margin-left: 137px;");
 
         let connectButton = this.createButton("connectButton", "Connect");
-        connectButton.setInlineStyle("font-size: 12px; font-weight: light; qproperty-alignment: AlignCenter;");
+        connectButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 100px; max-width: 100px; margin-left: 170px;");
 
         let closeButton = this.createButton("closeButton", "Close Connection Window");
-        closeButton.setInlineStyle("font-size: 12px; font-weight: light; qproperty-alignment: AlignCenter;");
+        closeButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
 
-        connectButton.addEventListener('clicked', (checked) => console.log("clicked"));
-        
+        connectButton.addEventListener('clicked', (checked) => {
+            const ipAdress = connectInput.text();
+            const name = nameInput.text();
+            console.log(ipAdress);
+            console.log(name);
+            module.exports.data = {
+                clientAddress: ipAdress,
+                clientName: name,
+                added: new Date(),
+                id: "001"
+            };
+
+        });
         closeButton.addEventListener('clicked', (checked) => this.hideWindow());
-
-        /*const rootStyleSheet = `
-            #rootView {
-                padding: 5px;
-            }
-            #fieldset {
-                padding: 10px;
-                border: 2px ridge #bdbdbd;
-                margin-bottom: 4px;
-            }
-            #inputRow, #connectButtonRow {
-                flex-direction: row;
-            }
-            #inputRow {
-                margin-bottom: 5px;
-            }
-            #ipInput {
-                width: 100px;
-                margin-left: 2px;
-            }
-            #connectButtonRow {
-                margin-bottom: 5px;
-            }
-            #connectButton {
-                width: 120px;
-            }
-            #hideButton {
-                width: 200px;
-            }
-        `;
-
-        rootView.setStyleSheet(rootStyleSheet);
-
-        this.setCentralWidget(rootView);
-        
-        this.show();*/
-
-
 
     }
 

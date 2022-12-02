@@ -11,6 +11,7 @@
 
 const NodeGUI = require("@nodegui/nodegui");
 
+const Client = require("../Classes/Client.js");
 
 /**
  * Base windows for all Neptune windows.
@@ -24,6 +25,7 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 	 */
 	#widgets = {}
 
+	#clients = [];
 
 	constructor(arg) {
 		super(arg);
@@ -38,8 +40,10 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 		this.#widgets["centralWidget"] = centralWidget;
 		this.setCentralWidget(this.#widgets["centralWidget"]);
 
+		this.#clients = [];
+
 		this.setWindowTitle('Neptune');
-		this.resize(400, 200);
+		this.resize(800, 600);
 	}
 
 
@@ -126,6 +130,9 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 		return this.#widgets[name];
 	}
 
+	addClient(client) {
+		
+	}
 }
 
 module.exports = NeptuneWindow;

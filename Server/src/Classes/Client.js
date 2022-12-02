@@ -11,7 +11,7 @@ const ConfigurationManager = global.Neptune.configurationManager;
 const NeptuneConfig = global.Neptune.config;
 
 
-const ws = require('ws');
+//const ws = require('ws');
 
 
 /**
