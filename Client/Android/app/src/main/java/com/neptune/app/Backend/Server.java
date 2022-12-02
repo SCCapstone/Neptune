@@ -19,15 +19,15 @@ public class Server {
     private Date dateAdded;
     private String[] notifiableApps;
 
-    public Server server() {
-        this.ipAddress = this.ipAddress;
-        this.connectionManager = this.connectionManager;
-        this.configuartion = this.configuartion;
-        this.serverId = this.serverId;
-        this.name = this.name;
-        this.friendlyName = this.friendlyName;
-        this.dateAdded = this.dateAdded;
-        this.notifiableApps = this.notifiableApps;
+    public Server server(IPAddress ipAddress, ConnectionManager connectionManager, ConfigItem configuartion, String serverId, String name,  String friendlyName, Date dateAdded, String[] notifiableApps) {
+        this.ipAddress = ipAddress;
+        this.connectionManager = connectionManager;
+        this.configuartion = configuartion;
+        this.serverId = serverId;
+        this.name = name;
+        this.friendlyName = friendlyName;
+        this.dateAdded = dateAdded;
+        this.notifiableApps = notifiableApps;
 
         return null;
     }

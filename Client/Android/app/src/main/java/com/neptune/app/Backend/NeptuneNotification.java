@@ -8,9 +8,9 @@ public class NeptuneNotification extends NotificationListenerService {
     private Notification statusBarNotification;
     private Map<String, Boolean> pushedServers;
 
-    public Notification statusBarNotification() {
-        this.statusBarNotification = this.statusBarNotification;
-        this.pushedServers = this.pushedServers;
+    public Notification statusBarNotification(Notification statusBarNotification, Map<String, Boolean> pushedServers) {
+        this.statusBarNotification = statusBarNotification;
+        this.pushedServers = pushedServers;
 
         return null;
     }

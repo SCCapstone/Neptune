@@ -9,9 +9,9 @@ public class NotificationManager {
     private Map<String, Notification> notifications;
     private ServerManager serverManager;
 
-    public NotificationManager notificationManager() {
-        this.serverManager = this.serverManager;
-        this.notifications = this.notifications;
+    public NotificationManager notificationManager(Map<String, Notification> notifications, ServerManager serverManager) {
+        this.serverManager = serverManager;
+        this.notifications = notifications;
         return null;
     }
 
