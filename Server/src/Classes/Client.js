@@ -6,12 +6,12 @@ const Notification = require('./Notification.js');
 
 
 /** @type {import('./ConfigurationManager.js')} */
-const ConfigurationManager = global.Neptune.configurationManager;
+const ConfigurationManager = global.Neptune.configManager;
 /** @type {import('./NeptuneConfig.js')} */
 const NeptuneConfig = global.Neptune.config;
 
 
-//const ws = require('ws');
+const ws = require('ws');
 
 
 /**
@@ -59,7 +59,7 @@ class Client {
 	/**@param {(string|IPAddress)} ip
 	 */
 	set IPAddress(ip) {
-		if (ip instanceof IPAddess) {
+		if (ip instanceof IPAddress) {
 			this.#IPAddress = ip;
 			this.#config.entries.IPAddress = this.#IPAddress;
 			this.#config.save();
@@ -175,7 +175,7 @@ class Client {
 		if (loadConfig) {
 			if (typeof data !== "string")
 				throw new TypeError("data expected string got " + (typeof data).toString());
-			data = new global.Neptune.configManager.loadConfig(NeptuneConfig.clientDirectory + data);
+			data = new global.Neptune.configManager.loadConfig(global.Neptune.config.clientDirectory + data);
 		}
 		if (data instanceof ConfigItem) {
 			if (this.#isValidConfigData(data.entries))
@@ -186,11 +186,11 @@ class Client {
 			let data = JSON.parse(data);
 			this.#isValidConfigData(data, true);
 			// Load config
-			this.#config = ConfigurationManager.loadConfig(NeptuneConfig.clientDirectory + this.#clientId);
+			this.#config = global.Neptune.configManager.loadConfig(global.Neptune.config.clientDirectory + this.#clientId);
 		} else if (typeof data === "object") {
 			this.#isValidConfigData(data, true);
 			// Load config
-			this.#config = ConfigurationManager.loadConfig(NeptuneConfig.clientDirectory + this.#clientId);
+			this.#config = global.Neptune.configManager.loadConfig(global.Neptune.config.clientDirectory + this.#clientId);
 		}
 
 		this.#notificationManager = new NotificationManager(this);

@@ -71,7 +71,7 @@ class NeptuneConfig extends ConfigItem {
 	 * This is added onto the configuration directory (which is set in index.js to be ./data/ - so this would be ./data/clients/)
 	 * @type {string}
 	 */
-	clientDirectory = "clients/";
+	clientDirectory = "./data/clients/";
 
 
 	/**
@@ -93,7 +93,7 @@ class NeptuneConfig extends ConfigItem {
 		super(configManager, filePath);
 	
 		// load
-		this.loadSync();
+		this.load();
 	}
 
 	/**
