@@ -9,12 +9,16 @@ import androidx.annotation.NonNull;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.math.BigInteger;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
@@ -46,10 +50,9 @@ import at.favre.lib.crypto.HKDF;
 import kotlin.NotImplementedError;
 
 public class ConnectionManager {
-    protected boolean hasNegotiated;
-    protected Date lastCommunicatedTime;
-    protected java.net.Socket Socket;
-    // protected AsyncHttpClient AsyncHttpClient; // Eh maybe not
+    private boolean hasNegotiated;
+    private Date lastCommunicatedTime;
+    // protected AsyncHttpClient AsyncHttpClient; // Eh maybe not .. but probably
 
     private IPAddress IPAddress;
     private ConfigItem Configuration;
@@ -76,10 +79,79 @@ public class ConnectionManager {
 
     // This sends a POST request
     // apiURL is the 'api' or command you're calling, request data the ... data, and callback ... nothing for now
-    public JSONObject sendRequest(String apiURL, JSONObject requestData) throws JSONException { //, Callable<Void> callback) {
+    public JSONObject sendRequest(String apiURL, JSONObject requestData) throws JSONException, MalformedURLException { //, Callable<Void> callback) {
+        String response = "{}";
+
+        /*
+            {
+                connectionId: "conInitUUID",
+                command: "/api/v1/server/....",
+                data: "{}"
+            }
+
+        example:
+            {
+                "conInitUUID": "{{conInitUUID}}",
+                "command":"/api/v1/echo",
+                "data":"{\"sampleKey\":\"sampleValue\",\"message\":\"Hey!\",\"boolean\":true}"
+            }
+         */
+
+        String packet = "{ \"conInitUUID\": \"" + this.conInitUUID + "\", \"command\": \"" + apiURL + "\" }"; // \"data\": \"" + requestData.toString().replaceAll("\"", "\\\\\"") + "\" }";
+        JSONObject obj = new JSONObject(packet);
+        obj.put("data", requestData.toString());
+
+        response = sendHTTPPostRequest(new URL("http://" + this.IPAddress.toString() + "/api/v1/server/socket/" + this.socketUUID + "/http"), obj.toString());
+
+        return new JSONObject(response);
+    }
+
+    public String sendHTTPPostRequest(URL url, String data) {
+        Log.d("Connection-Manager", "Sending request to: " + url);
+        try {
+            HttpURLConnection connectionA = null;
+            connectionA = (HttpURLConnection)url.openConnection();
+            connectionA.setRequestMethod("POST");
+            connectionA.setRequestProperty("Content-Type", "application/json");
+            connectionA.setRequestProperty("Accept", "application/json");
+            connectionA.setDoOutput(true);
+            //connection.setConnectTimeout(10000);
+            //connection.setReadTimeout(12500);
+
+            // Write the data
+            Log.d("Connection-Manager", "Data to be sent: " + data);
+            //try(OutputStream stream = connectionA.getOutputStream()) {
+            //    byte[] input = data.getBytes(StandardCharsets.UTF_8);
+            //    stream.write(input, 0, input.length);
+            //}
+
+            OutputStream out = new BufferedOutputStream(connectionA.getOutputStream());
+            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out, "UTF-8"));
+            writer.write(data);
+            writer.flush();
+            writer.close();
+            out.close();
 
 
-        return new JSONObject("{}");
+            int responseCode = connectionA.getResponseCode();
+
+            StringBuilder response = new StringBuilder();
+            try(BufferedReader br = new BufferedReader(new InputStreamReader(connectionA.getInputStream(), StandardCharsets.UTF_8))) {
+                String responseLine = null;
+                while ((responseLine = br.readLine()) != null) {
+                    response.append(responseLine.trim());
+                }
+            }
+            connectionA.disconnect();
+
+            Log.d("Connection-Manager", "Got code: " + responseCode + "\nReceived response: " + response.toString());
+            this.lastCommunicatedTime = new Date();
+            return response.toString();
+        } catch (IOException e) {
+            Log.d("Connection-Manager", "Server does not exist, or we cannot not connect");
+            e.printStackTrace();
+        }
+        return "{}";
     }
 
     public boolean initiateConnection() {
@@ -207,6 +279,10 @@ public class ConnectionManager {
                 // validate confMsg
                 this.socketUUID = serverResponse2.getString("socketUUID");
 
+                this.hasNegotiated = true;
+
+                // at some point
+
                 Log.d("Connection-Manager", "SocketUUID: " + this.socketUUID);
 
                 // we good
@@ -261,12 +337,12 @@ public class ConnectionManager {
         return IPAddress;
     }
 
-    public Socket getSocket() {
-        return Socket;
-    }
-
     public Date getLastCommunicatedTime() {
         return lastCommunicatedTime;
+    }
+
+    public boolean getHasNegotiated() {
+        return this.hasNegotiated;
     }
 
 }

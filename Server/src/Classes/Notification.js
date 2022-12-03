@@ -136,7 +136,7 @@ class Notification extends EventEmitter {
         // send the notification
         this.#notifierNotification = Notifier.notify({
             title: data.title,
-            message: data.contents.subtext + "\n" + data.contents.text,
+            message: data.contents.text, // data.contents.subtext + "\n" +
             id: data.notificationId,
         }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
             if (err) {

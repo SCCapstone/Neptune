@@ -13,6 +13,8 @@ import android.util.Log;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.neptune.app.MainActivity;
+
 import java.io.ByteArrayOutputStream;
 
 public class NotificationListenerService extends android.service.notification.NotificationListenerService {
@@ -73,6 +75,9 @@ public class NotificationListenerService extends android.service.notification.No
         i.putExtra("notification_event", "onNotificationPosted :" + notification.getPackageName() + "\n");
         sendBroadcast(i); */
 
+        // Note, only do global filtering here. Things like THIS app get filtered..
+        // The Server class will filter out whatever it doesn't want
+
         //Different Approach to see if this would be better/works (May need help with figuring this out)
         String pack = notification.getPackageName();
         String ticker = "";
@@ -111,6 +116,14 @@ public class NotificationListenerService extends android.service.notification.No
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
             byte[] byteArray = stream.toByteArray();
             message.putExtra("icon", byteArray);
+        }
+
+        NeptuneNotification notify = null;
+        try {
+            notify = new NeptuneNotification(notification, getApplicationContext());
+            MainActivity.serverManager.processNotification(notify);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
         LocalBroadcastManager.getInstance(context).sendBroadcast(message);

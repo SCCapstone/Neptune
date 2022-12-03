@@ -24,7 +24,7 @@ const debug = process.env;
 const displaySilly = false; // output the silly log level to console (it goes  every other level > silly, silly is the lowest priority, literal spam)
 Error.stackTraceLimit = (debug)? 8 : 4;
 
-Neptune.version = new Version(0, 0, 1, ((debug)?"debug":"release"), "notifier");
+Neptune.version = new Version(0, 0, 1, ((debug)?"debug":"release"), "PoC");
 
 global.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune. Allows us to get around providing `Neptune` to everything
 
@@ -598,7 +598,6 @@ async function main() {
 			
 			if (req.socket.remoteAddress !== "::1") {
 				client.IPAddress = new IPAddress(req.socket.remoteAddress, "25560");
-				console.log(client.IPAddress);
 			}
 
 

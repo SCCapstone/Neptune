@@ -28,7 +28,7 @@ import com.neptune.app.Backend.Server;
 import com.neptune.app.Backend.ServerManager;
 
 public class MainActivity extends AppCompatActivity implements RenameDialog.RenameDialogListener{
-    public ServerManager serverManager = new ServerManager();
+    public static ServerManager serverManager = new ServerManager();
     public Server server;
     //public Config config
     private TextView devName;

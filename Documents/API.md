@@ -9,15 +9,15 @@
 "Packet" set between `Server<->client`
 ```json
 {
-    "connectionId": "{currentConnectionId}",
+    "conInitUUID": "{currentConnectionId}",
     "command": "{command being called (URL)}",
     "data": "{data being sent}",
 }
 ```
 This data is a layer on the _actual_ data the client is sending. The `data` portion is encrypted using the shared AES key and contains the command, clientId, and command parameters.
 The server or client would receive this "packet" of data and peel it (decrypt the `data` portion) to read the request/response of the other application. This is to provide always applied encryption to requests and responses.\
-Before we have a connectionId, we add `"negotiating": true` to signify we're setting that up.\
-If the server receives a packet without a connectionId, only the `newSocketConnection` command will be accepted. 
+Before we have a conInitUUID, we add `"negotiating": true` to signify we're setting that up.\
+If the server receives a packet without a conInitUUID, only the `newSocketConnection` command will be accepted. 
 
 
 ## Key negotiation, pairing

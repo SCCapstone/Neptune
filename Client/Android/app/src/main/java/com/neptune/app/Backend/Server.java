@@ -4,8 +4,10 @@ package com.neptune.app.Backend;
 import android.app.Notification;
 import android.util.Log;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.net.MalformedURLException;
 import java.util.Date;
 
 import kotlin.NotImplementedError;
@@ -44,9 +46,16 @@ public class Server {
         connectionManager.initiateConnection();
     }
 
-    public boolean sendNotification(Notification notification) {
-
-        return false;
+    public void sendNotification(NeptuneNotification notification) {
+        try {
+            if (connectionManager.getHasNegotiated()) {
+                connectionManager.sendRequest("/api/v1/server/sendNotification", new JSONObject(notification.toString()));
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
     }
 
     public boolean sendClipboard(Object object ) {
