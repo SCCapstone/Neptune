@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     private Button add;
     private AlertDialog addDialog;
     private LinearLayout addLine;
-    private Button notifListTest;
+    //private Button notifListTest;
     private ImageView delete;
 
     @Override
@@ -44,26 +44,26 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        devName = (TextView) findViewById(R.id.name);
-        editName = (ImageView) findViewById(R.id.editDevName);
+        //devName = (TextView) findViewById(R.id.name);
+        //editName = (ImageView) findViewById(R.id.editDevName);
         add = (Button) findViewById(R.id.addDev);
         addLine = findViewById(R.id.container);
-        notifListTest = findViewById(R.id.notifTest);
+        //notifListTest = findViewById(R.id.notifTest);
         buildAddDialog();
 
-        devName.setOnClickListener(new TextView.OnClickListener(){
+        /*devName.setOnClickListener(new TextView.OnClickListener(){
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(MainActivity.this, DeviceActivity.class));
             }
-        });
+        });*/
 
-        editName.setOnClickListener(new ImageView.OnClickListener(){
+        /*editName.setOnClickListener(new ImageView.OnClickListener(){
             @Override
             public void onClick(View v) {
                 openDialog();
             }
-        });
+        });*/
 
         add.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -73,7 +73,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         });
 
         //Part of the Notification Button
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        /*if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel("My notification", "My notification", NotificationManager.IMPORTANCE_DEFAULT);
             NotificationManager manager = getSystemService(NotificationManager.class);
             manager.createNotificationChannel(channel);
@@ -94,7 +94,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
                 notificationManagerCompat.notify(1,buidler.build());
 
             }
-        });
+        });*/
     }
 
     private void buildAddDialog() {
@@ -156,9 +156,13 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         delete.setOnClickListener(new ImageView.OnClickListener() {
             @Override
             public void onClick(View v) {
-                server = serverManager.getServer(devName.getText().toString());
-                serverManager.removeServer(server);
-                server.unpair();
+                /*try{
+                    server = serverManager.getServer(devName.getText().toString());
+                    serverManager.removeServer(server);
+                } catch (Exception e) {
+
+                }
+                server.unpair();*/
                 addLine.removeView(view);
             }
         });

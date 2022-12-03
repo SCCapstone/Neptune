@@ -16,8 +16,8 @@ import com.neptune.app.Backend.ConnectionManager;
 
 
 public class DeviceActivity extends AppCompatActivity {
-    public Button connect;
-    public Button temp;
+    //public Button connect;
+    //public Button temp;
     public ConnectionManager cm;
 
 
@@ -45,7 +45,7 @@ public class DeviceActivity extends AppCompatActivity {
             }
         });
 
-        connect = (Button) findViewById(R.id.connec);
+        /*connect = (Button) findViewById(R.id.connec);
         connect.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -59,7 +59,7 @@ public class DeviceActivity extends AppCompatActivity {
             public void onClick(View view) {
 
             }
-        });
+        });*/
     }
 
     @Override
