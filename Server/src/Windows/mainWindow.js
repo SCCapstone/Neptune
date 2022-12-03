@@ -14,7 +14,7 @@ const { connect }= require("http2");
 const ResourceManager = new (require("../ResourceManager"))();
 const NeptuneWindow = require("./NeptuneWindow");
 
-
+const Notifier = require("node-notifier"); // does not work with windows action center!
 
 class mainWindow extends NeptuneWindow {
 
@@ -36,6 +36,24 @@ class mainWindow extends NeptuneWindow {
 
 		const detailButton = this.createButton("toDetail", "Connection Details");
 		detailButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
+
+		const notificationButton = this.createButton("toDetail", "Test notifications");
+		notificationButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
+		notificationButton.addEventListener('clicked', () => {
+			Notifier.notify({
+	            title: "Testing notifications on server",
+	            message: "This is just a test.", // data.contents.subtext + "\n" +
+	            id: 12345,
+	        }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
+	            if (err) {
+	                logger.error(err);
+	            } else {
+	                logger.debug("Action received: " + response);
+	                logger.silly("action metadata: ");
+	                logger.silly(metadata);
+	            }
+	        });
+		});
 
 		aboutButton.addEventListener('clicked', () => this.openAbout());
 
