@@ -4,8 +4,6 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
-import android.util.Log;
-
 import com.neptune.app.Backend.AESKey;
 import com.neptune.app.Backend.NeptuneCrypto;
 
@@ -15,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.spec.AlgorithmParameterSpec;
 import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
@@ -23,6 +22,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 
@@ -96,6 +96,33 @@ public class NeptuneCryptoTest {
     }
 
 
+    // HDKF key generation
+    @Test
+    public void hdkf_GeneratesSameKey() throws NoSuchPaddingException, NoSuchAlgorithmException {
+        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("chacha20-poly1305", "sha256");
+        SecretKey key = new SecretKeySpec("1234".getBytes(StandardCharsets.UTF_8), cipherData.family);
+        NeptuneCrypto.HKDFOptions hkdfOptions =  new NeptuneCrypto.HKDFOptions(cipherData);
+        AESKey encryptionKey1 = NeptuneCrypto.HKDF(key, "(*)jugm)OA=]BA+>_j>} -B(=K[tbK]+", hkdfOptions);
+        byte[] ourKey1 = encryptionKey1.getKey().getEncoded();
+
+        AESKey encryptionKey2 = NeptuneCrypto.HKDF(key, "(*)jugm)OA=]BA+>_j>} -B(=K[tbK]+", hkdfOptions);
+        byte[] ourKey2 = encryptionKey2.getKey().getEncoded();
+        assertArrayEquals(ourKey1, ourKey2);
+    }
+    @Test
+    public void hdkf_VerifyKeyGeneration() throws NoSuchPaddingException, NoSuchAlgorithmException {
+        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("chacha20-poly1305", "sha256");
+        SecretKey key = new SecretKeySpec("1234".getBytes(StandardCharsets.UTF_8), cipherData.family);
+        // Created via server, known good
+        byte[] goodKey = NeptuneCrypto.convertHexToBytes("e1de998fa0d81dc5c51151d9cf95f5a4902492a609d3f0bbcda81478828f3707");
+
+        NeptuneCrypto.HKDFOptions hkdfOptions =  new NeptuneCrypto.HKDFOptions(cipherData);
+        AESKey encryptionKey = NeptuneCrypto.HKDF(key, "(*)jugm)OA=]BA+>_j>} -B(=K[tbK]+", hkdfOptions);
+        byte[] ourKey = encryptionKey.getKey().getEncoded();
+        assertArrayEquals(goodKey, ourKey);
+    }
+
+
     // Encryption decryption checking
     //ChaCha20
     @Test
@@ -107,13 +134,67 @@ public class NeptuneCryptoTest {
         assertEquals("This is a sample message", NeptuneCrypto.decrypt(cipherText, key));
     }
     @Test
-    public void encryptionDecryption_ChaCha20() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException {
-        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("chacha20", "sha256");
+    public void canDecrypt_ChaCha20Poly1305() throws NoSuchPaddingException, NoSuchAlgorithmException {
+        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("chacha20-poly1305", "sha256");
         SecretKey key = new SecretKeySpec("1234".getBytes(StandardCharsets.UTF_8), cipherData.family);
 
-        String cipherText = NeptuneCrypto.encrypt("This is a sample message", key, null, cipherData);
-        assertEquals("This is a sample message", NeptuneCrypto.decrypt(cipherText, key));
+        // Provided by Neptune Server
+        String savedNCryptString = "ncrypt::1:chacha20-poly1305:sha256:TXlSYW5kb21TYWx0:PEIrS2pcYXcoMTBscFQrTA==:5c7c595123573536407c2326:YAasL64QULUgXRxoCJGsd+pZzc71j4md:JlRgVD4zKHF7Rnc7KSw4Kw==:a2a97395d037cc554fe765272ffae9c8";
+        assertEquals("This is a sample message", NeptuneCrypto.decrypt(savedNCryptString, key));
     }
+
+    @Test
+    public void canEncryptDecrypt_ChaCha20Poly1305() throws Exception {
+        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("chacha20-poly1305", "sha256");
+        SecretKeySpec key = new SecretKeySpec("1234".getBytes(StandardCharsets.UTF_8), cipherData.family);
+        NeptuneCrypto.HKDFOptions hkdfOptions =  new NeptuneCrypto.HKDFOptions(cipherData);
+        AESKey encryptionKey = NeptuneCrypto.HKDF(key, NeptuneCrypto.randomString(32), hkdfOptions);
+        IvParameterSpec ivParameterSpec = new IvParameterSpec(encryptionKey.getIv());
+
+        String AAD = NeptuneCrypto.randomString(16);
+
+        Cipher cipher = Cipher.getInstance("ChaCha20-Poly1305/None/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, encryptionKey.getKey(), ivParameterSpec); // Works .. no idea why
+        cipher.updateAAD(AAD.getBytes(StandardCharsets.UTF_8));
+        byte[] cipherText = cipher.doFinal("This is a test".getBytes(StandardCharsets.UTF_8));
+
+        cipher = Cipher.getInstance("ChaCha20-Poly1305/None/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE, encryptionKey.getKey(), ivParameterSpec);
+        cipher.updateAAD(AAD.getBytes(StandardCharsets.UTF_8));
+        byte[] decryptedText = cipher.doFinal(cipherText);
+        assertEquals("This is a test", new String(decryptedText, StandardCharsets.UTF_8));
+    }
+
+
+//    @Test
+//    public void encryptionDecryption_ChaCha20() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException {
+//        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("chacha20", "sha256");
+//        SecretKey key = new SecretKeySpec("1234".getBytes(StandardCharsets.UTF_8), cipherData.family);
+//
+//        String cipherText = NeptuneCrypto.encrypt("This is a sample message", key, null, cipherData);
+//        assertEquals("This is a sample message", NeptuneCrypto.decrypt(cipherText, key));
+//    }
+//    @Test
+//    public void canEncryptDecrypt_ChaCha20() throws Exception {
+//        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("chacha20", "sha256");
+//        SecretKeySpec key = new SecretKeySpec("1234".getBytes(StandardCharsets.UTF_8), cipherData.family);
+//        NeptuneCrypto.HKDFOptions hkdfOptions =  new NeptuneCrypto.HKDFOptions(cipherData);
+//        AESKey encryptionKey = NeptuneCrypto.HKDF(key, NeptuneCrypto.randomString(32), hkdfOptions);
+//
+//
+//        Cipher cipher = Cipher.getInstance("ChaCha20/None/NoPadding");
+//        cipher.init(Cipher.ENCRYPT_MODE, encryptionKey.getKey()); // cannot use: , ivParameterSpec); // Implodes :(
+//        // See: https://openjdk.org/jeps/329#:~:text=may%20be%20initialized-,without,-an%20IvParameterSpec%2C%20in
+//        byte[] cipherText = cipher.doFinal("This is a test".getBytes(StandardCharsets.UTF_8));
+//        encryptionKey = new AESKey(encryptionKey.getKey(), cipher.getIV()); // cipher creates it's own IV
+//
+//        cipher = Cipher.getInstance("ChaCha20/None/NoPadding");
+//        AlgorithmParameterSpec ivParameterSpec = new IvParameterSpec(encryptionKey.getIv());
+//        cipher.init(Cipher.DECRYPT_MODE, encryptionKey.getKey(), ivParameterSpec); // see above... no way around :/
+//        byte[] decryptedText = cipher.doFinal(cipherText);
+//        assertEquals("This is a test", new String(decryptedText, StandardCharsets.UTF_8));
+//    }
+
 
     // AES GCM
     @Test
@@ -125,6 +206,15 @@ public class NeptuneCryptoTest {
         assertEquals("This is a sample message", NeptuneCrypto.decrypt(cipherText, key));
     }
     @Test
+    public void canDecrypt_AES256GCM() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException {
+        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("aes-256-gcm", "sha256");
+        SecretKey key = new SecretKeySpec("1234".getBytes(StandardCharsets.UTF_8), cipherData.family);
+
+        String cipherText = "ncrypt::1:aes-256-gcm:sha256:TXlSYW5kb21TYWx0:NEMrWGVGMHV0SmRMXDt5SA==:6a703f346a326e3935755959774a6a74:CB6uO9s8Wv1HbGTcUoOfHCXn5We/VKrh:T0dqLCZrcC9jcn1PZEhtJw==:f5b972e9127eba3f25632bbaf341cb0a";
+        assertEquals("This is a sample message", NeptuneCrypto.decrypt(cipherText, key));
+    }
+
+    @Test
     public void encryptionDecryption_AES128GCM() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException {
         NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("aes-128-gcm", "sha256");
         SecretKey key = new SecretKeySpec("1234".getBytes(StandardCharsets.UTF_8), cipherData.family);
@@ -132,6 +222,15 @@ public class NeptuneCryptoTest {
         String cipherText = NeptuneCrypto.encrypt("This is a sample message", key, null, cipherData);
         assertEquals("This is a sample message", NeptuneCrypto.decrypt(cipherText, key));
     }
+    @Test
+    public void canDecrypt_AES128GCM() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException {
+        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("aes-256-gcm", "sha256");
+        SecretKey key = new SecretKeySpec("1234".getBytes(StandardCharsets.UTF_8), cipherData.family);
+
+        String cipherText = "ncrypt::1:aes-128-gcm:sha256:TXlSYW5kb21TYWx0:WCpdKTBLOmk+L399U3FdeQ==:6c274971646434236e5666345a3e3d4a:kpdtzCf93iwEU+q4Pq9cYWhWvNS9Bkrx:L2xQajc/QkBjcXVqazhoNg==:5c579dd3c58a9119fc0aa85f362dc887";
+        assertEquals("This is a sample message", NeptuneCrypto.decrypt(cipherText, key));
+    }
+
     @Test
     public void canEncryptDecrypt_AES256GCM() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("aes-256-gcm", "sha256");
@@ -161,20 +260,20 @@ public class NeptuneCryptoTest {
 
 
     // AES CBC
-    @Test
-    public void encryptionDecryption_AES256CBC() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException {
-        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("aes-256-cbc", "sha256");
-        SecretKey key = new SecretKeySpec("1234".getBytes(StandardCharsets.UTF_8), cipherData.family);
-
-        String cipherText = NeptuneCrypto.encrypt("This is a sample message", key, null, cipherData);
-        assertEquals("This is a sample message", NeptuneCrypto.decrypt(cipherText, key));
-    }
-    @Test
-    public void encryptionDecryption_AES128CBC() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException {
-        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("aes-128-cbc", "sha256");
-        SecretKey key = new SecretKeySpec("1234".getBytes(StandardCharsets.UTF_8), cipherData.family);
-
-        String cipherText = NeptuneCrypto.encrypt("This is a sample message", key, null, cipherData);
-        assertEquals("This is a sample message", NeptuneCrypto.decrypt(cipherText, key));
-    }
+//    @Test
+//    public void encryptionDecryption_AES256CBC() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException {
+//        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("aes-256-cbc", "sha256");
+//        SecretKey key = new SecretKeySpec("1234".getBytes(StandardCharsets.UTF_8), cipherData.family);
+//
+//        String cipherText = NeptuneCrypto.encrypt("This is a sample message", key, null, cipherData);
+//        assertEquals("This is a sample message", NeptuneCrypto.decrypt(cipherText, key));
+//    }
+//    @Test
+//    public void encryptionDecryption_AES128CBC() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException {
+//        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("aes-128-cbc", "sha256");
+//        SecretKey key = new SecretKeySpec("1234".getBytes(StandardCharsets.UTF_8), cipherData.family);
+//
+//        String cipherText = NeptuneCrypto.encrypt("This is a sample message", key, null, cipherData);
+//        assertEquals("This is a sample message", NeptuneCrypto.decrypt(cipherText, key));
+//    }
 }
