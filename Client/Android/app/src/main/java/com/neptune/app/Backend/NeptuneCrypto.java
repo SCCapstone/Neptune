@@ -6,6 +6,7 @@ import android.os.Build;
 import android.util.Base64;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.res.TypedArrayUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
@@ -24,6 +25,7 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 //import javax.crypto.spec.ChaCha20ParameterSpec;
 import java.security.spec.AlgorithmParameterSpec;
+import java.util.Objects;
 
 import at.favre.lib.crypto.HKDF;
 
@@ -37,8 +39,8 @@ public class NeptuneCrypto {
         public static int[] chaCha20 = {32, 12}; // 256 bit key, 96 bit nonce
         public static int[] aes256 = {32, 16}; // 256 bit key, 128 bit iv
         public static int[] aes256CBC = {32, 16}; // 256 bit key, 128 bit iv
-        public static int[] aes192 = {24, 12};
-        public static int[] aes128 = {16, 12};
+        public static int[] aes192 = {24, 16};
+        public static int[] aes128 = {16, 16};
 
         // Pass this to Cipher.getInstance to get the cipher instance
         public String cipherTransformation = "ChaCha20/None/NoPadding";
@@ -83,7 +85,7 @@ public class NeptuneCrypto {
             else if (cipher.equalsIgnoreCase("aes-256-cbc")) {
                 this.keyLengths = this.aes256;
                 this.family = "AES";
-                this.cipherTransformation = "AES_256/CBC/PKCS5PADDING";
+                this.cipherTransformation = "AES_256/CBC/NoPadding";
             }
             else if (cipher.equalsIgnoreCase("aes-128-gcm")) {
                 this.keyLengths = this.aes128;
@@ -93,7 +95,7 @@ public class NeptuneCrypto {
             else if (cipher.equalsIgnoreCase("aes-128-cbc")) {
                 this.keyLengths = this.aes128;
                 this.family = "AES";
-                this.cipherTransformation = "AES_128/CBC/PKCS5PADDING";
+                this.cipherTransformation = "AES_128/CBC/NoPadding";
             }
             else if (cipher.equalsIgnoreCase("aes128")) {
                 this.keyLengths = this.aes128;
@@ -254,7 +256,7 @@ public class NeptuneCrypto {
         try {
             Cipher cipher = Cipher.getInstance(options.cipherTransformation);
             if (options.family.equalsIgnoreCase("chacha20")) {
-                //cipher.init(Cipher.ENCRYPT_MODE, encryptionKey.getKey(), new javax.crypto.spec.ChaCha20ParameterSpec(encryptionKey.getIv(), 1));
+                //cipher.init(Cipher.ENCRYPT_MODE, encryptionKey.getKey(), new ChaCha20ParameterSpec(encryptionKey.getIv(), 1));
             } else if (!options.cipher.equalsIgnoreCase("aes-256-cbc") && !options.cipher.equalsIgnoreCase("aes-128-cbc")) {
                 cipher.init(Cipher.ENCRYPT_MODE, encryptionKey.getKey(), new GCMParameterSpec(128, encryptionKey.getIv()));
             } else {
@@ -273,8 +275,11 @@ public class NeptuneCrypto {
             byte[] authTag = new byte[0];
             byte[] encryptedData;
             if (useAAD) {
-                authTag = Arrays.copyOfRange(cipherText, cipherText.length - (tagSize / Byte.SIZE), cipherText.length);
-                encryptedData = Arrays.copyOfRange(cipherText, 0, cipherText.length - (tagSize / Byte.SIZE));
+                //authTag = Arrays.copyOfRange(cipherText, cipherText.length - (tagSize / Byte.SIZE), cipherText.length);
+                //encryptedData = Arrays.copyOfRange(cipherText, 0, cipherText.length - (tagSize / Byte.SIZE));
+
+                encryptedData = Arrays.copyOfRange(cipherText, 0, plainText.length());
+                authTag = Arrays.copyOfRange(cipherText, plainText.length(), cipherText.length);
             } else
                 encryptedData = cipherText;
 
@@ -282,12 +287,12 @@ public class NeptuneCrypto {
             output += "1:";
             output += options.cipher + ":";				            // Cipher algorithm
             output += options.hashAlgorithm + ":";                  // HKDF hash algorithm
-            output += convertStringToBase64(salt) + ":";            // Salt
-            output += convertStringToBase64(NeptuneCrypto.randomString(16)) + ":"; // Garbage, means nothing
+            output += convertBytesToBase64(salt.getBytes(StandardCharsets.UTF_8)) + ":";            // Salt
+            output += convertBytesToBase64(NeptuneCrypto.randomString(16).getBytes(StandardCharsets.UTF_8)) + ":"; // Garbage, means nothing
             output += convertBytesToHex(encryptionKey.getIv()) + ":";   // IV
-            output += convertStringToBase64(new String(encryptedData, StandardCharsets.UTF_8)); // The data.
+            output += convertBytesToBase64(encryptedData); // The data.
             if (useAAD) {
-                output += ":" + convertStringToBase64(AAD) + ":";
+                output += ":" + convertBytesToBase64(AAD.getBytes(StandardCharsets.UTF_8)) + ":";
                 output += convertBytesToHex(authTag);
             }
 
@@ -313,7 +318,11 @@ public class NeptuneCrypto {
         if (!isEncrypted(encryptedText))
             throw new DataNotEncrypted();
 
-        String[] encryptedData = encryptedText.split("::")[1].split(":");
+        if (!encryptedText.substring(0, encryptedPrefix.length()).equalsIgnoreCase(encryptedPrefix)) {
+            return encryptedText;
+        }
+
+        String[] encryptedData = encryptedText.split(encryptedPrefix)[1].split(":");
 
         // Version 1 has 9 segments for AEAD ciphers and 7 for non-AEAD ciphers
         String version = encryptedData[0];
@@ -333,15 +342,14 @@ public class NeptuneCrypto {
         String hashAlgorithm = encryptedData[2];
         String salt = convertBase64ToString(encryptedData[3]);
         //String garbage = convertBase64ToString(encryptedData[4]);
-        String iv = convertHexToString(encryptedData[5]);
-        String data = convertBase64ToString(encryptedData[6]);
+        byte[] iv = convertHexToBytes(encryptedData[5]);
+        byte[] data = convertBase64ToBytes(encryptedData[6]);
 
-        String authTag;
-        String AAD = "";
+        byte[] authTag = {};
+        byte[] AAD = {};
         if (encryptedData.length == 9) {
-            AAD = convertBase64ToString(encryptedData[7]);
-            authTag = convertHexToString(encryptedData[8]);
-            data += authTag;
+            AAD = convertBase64ToBytes(encryptedData[7]);
+            authTag = convertHexToBytes(encryptedData[8]);
         }
 
         try {
@@ -352,21 +360,27 @@ public class NeptuneCrypto {
             Cipher cipher = Cipher.getInstance(cipherData.cipherTransformation);
 
             if (cipherData.family.equalsIgnoreCase("chacha20") || cipherData.family.equalsIgnoreCase("chacha20-poly1305")) {
-                //cipher.init(Cipher.ENCRYPT_MODE, encryptionKey.getKey(), new javax.crypto.spec.ChaCha20ParameterSpec(iv.getBytes(StandardCharsets.UTF_8), 1));
+                //cipher.init(Cipher.ENCRYPT_MODE, encryptionKey.getKey(), new ChaCha20ParameterSpec(iv, 1));
             } else if (!cipherData.family.equalsIgnoreCase("aes-256-cbc") && !cipherData.family.equalsIgnoreCase("aes-128-cbc")) {
-                cipher.init(Cipher.DECRYPT_MODE, encryptionKey.getKey(), new GCMParameterSpec(128, iv.getBytes(StandardCharsets.UTF_8)));
+                cipher.init(Cipher.DECRYPT_MODE, encryptionKey.getKey(), new GCMParameterSpec(128, iv));
             } else {
                 // you really should not be using cbc mode..
-                cipher.init(Cipher.DECRYPT_MODE, encryptionKey.getKey(), new IvParameterSpec(iv.getBytes(StandardCharsets.UTF_8)));
+                cipher.init(Cipher.DECRYPT_MODE, encryptionKey.getKey(), new IvParameterSpec(iv));
             }
 
             boolean useAAD = false;
-            if (cipherData.cipher == "aes-256-gcm" || cipherData.cipher == "chacha20-poly1305" || cipherData.cipher == "aes-192-gcm" || cipherData.cipher == "aes-128-gcm")
+            if (cipherData.cipher.equalsIgnoreCase("aes-256-gcm") || cipherData.cipher.equalsIgnoreCase("chacha20-poly1305") || cipherData.cipher.equalsIgnoreCase("aes-192-gcm") || cipherData.cipher.equalsIgnoreCase("aes-128-gcm"))
                 useAAD = true;
-            if (useAAD && !AAD.isEmpty())
-                cipher.updateAAD(AAD.getBytes(StandardCharsets.UTF_8));
 
-            byte[] decryptedText = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            byte[] decryptedText;
+            if (useAAD && AAD.length > 0 && authTag.length > 0) {
+                cipher.updateAAD(AAD);
+                cipher.update(data);
+                decryptedText = cipher.doFinal(authTag);
+            } else {
+                decryptedText = cipher.doFinal(data);
+            }
+
             return new String(decryptedText, StandardCharsets.UTF_8);
         } catch (InvalidAlgorithmParameterException | BadPaddingException | IllegalBlockSizeException e) {
             e.printStackTrace();
@@ -388,12 +402,26 @@ public class NeptuneCrypto {
         }
         return Base64.encodeToString(string.getBytes(StandardCharsets.UTF_8), android.util.Base64.DEFAULT); // cannot be mocked in tests.
     }
+    public static String convertBytesToBase64(@NonNull byte[] bytes) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return java.util.Base64.getEncoder().encodeToString(bytes);
+        }
+        return Base64.encodeToString(bytes, android.util.Base64.DEFAULT); // cannot be mocked in tests.
+    }
+
     public static String convertBase64ToString(String b64) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             return new String(java.util.Base64.getDecoder().decode(b64),  StandardCharsets.UTF_8);
         }
         return new String(Base64.decode(b64, Base64.DEFAULT),  StandardCharsets.UTF_8);
     }
+    public static byte[] convertBase64ToBytes(String b64) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return java.util.Base64.getDecoder().decode(b64);
+        }
+        return Base64.decode(b64, Base64.DEFAULT);
+    }
+
     public static String convertStringToHex(@NonNull String str){
         char[] chars = str.toCharArray();
         StringBuffer hex = new StringBuffer();
@@ -411,7 +439,6 @@ public class NeptuneCrypto {
         }
         return new String(hexChars);
     }
-
     public static String convertHexToString(@NonNull String hex){
         StringBuilder output = new StringBuilder();
         for (int i = 0; i < hex.length(); i+=2) {
@@ -419,6 +446,14 @@ public class NeptuneCrypto {
             output.append((char)Integer.parseInt(str, 16));
         }
         return output.toString();
+    }
+    public static byte[] convertHexToBytes(@NonNull String hex) {
+        byte[] output = new byte[hex.length()/2];
+        int a = 0;
+        for(int i = 0; i < hex.length(); i+=2){
+            output[i/2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i+1), 16));
+        }
+        return output;
     }
 
 
