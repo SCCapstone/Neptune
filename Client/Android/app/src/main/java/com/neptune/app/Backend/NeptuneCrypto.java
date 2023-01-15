@@ -6,7 +6,6 @@ import android.os.Build;
 import android.util.Base64;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.res.TypedArrayUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
@@ -15,6 +14,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
+import javax.crypto.AEADBadTagException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
@@ -23,35 +23,33 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-//import javax.crypto.spec.ChaCha20ParameterSpec;
-import java.security.spec.AlgorithmParameterSpec;
-import java.util.Objects;
+import java.util.Locale;
 
 import at.favre.lib.crypto.HKDF;
+
+
 
 public class NeptuneCrypto {
     // Do not touch, prefix used to tell the decryption method that this string, is in fact, encrypted.
     public static String encryptedPrefix = "ncrypt::";
 
     public static class CipherData {
-        // algorithm: [keyLenght (bytes), iv/secondary (bytes)]
+        // algorithm: [keyLength (bytes), iv/secondary (bytes)]
         public static int[] chaCha20Poly1305 = {32, 12}; // 256 bit key, 96 bit nonce
-        public static int[] chaCha20 = {32, 12}; // 256 bit key, 96 bit nonce
+        //public static int[] chaCha20 = {32, 12}; // 256 bit key, 96 bit nonce
         public static int[] aes256 = {32, 16}; // 256 bit key, 128 bit iv
-        public static int[] aes256CBC = {32, 16}; // 256 bit key, 128 bit iv
-        public static int[] aes192 = {24, 16};
         public static int[] aes128 = {16, 16};
 
         // Pass this to Cipher.getInstance to get the cipher instance
-        public String cipherTransformation = "ChaCha20/None/NoPadding";
+        public String cipherTransformation = "ChaCha20-Poly1305/None/NoPadding";
         // Length of the keys (AESKey and IV/Nonce)
-        public int[] keyLengths = {32, 16};
+        public int[] keyLengths = {32, 12};
         // Passed to SecretKeySpec. Either AES or ChaCha20 please, thank you.
         public String family = "ChaCha20";
         // Passed to HKDF function
         public String hashAlgorithm = "sha256";
         // The actual cipher.
-        public String cipher = "chacha20";
+        public String cipher = "chacha20-poly1305";
 
         // Don't provide this, we'll generate it. The addition data passed to the cipher (on AEAD ciphers)
         public String AAD = "";
@@ -62,13 +60,13 @@ public class NeptuneCrypto {
          * @param hashAlgorithm Hashing algorithm passed the the HKDF method
          */
         public CipherData(String cipher, String hashAlgorithm) throws NoSuchPaddingException, NoSuchAlgorithmException {
-            // errr padding set to PKCS#5 since Node.JS does that by default: https://stackoverflow.com/questions/50701311/node-js-crypto-whats-the-default-padding-for-aes
+            // err padding set to PKCS#5 since Node.JS does that by default: https://stackoverflow.com/questions/50701311/node-js-crypto-whats-the-default-padding-for-aes
             // https://developer.android.com/reference/javax/crypto/Cipher
             /*
                 Android provides the following ciphers: AES_128
              */
             if (cipher.equalsIgnoreCase("chacha20-poly1305")) { // This is API 28+!
-                this.keyLengths = this.chaCha20Poly1305;
+                this.keyLengths = chaCha20Poly1305;
                 this.family = "ChaCha20";
                 this.cipherTransformation = "ChaCha20-Poly1305/None/NoPadding";
             }
@@ -78,31 +76,31 @@ public class NeptuneCrypto {
                 this.cipherTransformation = "ChaCha20/None/NoPadding";
             }*/
             else if (cipher.equalsIgnoreCase("aes-256-gcm")) {
-                this.keyLengths = this.aes256; // might need 12 bit IV....
+                this.keyLengths = aes256; // might need 12 bit IV....
                 this.family = "AES";
                 this.cipherTransformation = "AES_256/GCM/NoPadding";
             }
             else if (cipher.equalsIgnoreCase("aes-256-cbc")) {
-                this.keyLengths = this.aes256;
+                this.keyLengths = aes256;
                 this.family = "AES";
                 this.cipherTransformation = "AES_256/CBC/NoPadding";
             }
             else if (cipher.equalsIgnoreCase("aes-128-gcm")) {
-                this.keyLengths = this.aes128;
+                this.keyLengths = aes128;
                 this.family = "AES";
                 this.cipherTransformation = "AES_128/GCM/NoPadding";
             }
             else if (cipher.equalsIgnoreCase("aes-128-cbc")) {
-                this.keyLengths = this.aes128;
+                this.keyLengths = aes128;
                 this.family = "AES";
                 this.cipherTransformation = "AES_128/CBC/NoPadding";
             }
             else if (cipher.equalsIgnoreCase("aes128")) {
-                this.keyLengths = this.aes128;
+                this.keyLengths = aes128;
                 this.family = "AES";
                 this.cipherTransformation = "AES_128/GCM/NoPadding";
             } else {
-                throw new NoSuchAlgorithmException();
+                throw new UnsupportedCipher(cipher.toLowerCase(Locale.ROOT));
             }
 
             if (hashAlgorithm.equalsIgnoreCase("sha256"))
@@ -115,6 +113,8 @@ public class NeptuneCrypto {
             Cipher.getInstance(this.cipherTransformation); // this will throw NoSuchPaddingException or NoSuchAlgorithmException
             this.cipher = cipher;
         }
+
+        public CipherData() {}
     }
 
     public static class HKDFOptions {
@@ -150,7 +150,7 @@ public class NeptuneCrypto {
 
 
     public static String randomString(int length, int minChar, int maxChar) {
-        String str = "";
+        StringBuilder str = new StringBuilder();
         if (maxChar > 220) // Honestly not sure why 220 is the limit, extended ASCII goes to 254
             maxChar = 127; // Upper limit of ASCII
         if (minChar < 32)
@@ -163,8 +163,8 @@ public class NeptuneCrypto {
         }
 
         for (int i = 0; i<length; i++)
-            str += String.valueOf((char) (Math.floor(Math.random() * (maxChar - minChar) + minChar)));
-        return str;
+            str.append((char) (Math.floor(Math.random() * (maxChar - minChar) + minChar)));
+        return str.toString();
     }
 
     public static String randomString(int length, int minChar) {
@@ -213,12 +213,19 @@ public class NeptuneCrypto {
 
         return new AESKey(key, expandedIv);
     }
+    public static AESKey HKDF(byte[] sharedSecret, String salt, HKDFOptions options) {
+        return HKDF(sharedSecret, salt.getBytes(StandardCharsets.UTF_8), options);
+    }
     public static AESKey HKDF(SecretKey sharedSecret, String salt, HKDFOptions options) {
-        return HKDF(sharedSecret.getEncoded(), salt.getBytes(StandardCharsets.UTF_8), options);
+        return HKDF(sharedSecret.getEncoded(), salt, options);
     }
 
-    public static AESKey HKDF(byte[] sharedSecret, CipherData cipherData) {
-        return HKDF(sharedSecret, "mySalt1234".getBytes(StandardCharsets.UTF_8), new HKDFOptions(cipherData));
+    public static AESKey HKDF(String sharedSecret, String salt, HKDFOptions options) {
+        return HKDF(sharedSecret.getBytes(StandardCharsets.UTF_8), salt, options);
+    }
+
+    public static AESKey HKDF(SecretKey sharedSecret, String salt, CipherData cipherData) {
+        return HKDF(sharedSecret, salt, new HKDFOptions(cipherData));
     }
 
     /**
@@ -226,8 +233,10 @@ public class NeptuneCrypto {
      * @param sharedSecret your DH key
      * @return AES key
      */
-    private AESKey HKDF(byte[] sharedSecret) {
-        return HKDF(sharedSecret);
+    public static AESKey HKDF(String sharedSecret, String salt) throws NoSuchPaddingException, NoSuchAlgorithmException {
+        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("chacha20-poly1305", "sha256");
+        SecretKey key = new SecretKeySpec(sharedSecret.getBytes(StandardCharsets.UTF_8), cipherData.family);
+        return HKDF(key, salt, cipherData);
     }
 
 
@@ -242,7 +251,7 @@ public class NeptuneCrypto {
 
         boolean useAAD = false;
         byte[] AAD = {};
-        if (options.cipher == "aes-256-gcm" || options.cipher == "chacha20-poly1305" || options.cipher == "aes-192-gcm" || options.cipher == "aes-128-gcm") {
+        if (options.cipher.equals("aes-256-gcm") || options.cipher.equals("chacha20-poly1305") || options.cipher.equals("aes-192-gcm") || options.cipher.equals("aes-128-gcm")) {
             useAAD = true;
             if (!options.AAD.isEmpty()) {
                 AAD = options.AAD.getBytes(StandardCharsets.UTF_8);
@@ -255,14 +264,16 @@ public class NeptuneCrypto {
         AESKey encryptionKey = HKDF(key, salt, hkdfOptions);
         try {
             Cipher cipher = Cipher.getInstance(options.cipherTransformation);
-            if (options.family.equalsIgnoreCase("chacha20")) {
+            if (options.cipher.equalsIgnoreCase("chacha20-poly1305")) {
                 IvParameterSpec ivParameterSpec = new IvParameterSpec(encryptionKey.getIv());
                 cipher.init(Cipher.ENCRYPT_MODE, encryptionKey.getKey(), ivParameterSpec);
-            } else if (!options.cipher.equalsIgnoreCase("aes-256-cbc") && !options.cipher.equalsIgnoreCase("aes-128-cbc")) {
+            } else if (options.cipher.equalsIgnoreCase("aes-256-gcm") || options.cipher.equalsIgnoreCase("aes-128-gcm")) {
                 cipher.init(Cipher.ENCRYPT_MODE, encryptionKey.getKey(), new GCMParameterSpec(128, encryptionKey.getIv()));
-            } else {
+            } else if (options.cipher.equalsIgnoreCase("aes-256-cbc") || options.cipher.equalsIgnoreCase("aes-128-cbc")) {
                 // you really should not be using cbc mode..
                 cipher.init(Cipher.ENCRYPT_MODE, encryptionKey.getKey(), new IvParameterSpec(encryptionKey.getIv()));
+            } else {
+                throw new UnsupportedCipher(options.cipher);
             }
 
             if (useAAD && AAD.length > 0)
@@ -270,15 +281,10 @@ public class NeptuneCrypto {
 
             // https://developer.android.com/reference/javax/crypto/Cipher#doFinal(byte[])
             byte[] cipherText = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
-            // So Java, for whatever reason, actually helps us out here by slapping the authentication tag on
-            // but... for ncrypt we do not actually want that! so we need to chop it up ..:
-            int tagSize = 128; // uhh, I pulled it from thin air .. 16 bytes
+
             byte[] authTag = new byte[0];
             byte[] encryptedData;
             if (useAAD) {
-                //authTag = Arrays.copyOfRange(cipherText, cipherText.length - (tagSize / Byte.SIZE), cipherText.length);
-                //encryptedData = Arrays.copyOfRange(cipherText, 0, cipherText.length - (tagSize / Byte.SIZE));
-
                 encryptedData = Arrays.copyOfRange(cipherText, 0, plainText.length());
                 authTag = Arrays.copyOfRange(cipherText, plainText.length(), cipherText.length);
             } else
@@ -309,18 +315,18 @@ public class NeptuneCrypto {
     }
 
     public static String encrypt(String plainText, SecretKey key) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException {
-        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("chacha20", "sha256");
-        return encrypt(plainText, key, null, cipherData);
+        NeptuneCrypto.CipherData cipherData = new NeptuneCrypto.CipherData("chacha20-poly1305", "sha256");
+        return encrypt(plainText, key, "", cipherData);
     }
 
     public static String decrypt(String encryptedText, SecretKey key) throws NoSuchPaddingException, NoSuchAlgorithmException {
-        int AESKeyLength; // ?
-
         if (!isEncrypted(encryptedText))
             throw new DataNotEncrypted();
 
-        if (!encryptedText.substring(0, encryptedPrefix.length()).equalsIgnoreCase(encryptedPrefix)) {
-            return encryptedText;
+        if (key == null)
+            throw new MissingDecryptionKey();
+        if (key.getEncoded().length == 0) {
+            throw new MissingDecryptionKey();
         }
 
         String[] encryptedData = encryptedText.split(encryptedPrefix)[1].split(":");
@@ -331,8 +337,10 @@ public class NeptuneCrypto {
             throw new EncryptedDataInvalidVersion(encryptedData[0]);
 
         String cipherAlgorithm = encryptedData[1];
+        boolean useAAD = false;
         // remember: java cannot compare strings via the == operator. That would be too easy. The == operator only compares memory addresses, not contents. Java wants to be special
         if (cipherAlgorithm.equalsIgnoreCase("aes-256-gcm") || cipherAlgorithm.equalsIgnoreCase("chacha20-poly1305") || cipherAlgorithm.equalsIgnoreCase("aes-192-gcm") || cipherAlgorithm.equalsIgnoreCase("aes-128-gcm")) {
+            useAAD = true;
             if (encryptedData.length != 9)
                 throw new EncryptedDataSplitError(encryptedData.length, 9);
         } else {
@@ -360,18 +368,16 @@ public class NeptuneCrypto {
 
             Cipher cipher = Cipher.getInstance(cipherData.cipherTransformation);
 
-            if (cipherData.family.equalsIgnoreCase("chacha20") || cipherData.family.equalsIgnoreCase("chacha20-poly1305")) {
+            if (cipherData.cipher.equalsIgnoreCase("chacha20-poly1305")) {
                 cipher.init(Cipher.DECRYPT_MODE, encryptionKey.getKey(), new IvParameterSpec(iv));
-            } else if (!cipherData.family.equalsIgnoreCase("aes-256-cbc") && !cipherData.family.equalsIgnoreCase("aes-128-cbc")) {
+            } else if (cipherData.cipher.equalsIgnoreCase("aes-256-gcm") || cipherData.cipher.equalsIgnoreCase("aes-128-gcm")) {
                 cipher.init(Cipher.DECRYPT_MODE, encryptionKey.getKey(), new GCMParameterSpec(128, iv));
-            } else {
+            } else if (cipherData.cipher.equalsIgnoreCase("aes-256-cbc") || cipherData.cipher.equalsIgnoreCase("aes-128-cbc")) {
                 // you really should not be using cbc mode..
                 cipher.init(Cipher.DECRYPT_MODE, encryptionKey.getKey(), new IvParameterSpec(iv));
+            } else {
+                throw new UnsupportedCipher(cipherData.cipher); // Shouldn't hit
             }
-
-            boolean useAAD = false;
-            if (cipherData.cipher.equalsIgnoreCase("aes-256-gcm") || cipherData.cipher.equalsIgnoreCase("chacha20-poly1305") || cipherData.cipher.equalsIgnoreCase("aes-192-gcm") || cipherData.cipher.equalsIgnoreCase("aes-128-gcm"))
-                useAAD = true;
 
             byte[] decryptedText;
             if (useAAD && AAD.length > 0 && authTag.length > 0) {
@@ -383,11 +389,12 @@ public class NeptuneCrypto {
             }
 
             return new String(decryptedText, StandardCharsets.UTF_8);
+        } catch (InvalidKeyException | AEADBadTagException e) {
+            e.printStackTrace();
+            throw new InvalidDecryptionKey();
         } catch (InvalidAlgorithmParameterException | BadPaddingException | IllegalBlockSizeException e) {
             e.printStackTrace();
             throw new UnsupportedCipher(cipherAlgorithm);
-        } catch (InvalidKeyException e) {
-            throw new InvalidDecryptionKey();
         }
     }
 
@@ -425,9 +432,8 @@ public class NeptuneCrypto {
 
     public static String convertStringToHex(@NonNull String str){
         char[] chars = str.toCharArray();
-        StringBuffer hex = new StringBuffer();
-        for(int i = 0; i < chars.length; i++)
-            hex.append(Integer.toHexString((int)chars[i]));
+        StringBuilder hex = new StringBuilder();
+        for (char aChar : chars) hex.append(Integer.toHexString((int) aChar));
         return hex.toString();
     }
     public static String convertBytesToHex(byte[] bytes) {
@@ -451,7 +457,6 @@ public class NeptuneCrypto {
     public static byte[] convertHexToBytes(@NonNull String hex) {
         hex = hex.toUpperCase();
         byte[] output = new byte[hex.length()/2];
-        int a = 0;
         for(int i = 0; i < hex.length(); i+=2){
             output[i/2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i+1), 16));
         }
@@ -460,32 +465,32 @@ public class NeptuneCrypto {
 
 
 
-    private static class EncryptedDataSplitError extends Error {
+    public static class EncryptedDataSplitError extends Error {
         EncryptedDataSplitError(int actualParts, int requiredParts) {
             super("Encrypted data does not split properly (contains " + actualParts + " not " + requiredParts + " parts).");
         }
     }
-    private static class DataNotEncrypted extends Error {
+    public static class DataNotEncrypted extends Error {
         DataNotEncrypted() {
             super("Data not encrypted, cannot find encrypted prefix " + encryptedPrefix);
         }
     }
-    private static class EncryptedDataInvalidVersion extends Error {
+    public static class EncryptedDataInvalidVersion extends Error {
         EncryptedDataInvalidVersion(String version) {
             super("Invalid encrypted data version, no idea how to handle version: " + version);
         }
     }
-    private static class UnsupportedCipher extends Error {
+    public static class UnsupportedCipher extends Error {
         UnsupportedCipher(String requestedCipher) {
             super("Unsupported cipher: " + requestedCipher + ". Use chacha20-poly1305, aes-256-gcm, or aes128.");
         }
     }
-    private static class MissingDecryptionKey extends Error {
+    public static class MissingDecryptionKey extends Error {
         MissingDecryptionKey() {
             super("Empty decryption key passed in with encrypted data.");
         }
     }
-    private static class InvalidDecryptionKey extends Error {
+    public static class InvalidDecryptionKey extends Error {
         InvalidDecryptionKey() {
             super("Provided key was unable to decrypt the data, wrong key.");
         }

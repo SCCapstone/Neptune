@@ -228,7 +228,7 @@ public class ConnectionManager {
                 PublicKey alicePublic = KeyFactory.getInstance("DiffieHellman").generatePublic(new DHPublicKeySpec(a1, p1, g1));
                 keyAgreement.doPhase(alicePublic, true);
                 this.cipherData = new NeptuneCrypto.CipherData("aes-256-cbc", "sha256");
-                AESKey sharedAESKey = NeptuneCrypto.HKDF(keyAgreement.generateSecret(), this.cipherData);
+                AESKey sharedAESKey = NeptuneCrypto.HKDF(keyAgreement.generateSecret(), "", new NeptuneCrypto.HKDFOptions(this.cipherData));
                 this.sharedSecret = sharedAESKey.getKey();
 
                 String chkMsg = NeptuneCrypto.convertStringToBase64(NeptuneCrypto.randomString(64)); // idk why b64
