@@ -10,6 +10,7 @@
  * */
 
 const ConfigItem = require('./ConfigItem.js');
+const crypto = require("node:crypto");
 
 
 /**
@@ -84,6 +85,12 @@ class NeptuneConfig extends ConfigItem {
 	}
 
 
+	/**
+	 * Unique server Id
+	 * @type {string}
+	 */
+	serverId = crypto.randomUUID();
+
 
 	/**
 	 * @param {string} filePath The path to the config file
@@ -101,10 +108,13 @@ class NeptuneConfig extends ConfigItem {
 	 */
 	#setEntries() {
 		this.entries["configVersion"] = this.configVersion;
+		this.entries["serverId"] = this.serverId;
 		this.entries["encryption"] = this.encryption;
 		this.entries["web"] = this.web;
 		this.entries["clients"] = this.clients;
 		this.entries["clientDirectory"] = this.clientDirectory;
+
+		this.entries["applicationSettings"] = this.applicationSettings;
 	}
 
 

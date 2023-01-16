@@ -376,7 +376,11 @@ class Client {
 	toJSON() {
 		return JSON.stringify({
 			IPAddress: this.#IPAddress,
-
+			clientId: this.#clientId,
+			friendlyName: this.#friendlyName,
+			dateAdded: this.#dateAdded,
+			pairId: this.#pairId,
+			pairKey: this.#pairKey,
 		})
 	}
 
