@@ -13,17 +13,17 @@ const encryptedPrefix = "ncrypt::";
 const encryptionCipherKeyLengths = { // algorithm: [keyLenght (bytes), iv/secondary (bytes)]
 	'chacha20-poly1305': [32, 12], // 256 bit key, 96 bit nonce
 	'chacha20': [32, 16], // 256 bit key, 96 bit nonce (nodejs implementation is broken, requires 16 bytes)
-	'aes-256-gcm': [32, 16], // 256 bit key, 128 bit iv
-	'aes-256-cbc': [32, 16], // See above
-	'aes256': [32, 16], // See above
+	'aes-256-gcm': [32, 12], // 256 bit key, 128 bit iv (android freaked out, use 12bit)
+	'aes-256-cbc': [32, 12], // See above
+	'aes256': [32, 12], // See above
 
-	'aes-192-gcm': [24, 16],
-	'aes-192-cbc': [24, 16],
-	'aes192': [24, 16],
+	'aes-192-gcm': [24, 12],
+	'aes-192-cbc': [24, 12],
+	'aes192': [24, 12],
 
-	'aes-128-gcm': [16, 16],
-	'aes-128-cbc': [16, 16],
-	'aes128': [16, 16]
+	'aes-128-gcm': [16, 12],
+	'aes-128-cbc': [16, 12],
+	'aes128': [16, 12]
 }
 
 // Errors
@@ -145,7 +145,7 @@ NeptuneCrypto.randomString = function(len, minChar, maxChar) {
  * @return {AESKey} AES key and IV
  */
 NeptuneCrypto.HKDF = function(sharedSecret, salt, options) {
-	if (typeof sharedSecret !== "string")
+	if (typeof sharedSecret !== "string" && !Buffer.isBuffer(sharedSecret))
 		throw new TypeError("sharedSecret expected string got " + (typeof sharedSecret).toString());
 	if (salt !== undefined) {
 		if (typeof salt !== "string")
@@ -230,8 +230,6 @@ NeptuneCrypto.encrypt = function(plainText, key, salt, options) {
 			cipherAlgorithm = options.cipherAlgorithm;
 	}
 	
-	if (Buffer.isBuffer(key))
-		key = key.toString('utf8');
 
 	if (typeof cipherAlgorithm !== "string")
 		throw new TypeError("cipherAlgorithm expected string got " + (typeof cipherAlgorithm).toString());
@@ -240,7 +238,7 @@ NeptuneCrypto.encrypt = function(plainText, key, salt, options) {
 		plainText = plainText.toString('utf8');
 	if (typeof plainText !== "string")
 		throw new TypeError("plainText expected string got " + (typeof plainText).toString());
-	if (typeof key !== "string")
+	if (typeof key !== "string" && !Buffer.isBuffer(key))
 		throw new TypeError("key expected string got " + (typeof key).toString());
 	if (salt !== undefined) {
 		if (typeof salt !== "string")
@@ -325,7 +323,7 @@ NeptuneCrypto.decrypt = function(encryptedText, key) {
 	if (typeof encryptedText !== "string")
 		throw new TypeError("encryptedText expected string got " + (typeof encryptedText).toString());
 
-	if (typeof key !== "string" && key !== undefined) // can't be undefined .. used to throw error if encrypted.
+	if (typeof key !== "string" && key !== undefined && !Buffer.isBuffer(key)) // can't be undefined .. used to throw error if encrypted.
 		throw new TypeError("key expected string got " + (typeof key).toString());
 
 

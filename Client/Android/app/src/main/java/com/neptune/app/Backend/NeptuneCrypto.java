@@ -37,8 +37,8 @@ public class NeptuneCrypto {
         // algorithm: [keyLength (bytes), iv/secondary (bytes)]
         public static int[] chaCha20Poly1305 = {32, 12}; // 256 bit key, 96 bit nonce
         //public static int[] chaCha20 = {32, 12}; // 256 bit key, 96 bit nonce
-        public static int[] aes256 = {32, 16}; // 256 bit key, 128 bit iv
-        public static int[] aes128 = {16, 16};
+        public static int[] aes256 = {32, 12}; // 256 bit key, 128 bit iv // Android doesn't like 16 bit.
+        public static int[] aes128 = {16, 12};
 
         // Pass this to Cipher.getInstance to get the cipher instance
         public String cipherTransformation = "ChaCha20-Poly1305/None/NoPadding";

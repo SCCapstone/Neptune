@@ -504,11 +504,12 @@ async function main() {
 	const crypto = require("node:crypto");
 
 	// https://nodejs.org/api/crypto.html#class-diffiehellman
+	// This is the initial endpoint for the client
 	app.post('/api/v1/server/newSocketConnection', (req, res) => {
 		let conInitUUID = crypto.randomUUID(); // NeptuneCrypto.convert(NeptuneCrypto.randomString(16), "utf8", "hex"); // string (len 16) -> HEX
 		Neptune.webLog.info("Initiating new client connection, uuid: " + conInitUUID);
 
-		let alice = crypto.createDiffieHellman(1024);
+		let alice = crypto.getDiffieHellman('modp14');
 		let alicePublic = alice.generateKeys();
 
 		conInitUUIDs[conInitUUID] = {
@@ -519,6 +520,8 @@ async function main() {
 			"p1": alice.getPrime().toString('base64'),
 			"a1": alice.getPublicKey().toString('base64'),
 			createdAt: new Date().toISOString(),
+			cipher: req.body.acceptedCrypto,
+			hashAlgorithm: req.body.acceptedHashTypes
 		}
 
 		res.status(200).send(JSON.stringify({
@@ -529,7 +532,7 @@ async function main() {
 		}));
 	});
 
-
+	// This is the final part of negotiation, creates the socket and opens up command inputting
 	app.post('/api/v1/server/newSocketConnection/:conInitUUID', (req, res) => {
 		let conInitUUID = req.params.conInitUUID;
 		Neptune.webLog.silly("POST: /api/v1/server/newSocketConnection/" + conInitUUID + " .. body: " + JSON.stringify(req.body));
@@ -558,14 +561,19 @@ async function main() {
 		let socketUUID = crypto.randomUUID();
 
 		let aliceSecret = conInitUUIDs[conInitUUID].dhObject.computeSecret(Buffer.from(req.body.b1,'base64'));
-		conInitUUIDs[conInitUUID].secret = NeptuneCrypto.HKDF(aliceSecret.toString('utf8')).key;
+		conInitUUIDs[conInitUUID].secret = NeptuneCrypto.HKDF(aliceSecret, "mySalt1234", {hashAlgorithm: "sha256", keyLength: 32}).key;
+
+		// Neptune.webLog.silly(conInitUUID + " bob public key (hex): " + Buffer.from(req.body.b1,'base64').toString('hex'));
+		// Neptune.webLog.silly(conInitUUID + " alice public key (hex): " + Buffer.from(conInitUUIDs[conInitUUID]["a1"], "base64").toString('hex'));
+		// Neptune.webLog.silly(conInitUUID + " DH secret key (hex): " + aliceSecret.toString('hex'));
+		// Neptune.webLog.silly(conInitUUID + " shared key (hex): " + conInitUUIDs[conInitUUID].secret.toString('hex'));
 
 		
 
 		var chkMsg = req.body.chkMsg;
 		try {
 			if (NeptuneCrypto.isEncrypted(chkMsg))
-				chkMsg = NeptuneCrypto.decrypt(chkMsg, conInitUUIDs[conInitUUID].secret.toString('utf8'));
+				chkMsg = NeptuneCrypto.decrypt(chkMsg, conInitUUIDs[conInitUUID].secret);
 		} catch (err) {
 			if (err instanceof NeptuneCrypto.Errors.InvalidDecryptionKey || err instanceof NeptuneCrypto.Errors.MissingDecryptionKey) {
 				// bad key.
@@ -621,10 +629,40 @@ async function main() {
 				createdAt: conInitUUIDs[conInitUUID].createdAt,
 			});
 			
-			res.status(200).send(JSON.stringify({
+
+			// This should be encrypted.
+			let response = JSON.stringify({
 				confMsg: crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg + req.body.chkMsgHash).digest('hex'),
 				socketUUID: socketUUID,
-			}));
+			});
+
+			let supportedCiphers = ["chacha20-poly1305", "chacha20", "aes-256-gcm", "aes-128-gcm"];
+			let supportedHashAlgorithms = ["sha256", "sha512"];
+
+			var cipher = "chacha20-poly1305";
+			var hashAlgorithm = "sha256";
+
+			if (conInitUUIDs[conInitUUID].cipher !== undefined) {
+				for (var i = 0; i<conInitUUIDs[conInitUUID].cipher.length; i++) {
+					if (supportedCiphers.indexOf(conInitUUIDs[conInitUUID].cipher[i]) != -1) {
+						cipher = conInitUUIDs[conInitUUID].cipher[i];
+					}
+				}
+			}
+
+			if (conInitUUIDs[conInitUUID].hashAlgorithm !== undefined) {
+				for (var i = 0; i<conInitUUIDs[conInitUUID].hashAlgorithm.length; i++) {
+					if (supportedHashAlgorithms.indexOf(conInitUUIDs[conInitUUID].hashAlgorithm[i]) != -1) {
+						hashAlgorithm = conInitUUIDs[conInitUUID].hashAlgorithm[0];
+					}
+				}
+			}
+
+			let encryptedResponse = NeptuneCrypto.encrypt(response, conInitUUIDs[conInitUUID].secret, undefined, {hashAlgorithm: hashAlgorithm, cipherAlgorithm: cipher})
+
+			Neptune.webLog.info(conInitUUID + " setup completed.");
+
+			res.status(200).send(encryptedResponse);
 		}
 	});
 
@@ -633,16 +671,16 @@ async function main() {
 		var sentResponse = false;
 		let conInitUUID = req.body.conInitUUID;
 
-		if (conInitUUIDs[conInitUUID] !== undefined) {
-			if (conInitUUIDs[conInitUUID].enabled !== true) {
-				Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
-				res.status(403).send('{ "error": "Invalid conInitUUID" }');
-				return;
-			}
-		} else {
-			res.status(401).send('{ "error": "Invalid conInitUUID" }');
-			return;
-		}
+		// if (conInitUUIDs[conInitUUID] !== undefined) {
+		// 	if (conInitUUIDs[conInitUUID].enabled !== true) {
+		// 		Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
+		// 		res.status(403).send('{ "error": "Invalid conInitUUID" }');
+		// 		return;
+		// 	}
+		// } else {
+		// 	res.status(401).send('{ "error": "Invalid conInitUUID" }');
+		// 	return;
+		// }
 
 		conInitUUIDs[conInitUUID].client.processHTTPRequest(JSON.stringify(req.body), (data) => {
 			Neptune.webLog.silly(data);

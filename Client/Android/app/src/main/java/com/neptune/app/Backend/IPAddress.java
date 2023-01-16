@@ -10,8 +10,14 @@ public class IPAddress {
     private int port;
 
     public IPAddress(String IPAddress, int port) {
-        this.IPAddress = IPAddress;
-        this.port = port;
+        this.setIPAddress(IPAddress);
+        this.setPort(port);
+    }
+
+    public IPAddress(String combinedString) {
+        String[] split = combinedString.split(":");
+        this.setIPAddress(split[0]);
+        this.setPort(Integer.parseInt(split[1]));
     }
 
     /**
