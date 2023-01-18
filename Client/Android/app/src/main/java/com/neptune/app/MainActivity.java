@@ -11,10 +11,13 @@ import androidx.fragment.app.DialogFragment;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Looper;
 import android.view.View;
+import android.view.textclassifier.ConversationActions;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -22,13 +25,28 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.content.Intent;
 
+import com.google.gson.JsonParseException;
+import com.neptune.app.Backend.ClientConfig;
+import com.neptune.app.Backend.ConfigurationManager;
 import com.neptune.app.Backend.IPAddress;
 import com.neptune.app.Backend.NotificationListenerService;
 import com.neptune.app.Backend.Server;
 import com.neptune.app.Backend.ServerManager;
 
+import org.json.JSONException;
+
+import java.io.IOException;
+import java.util.UUID;
+
 public class MainActivity extends AppCompatActivity implements RenameDialog.RenameDialogListener{
-    public static ServerManager serverManager = new ServerManager();
+    public static ServerManager serverManager;
+    private ConfigurationManager configurationManager;
+
+    public static ClientConfig ClientConfig;
+
+    public static Context Context;
+
+
     public Server server;
     //public Config config
     private TextView devName;
@@ -42,6 +60,9 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        Context = getApplicationContext();
+
         setContentView(R.layout.activity_main);
 
         //devName = (TextView) findViewById(R.id.name);
@@ -50,6 +71,35 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         addLine = findViewById(R.id.container);
         //notifListTest = findViewById(R.id.notifTest);
         buildAddDialog();
+
+        // Get configurationManager
+        configurationManager = new ConfigurationManager();
+        try {
+            ClientConfig = new ClientConfig("clientConfiguration.json", configurationManager);
+            ClientConfig.save();
+            serverManager = new ServerManager(ClientConfig, configurationManager);
+
+        } catch (IOException | JSONException e) {
+            e.printStackTrace();
+            // Failed to load main config! First run I guess
+
+            AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
+            alertBuilder.setTitle("Failed to load configuration/server manager");
+            alertBuilder.setMessage("There was an unknown error loading the client configuration file or setting up the server manager.\n" +
+                    "Please report this to the developer (hopefully not you)\n\n" +
+                    "error.getMessage(): " + e.getMessage());
+            alertBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    // Probably quit, or maybe recreate the config?
+                }
+            });
+
+            alertBuilder.create().show();
+
+        }
+
+
 
         /*devName.setOnClickListener(new TextView.OnClickListener(){
             @Override
@@ -101,24 +151,19 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View view = getLayoutInflater().inflate(R.layout.add_dialog, null);
 
-        final EditText name = view.findViewById(R.id.nameEdit);
-        final EditText ipAddr = view.findViewById(R.id.ipEdit);
+        final EditText nameField = view.findViewById(R.id.nameEdit);
+        final EditText ipAddressField = view.findViewById(R.id.ipEdit);
 
         builder.setView(view);
         builder.setTitle("Enter name")
                 .setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        addNameLine(name.getText().toString());
-                        server = new Server(name.getText().toString());
-                        server.setIPAddress(new IPAddress(ipAddr.getText().toString(), 25560));
-                        server.setupConnectionManager();
-                        serverManager.addServer(server);
-
-                        //Maybe set IP address here, this would need to be grabbed from the server when the connection is made so probably just calling something like
-                        //server.setIPAddress(something); Maybe the setIPAddress should have no params, or its param is getIPAddress and that gets the IP somehow
-                        //It's that or getting+setting the IP directly here, but feels more like a backend thing.
-                        server.pair();
+                        String name = nameField.getText().toString();
+                        String ipAddress = ipAddressField.getText().toString();
+                        Thread thread = new Thread(() -> addServer(name, ipAddress));
+                        thread.setName("ServerAdder-" + name);
+                        thread.start();
                     }
                 })
                 .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -220,5 +265,30 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     @Override
     protected void onStop() {
         super.onStop();
+    }
+
+    private void addServer(String name, String ipAddr) {
+        try {
+            // Later we need to get the UUID from the server via a HTTP request or something..
+            // Or at the very least rename the config file to the real UUID
+            server = new Server(UUID.randomUUID(), configurationManager);
+            server.ipAddress = new IPAddress(ipAddr, 25560);
+            server.friendlyName = name;
+            server.save();
+            serverManager.addServer(server);
+            server.setupConnectionManager();
+
+            //Maybe set IP address here, this would need to be grabbed from the server when the connection is made so probably just calling something like
+            //server.setIPAddress(something); Maybe the setIPAddress should have no params, or its param is getIPAddress and that gets the IP somehow
+            //It's that or getting+setting the IP directly here, but feels more like a backend thing.
+            server.pair();
+
+        } catch (JsonParseException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            runOnUiThread(() -> addNameLine(name));
+        }
     }
 }

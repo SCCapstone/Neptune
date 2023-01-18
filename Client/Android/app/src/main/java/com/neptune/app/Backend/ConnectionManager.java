@@ -100,7 +100,7 @@ public class ConnectionManager {
             }
         });
         thread.start();
-        thread.setName(Server.getFriendlyName() + " - HTTP POST request runner");
+        thread.setName(Server.serverId + " - HTTP POST request runner");
     }
 
     public String sendHTTPPostRequest(URL url, String data) {
@@ -159,7 +159,7 @@ public class ConnectionManager {
             }
         });
         thread.start();
-        thread.setName(Server.getFriendlyName() + " - HTTP POST request runner");
+        thread.setName(Server.serverId + " - HTTP POST request runner");
     }
     public void sendHTTPPostRequestAsync(String apiURL, String data) throws MalformedURLException {
         sendHTTPPostRequestAsync(new URL("http://" + IPAddress.toString() + "/api/v1/server/socket/" + socketUUID + "/http"), data);
@@ -345,7 +345,7 @@ public class ConnectionManager {
     public void initiateConnection() {
         Thread thread = new Thread(() -> initiateConnectionSync());
         thread.start();
-        thread.setName(Server.getFriendlyName() + " - Initiation runner");
+        thread.setName(Server.serverId + " - Initiation runner");
     }
 
     public float ping() {
@@ -381,4 +381,7 @@ public class ConnectionManager {
         return this.hasNegotiated;
     }
 
+    public void pair() {
+        Log.i("ConnectionManager", "Pairing...");
+    }
 }

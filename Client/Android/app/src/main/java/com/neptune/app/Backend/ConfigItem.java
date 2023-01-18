@@ -1,53 +1,200 @@
 package com.neptune.app.Backend;
 
-import org.json.JSONObject;
+import android.content.Context;
+import android.util.Log;
 
-import java.util.Map;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+import com.neptune.app.MainActivity;
 
-import kotlin.NotImplementedError;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 public class ConfigItem {
-    protected Map<String, Object> configEntries;
-    private boolean isAlive;
-    private String filePath;
+    private ConfigurationManager ConfigManagerParent;
 
-    public ConfigItem(String filePath) {
-        // Do things!
+    // This is the version of the configuration NOT the app.
+    public Version version = new Version("1");
+
+    private boolean isAlive = false;
+    private String fileName;
+    private File fileObject;
+
+    private String TAG = "ConfigItem-";
+
+    // This can be used to add adapters
+    protected GsonBuilder gsonBuilder = new GsonBuilder();
+
+    public ConfigItem(String fileName, ConfigurationManager parent) throws JsonParseException {
+        if (!fileName.endsWith(".json"))
+            fileName += ".json";
+
+        this.fileName = fileName;
+        this.ConfigManagerParent = parent;
+
+        this.TAG += fileName;
+
+        try {
+            fileObject = new File(MainActivity.Context.getFilesDir(), fileName);
+            isAlive = true;
+        } catch (JsonParseException e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
-    public void closeConfig(boolean save) {
-        if (save)
-            saveConfig();
-        throw new NotImplementedError();
+    public void close(boolean save) {
+        if (!isAlive)
+            return;
+
+        Log.i(TAG, "closeConfig: closing configuration file");
+
+        try {
+            if (save)
+                save();
+
+            isAlive = false;
+
+            ConfigManagerParent.removeConfigItemFromCache(this);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    public void loadConfig() {
-        throw new NotImplementedError();
+    protected void makeWritable() throws IOException {
+        try {
+            if (!fileObject.exists()) {
+                try (FileOutputStream fos = MainActivity.Context.openFileOutput(fileName, Context.MODE_PRIVATE)) {
+                    fos.write(toJson().toString().getBytes(StandardCharsets.UTF_8));
+                }
+            } else if (fileObject.isDirectory()) {
+                throw new FileNotFoundException();
+            }
 
+            if (!fileObject.canWrite()) {
+                fileObject.setWritable(true);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            throw e;
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
-    public void saveConfig() {
-        //throw new NotImplementedError();
+    public void load() throws IOException, JsonParseException {
+        Log.d(TAG, "loadConfig(): reading configuration data from file");
+
+        if (!fileObject.isFile() || !fileObject.exists()) {
+            Log.d(TAG,"loadConfig(): can't load what doesn't exist! Skipping load, making writable.");
+            // Doesn't exist.
+            makeWritable();
+            return;
+        }
+
+        makeWritable();
+        FileInputStream fileInputStream = new FileInputStream(fileObject);
+        InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream, StandardCharsets.UTF_8);
+        StringBuilder contentsBuilder = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(inputStreamReader)) {
+            String line = reader.readLine();
+            while (line != null) {
+                contentsBuilder.append(line).append("\n");
+                line = reader.readLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw e;
+
+        } finally {
+            String contents = contentsBuilder.toString();
+            try {
+                fromJson(contents);
+            } catch (JsonParseException e) {
+                e.printStackTrace();
+                // Mal-formed!
+            }
+        }
     }
 
-    public Object getProperty(String key) {
-        return configEntries.get(key);
+    public void save() throws IOException {
+        Log.d(TAG, "saveConfig(): writing configuration data to file");
+
+        try {
+            String newContents = toJson().toString();
+            if (!fileObject.exists()) {
+                fileObject.createNewFile();
+
+            } else if (fileObject.isDirectory()) {
+                throw new FileNotFoundException();
+            }
+
+            if (!fileObject.canWrite()) {
+                fileObject.setWritable(true);
+            }
+
+            try (FileOutputStream fos = MainActivity.Context.openFileOutput(fileName, Context.MODE_PRIVATE)) {
+                fos.write(newContents.getBytes(StandardCharsets.UTF_8));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
-    public void setProperty(String key, Object value) {
-        configEntries.put(key, value);
+    public String getFileName() {
+        return fileName;
     }
 
     public String getFilePath() {
-        return filePath;
+        return fileObject.getPath();
     }
 
-    public JSONObject toJSON() {
-        throw new NotImplementedError();
+    // Override these!
+
+    /**
+     * Convert the configuration to Json
+     * @return This class serialized to Json
+     */
+    public JsonObject toJson() {
+        Gson gson = gsonBuilder.create();
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("version", this.version.toString());
+        return jsonObject;
     }
 
-    public void fromJSON(JSONObject json) {
-        throw new NotImplementedError();
+    /**
+     * Set class properties to those in a Json string. Load class properties from Json.
+     *
+     * Override this
+     * @param jsonObject JsonObject to load from (the Json)
+     */
+    public void fromJson(JsonObject jsonObject) {
+        this.version = new Version(jsonObject.get("version").getAsString());
+    }
+    /**
+     * Set class properties to those in a Json string. Load class properties from Json.
+     *
+     * You do not have to override this
+     * @param json Json text to load from
+     */
+    public void fromJson(String json) throws JsonParseException {
+        if (json.isEmpty())
+            return;
+
+        JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
+        fromJson(jsonObject);
     }
 
     /**
