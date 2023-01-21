@@ -1,6 +1,6 @@
 {
   "name": "NeptuneServer",
-  "version": "0.0.1-debug+Skeleton",
+  "version": "0.0.2-debug+PreBeta",
   "description": "Receive notifications from your Android device",
   "contributors": [
     {
@@ -21,7 +21,10 @@
   "scripts": {
     "build": "webpack --env production && fixBrokenBuildNames.bat && npx nodegui-packer --pack dist && call tools\\postBuild.bat",
     "start": "webpack && fixBrokenBuildNames.bat && qode ./dist/index.js",
-    "debug": "webpack && fixBrokenBuildNames.bat && qode --inspect ./dist/index.js"
+    "debug": "webpack && fixBrokenBuildNames.bat && qode --inspect ./dist/index.js",
+    "test": "jest && echo Now running GUI tests && npm run test-gui",
+    "test-code": "jest --config=jest.config.js",
+    "test-gui": "qode ./node_modules/jest/bin/jest --config=jest-GUI.config.js --detectOpenHandles"
   },
   "homepage": "https://github.com/SCCapstone/Neptune",
   "dependencies": {
@@ -37,7 +40,6 @@
     "native-addon-loader": "^2.0.1",
     "node-loader": "^2.0.0",
     "node-notifier": "^10.0.1",
-    "pkg": "^5.8.0",
     "ts-loader": "^9.3.1",
     "typescript": "^4.8.2",
     "webpack": "^5.74.0",
@@ -45,6 +47,7 @@
     "ws": "^8.11.0"
   },
   "devDependencies": {
-    "@nodegui/packer": "^1.5.0"
+    "@nodegui/packer": "^1.5.0",
+    "jest": "^29.3.1"
   }
 }

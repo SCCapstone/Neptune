@@ -2,6 +2,7 @@
 
 /dist/
 /deploy/
+/tests/coverage/
 
 /data/
 /logs/
