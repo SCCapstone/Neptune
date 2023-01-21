@@ -44,14 +44,7 @@ class aboutWindow extends NeptuneWindow {
 		let closeWindowButton = this.createButton("closeWindowButton", "Close About Window");
 		closeWindowButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
 		
-		closeWindowButton.addEventListener('clicked', (checked) => this.hideWindow());
-	}
-
-	/**
-	 * Hides the window.
-	 */
-	hideWindow() {
-		this.hide();
+		closeWindowButton.addEventListener('clicked', (checked) => this.close());
 	}
 }
 

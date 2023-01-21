@@ -18,9 +18,10 @@ const Notifier = require("node-notifier"); // does not work with windows action 
 
 class mainWindow extends NeptuneWindow {
 
+	#logger = Neptune.logMan.getLogger("MainWindow");;
+
 	constructor(arg) {
 		super(arg);
-
 
 		this.setWindowTitle('Neptune | Main window');
 		this.resize(800, 600);
@@ -40,6 +41,7 @@ class mainWindow extends NeptuneWindow {
 		const notificationButton = this.createButton("toDetail", "Test notifications");
 		notificationButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
 		notificationButton.addEventListener('clicked', () => {
+			let logger = this.#logger;
 			Notifier.notify({
 	            title: "Testing notifications on server",
 	            message: "This is just a test.", // data.contents.subtext + "\n" +

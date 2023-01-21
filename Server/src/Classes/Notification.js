@@ -127,27 +127,41 @@ class Notification extends EventEmitter {
         this.#log.debug("New notification created. Title: " + data.title + " .. type: " + data.type + " .. text: " + data.contents.text);
         this.#log.silly(data);
 
-        var logger = this.#log;
-        var maybeThis = this;
-
         this.data = data;
 
 
-        // send the notification
-        this.#notifierNotification = Notifier.notify({
-            title: data.title,
-            message: data.contents.text, // data.contents.subtext + "\n" +
-            id: data.notificationId,
-        }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
-            if (err) {
-                logger.error(err);
-            } else {
-                logger.debug("Action received: " + response);
-                logger.silly("action metadata: ");
-                logger.silly(metadata);
-                maybeThis.emit(response, metadata);
-            }
-        });
+        
+    }
+
+    /**
+     * Pushes the notification out to the OS
+     * @return {void}
+     */
+    push() {
+        if (process.platform === "win32") {
+            // Use NeptuneNotifier program (again, see notes at top)
+            // we'll need to generate our own Windows Toast XML: https://learn.microsoft.com/en-us/windows/apps/design/shell/tiles-and-notifications/adaptive-interactive-toasts?tabs=xml
+            // fun!
+
+        } else {
+            let logger = this.#log;
+            let maybeThis = this;
+            // send the notification
+            this.#notifierNotification = Notifier.notify({
+                title: data.title,
+                message: data.contents.text, // data.contents.subtext + "\n" +
+                id: data.notificationId,
+            }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
+                if (err) {
+                    logger.error(err);
+                } else {
+                    logger.debug("Action received: " + response);
+                    logger.silly("action metadata: ");
+                    logger.silly(metadata);
+                    maybeThis.emit(response, metadata);
+                }
+            });
+        }
     }
 
     activate() {

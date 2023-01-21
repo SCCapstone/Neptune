@@ -11,7 +11,7 @@
 
 const NodeGUI = require("@nodegui/nodegui");
 
-const Client = require("../Classes/Client.js");
+// https://docs.nodegui.org/docs/api/generated/classes/qmainwindow
 
 /**
  * Base windows for all Neptune windows.
@@ -25,11 +25,10 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 	 */
 	#widgets = {}
 
-	#clients = [];
-
 	constructor(arg) {
 		super(arg);
-		this.setWindowIcon(process.ResourceManager.ApplicationIcon);
+		if (!global.RunningTest) // I hate this
+			this.setWindowIcon(process.ResourceManager.ApplicationIcon);
 
 		let centralWidget = new NodeGUI.QWidget();
 		let rootLayout = new NodeGUI.FlexLayout();
@@ -39,8 +38,6 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 		centralWidget.setLayout(this.#widgets["rootLayout"]);
 		this.#widgets["centralWidget"] = centralWidget;
 		this.setCentralWidget(this.#widgets["centralWidget"]);
-
-		this.#clients = [];
 
 		this.setWindowTitle('Neptune');
 		this.resize(800, 600);
@@ -128,10 +125,6 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 			throw new TypeError("name expected string got " + (typeof name).toString());
 
 		return this.#widgets[name];
-	}
-
-	addClient(client) {
-		
 	}
 }
 

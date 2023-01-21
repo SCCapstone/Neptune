@@ -48,6 +48,7 @@ const keytar = require("keytar");
 
 // GUI
 const NodeGUI = require("@nodegui/nodegui");
+const qApp = NodeGUI.QApplication.instance();
 // Interaction
 const readline = require("readline");
 
@@ -152,6 +153,8 @@ Neptune.events.application.on('shutdown', (shutdownTimeout) => {
 
 	setTimeout(()=>{
 		Neptune.log.info("Goodbye world!");
+		if (qApp !== undefined)
+			qApp.quit();
 		process.exit(0);
 	}, shutdownTimeout);
 });
@@ -171,7 +174,7 @@ const rl = readline.createInterface({
 });
 var confirmExit = false; // windows will kill it if you press CTRL+C twice
 
-setTimeout(() => { confirmExit = true }, 5000); // when packaged CTRL+C is auto sent on startup .. wait a sec before listening
+setTimeout(() => { confirmExit = true; console.log("CTRL+C capture enabled.") }, 5000); // when packaged CTRL+C is auto sent on startup .. wait a sec before listening
 
 if (process.stdin !== undefined)
 	rl.on("close", function () { // to-do: realize, hey, there's no console.
@@ -179,7 +182,7 @@ if (process.stdin !== undefined)
 			Shutdown(); // Capture CTRL+C
 		} else {
 			confirmExit = true;
-			Neptune.log.warn("Press CTRL+C again within 10 seconds to confirm exit!");
+			Neptune.log.warn("CTRL+C is ignored during the first 5 seconds. Please type \"q\" to quit.");
 			setTimeout(() => { confirmExit = false; }, 10000);
 		}
 	});
@@ -356,7 +359,6 @@ async function main() {
 	process.ResourceManager = ResourceManager;
 
 
-	const qApp = NodeGUI.QApplication.instance();
 	qApp.setQuitOnLastWindowClosed(false); // required so that app doesn't close if we close all windows.
 
 
@@ -729,7 +731,7 @@ async function main() {
 					cLog.error(err);
 				}
 			} else {
-				if (command == "exit" || command == "quit" || command == "end")
+				if (command == "exit" || command == "quit" || command == "end" || command == "q")
 					Shutdown();
 				else if (command == "showmain")
 					mainWindow.show()

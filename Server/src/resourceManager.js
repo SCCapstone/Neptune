@@ -10,7 +10,7 @@
  */
 
 const { QIcon } = require('@nodegui/nodegui');
-const path = require('path');
+const path = require('node:path');
 
 /**
  * Resource manager provides a universal tool used to lookup and grab resource files (images)
