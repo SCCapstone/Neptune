@@ -8,19 +8,17 @@ UofSC|CSCE490: Capstone project for receiving and interacting with phone (Androi
 
 ### Prerequisites
 
-Node.JS (V18 - for server)\
-Android Studio (Android app/client)\
+Node.JS (V18 - for Server)\
+Android Studio (Android app/Client)\
 
 
 
-#### Building
+#### Building/Running
+Each application has application specific instructions for building/running.
 
-TBD
+View the Server instructions [here](./Server/Readme.md#starting)\
+View the Android Client instructions [here](./Client/Android/Readme.md)
 
-
-#### Running
-
-TBD
 
 
 ---
@@ -28,7 +26,6 @@ TBD
 
 ## Authors
 Will Amos\
-Liam Diaz\
 Ridge Johnson\
 Cody Newberry\
 Matthew Sprinkle
