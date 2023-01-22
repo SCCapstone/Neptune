@@ -6,6 +6,11 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+import com.neptune.app.MainActivity;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -36,6 +41,7 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Date;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 import javax.crypto.KeyAgreement;
@@ -75,24 +81,52 @@ public class ConnectionManager {
 
     // This sends a POST request
     // apiURL is the 'api' or command you're calling, request data the ... data, and callback ... nothing for now
-    public JSONObject sendRequest(String apiURL, JSONObject requestData) throws JSONException, MalformedURLException { //, Callable<Void> callback) {
+    public JsonObject sendRequest(String apiURL, JsonObject requestData) throws JsonParseException, MalformedURLException { //, Callable<Void> callback) {
         String response = "{}";
 
         String packet = "{ \"conInitUUID\": \"" + this.conInitUUID + "\", \"command\": \"" + apiURL + "\" }";
-        JSONObject obj = new JSONObject(packet);
-        obj.put("data", requestData.toString());
+        JsonObject obj = JsonParser.parseString(packet).getAsJsonObject();
+        String data = requestData.toString();
+        if (this.sharedSecret != null) {
+            try {
+                NeptuneCrypto.encrypt(data, this.sharedSecret, null, this.cipherData);
+            } catch (InvalidKeyException e) {
+                e.printStackTrace();
+            } catch (InvalidAlgorithmParameterException e) {
+                e.printStackTrace();
+            }
+        }
+        obj.addProperty("data", data);
 
         response = sendHTTPPostRequest(new URL("http://" + this.IPAddress.toString() + "/api/v1/server/socket/" + this.socketUUID + "/http"), obj.toString());
 
-        return new JSONObject(response);
+        JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+        if (jsonResponse.has("data")) {
+            String responseData = jsonResponse.get("data").getAsString();
+            if (NeptuneCrypto.isEncrypted(responseData)) {
+                try {
+                    responseData = NeptuneCrypto.decrypt(responseData, this.sharedSecret);
+                } catch (NoSuchPaddingException e) {
+                    e.printStackTrace();
+                    data = "{}";
+                } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                    data = "{}";
+                }
+            }
+            jsonResponse.remove("data");
+            jsonResponse.add("data", JsonParser.parseString(responseData).getAsJsonObject());
+        }
+
+        return jsonResponse;
     }
-    public void sendRequestAsync(String apiURL, JSONObject requestData) throws JSONException, MalformedURLException {
+    public void sendRequestAsync(String apiURL, JsonObject requestData) {
         Thread thread = new Thread(new Runnable(){
             @Override
             public void run(){
                 try {
                     sendRequest(apiURL, requestData);
-                } catch (JSONException e) {
+                } catch (JsonParseException e) {
                     e.printStackTrace();
                 } catch (MalformedURLException e) {
                     e.printStackTrace();
@@ -166,7 +200,7 @@ public class ConnectionManager {
     }
 
 
-    public boolean initiateConnectionSync() {
+    public boolean initiateConnectionSync() throws FailedToPair {
         // Step 1: send
         /*
         {
@@ -194,15 +228,15 @@ public class ConnectionManager {
             StrictMode.setThreadPolicy(policy);
             //your codes here
             try {
-                URL url = new URL("http://" + this.IPAddress.toString() + "/api/v1/server/newSocketConnection");
-                Log.d("Connection-Manager", "Initiating connection: http://" + this.IPAddress.toString() + "/api/v1/server/newSocketConnection");
+                URL url = new URL("http://" + this.IPAddress.toString() + "/api/v1/server/initiateConnection");
+                Log.d("Connection-Manager", "Initiating connection: http://" + this.IPAddress.toString() + "/api/v1/server/initiateConnection");
                 HttpURLConnection connection = (HttpURLConnection)url.openConnection();
                 connection.setRequestMethod("POST");
                 connection.setRequestProperty("Content-Type", "application/json");
                 connection.setRequestProperty("Accept", "application/json");
                 connection.setDoOutput(true);
 
-                String connectionParameters = "{\"acceptedKeyGroups\": [14,16,17],\"acceptedCrypto\": [\"aes-128-gcm\"],\"acceptedHashTypes\": [\"sha256\"], \"useDynamicSalt\": false }";
+                String connectionParameters = "{\"supportedKeyGroups\": [14,16,17],\"supportedCiphers\": [\"aes-128-gcm\"],\"supportedHashAlgorithm\": [\"sha256\"], \"useDynamicSalt\": false }";
 
                 try(OutputStream stream = connection.getOutputStream()) { // dump the string into output
                     byte[] input = connectionParameters.getBytes(StandardCharsets.UTF_8);
@@ -262,6 +296,15 @@ public class ConnectionManager {
                 String chkMsgHash = NeptuneCrypto.convertBytesToHex(chkMsgEncodedHash);
 
                 // Encrypted
+                String clientIdString = NeptuneCrypto.encrypt(MainActivity.ClientConfig.clientId.toString(), this.sharedSecret, null, this.cipherData);
+                boolean newPair = true;
+                if (this.Server.pairKey != null) {
+                    if (!this.Server.pairKey.isEmpty()) {
+                        newPair = false;
+                        AESKey sharedAESKeyWithPairKey = NeptuneCrypto.HKDF(dhSecret, this.Server.pairKey, options);
+                        this.sharedSecret = sharedAESKeyWithPairKey.getKey();
+                    }
+                }
                 String chkMsgEncrypted = NeptuneCrypto.encrypt(chkMsg, this.sharedSecret, null, this.cipherData);
                 String chkMyself = NeptuneCrypto.decrypt(chkMsgEncrypted, this.sharedSecret);
                 if (!chkMyself.equalsIgnoreCase(chkMsg))
@@ -269,13 +312,12 @@ public class ConnectionManager {
 
                 // the response.. needs b1, newPair, chkMsg, chkMsgHash, chkMsgHashFunction
                 String publicKey = NeptuneCrypto.convertBytesToBase64(bobPublic.getY().toByteArray()); // this might be wrong
-
-                String step2 = "{\"b1\": \"" + publicKey + "\",\"newPair\": true, \"chkMsg\": \"" + chkMsgEncrypted + "\", \"chkMsgHash\": \"" + chkMsgHash + "\", \"chkMsgHashFunction\": \"sha256\", \"clientId\": \"testClient\"}";
+                String step2 = "{\"b1\": \"" + publicKey + "\",\"newPair\": " + newPair + ", \"chkMsg\": \"" + chkMsgEncrypted + "\", \"chkMsgHash\": \"" + chkMsgHash + "\", \"chkMsgHashFunction\": \"sha256\", \"clientId\": \"" + clientIdString + "\"}";
                 Log.d("Connection-Manager", "Sending step2 data: " + step2);
 
                 // Send step2
-                URL url2 = new URL("http://" + this.IPAddress.toString() + "/api/v1/server/newSocketConnection/" + this.conInitUUID);
-                Log.d("Connection-Manager", "Initiating connection: http://" + this.IPAddress.toString() + "/api/v1/server/newSocketConnection/" + this.conInitUUID);
+                URL url2 = new URL("http://" + this.IPAddress.toString() + "/api/v1/server/initiateConnection/" + this.conInitUUID);
+                Log.d("Connection-Manager", "Initiating connection: http://" + this.IPAddress.toString() + "/api/v1/server/initiateConnection/" + this.conInitUUID);
                 HttpURLConnection connection2 = (HttpURLConnection)url2.openConnection();
                 connection2.setRequestMethod("POST");
                 connection2.setRequestProperty("Content-Type", "application/json");
@@ -315,6 +357,10 @@ public class ConnectionManager {
 
                 Log.d("Connection-Manager", "Connection complete! SocketUUID: " + this.socketUUID);
 
+                if (this.Server.pairId == null) {
+                    this.pair();
+                }
+
                 // we good
                 return true;
             } catch (IOException e) {
@@ -343,7 +389,13 @@ public class ConnectionManager {
     }
 
     public void initiateConnection() {
-        Thread thread = new Thread(() -> initiateConnectionSync());
+        Thread thread = new Thread(() -> {
+            try {
+                initiateConnectionSync();
+            } catch (FailedToPair e) {
+                e.printStackTrace();
+            }
+        });
         thread.start();
         thread.setName(Server.serverId + " - Initiation runner");
     }
@@ -381,7 +433,53 @@ public class ConnectionManager {
         return this.hasNegotiated;
     }
 
-    public void pair() {
+    public void pair() throws FailedToPair {
         Log.i("ConnectionManager", "Pairing...");
+        try {
+            JsonObject data = new JsonObject();
+            data.addProperty("clientId", MainActivity.ClientConfig.clientId.toString());
+            data.addProperty("friendlyName", MainActivity.ClientConfig.friendlyName);
+
+            JsonObject response = sendRequest("/api/v1/server/newPairRequest", data);
+            if (!response.has("data"))
+                throw new FailedToPair("Invalid server response: no data.");
+
+            response = response.get("data").getAsJsonObject();
+            if (response == null) {
+                this.Server.delete();
+                throw new FailedToPair("Null response");
+            }
+            if (response.has("error")) {
+                throw new FailedToPair(response.get("errorMessage").toString());
+            }
+            if (!response.has("serverId") || !response.has("pairId") || !response.has("pairKey")) {
+                this.Server.delete();
+                throw new FailedToPair("Invalid server response");
+            }
+
+            this.Server.serverId = UUID.fromString(response.get("serverId").getAsString());
+            this.Server.pairId = UUID.fromString(response.get("pairId").getAsString());
+            this.Server.pairKey = response.get("pairKey").getAsString();
+            this.Server.dateAdded = new Date();
+
+            this.Server.updateConfigName();
+
+            Log.i("Connection-Manager", "pair: successful!");
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new FailedToPair(e.getMessage());
+        }
+    }
+
+    public class FailedToPair extends Exception {
+        FailedToPair() {
+            super("Unknown error while attempting to pair.");
+        }
+        FailedToPair(String error) {
+            super(error);
+        }
     }
 }

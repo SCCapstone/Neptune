@@ -17,7 +17,7 @@
 This data is a layer on the _actual_ data the client is sending. The `data` portion is encrypted using the shared AES key and contains the command, clientId, and command parameters.
 The server or client would receive this "packet" of data and peel it (decrypt the `data` portion) to read the request/response of the other application. This is to provide always applied encryption to requests and responses.\
 Before we have a conInitUUID, we add `"negotiating": true` to signify we're setting that up.\
-If the server receives a packet without a conInitUUID, only the `newSocketConnection` command will be accepted. 
+If the server receives a packet without a conInitUUID, only the `initiateConnection` command will be accepted. 
 
 
 ## Key negotiation, pairing
@@ -31,27 +31,30 @@ A new socket connection can be called thru an existing socket itself to reestabl
 
 Data is set at the body. We do not use "the packet" for this.
 
-1) Client sends HTTP post to `/api/v1/server/newSocketConnection`:\
+1) Client sends HTTP post to `/api/v1/server/initiateConnection`:\
     POST (client sends):\
-        `acceptedKeyGroups`: DH key groups\
-        `acceptedHashTypes`: allowed hash functions\
-        `acceptedCrypto`: allowed crypto functions (AES256-GCM, ChaCha20, AES256-CBC, AES128-GCM, AES128-CBC)\
+        `supportedKeyGroups`: DH key groups\
+        `supportedHashAlgorithm`: allowed hash functions\
+        `supportedCiphers`: allowed crypto functions (AES256-GCM, ChaCha20, AES256-CBC, AES128-GCM, AES128-CBC)\
         `useDynamicSalt`: use separate DH exchange to derive the salt used to derive the AES key/iv.
 
     REPLY (server sends): g1, p1, A1, conInitId, g2, p2, A2.\
-        `g1`: base _There are two, second set is optional and used to derive a salt._\
-        `p1`: modulus\
-        `A1`: server's public integer\
-        `conInitId`: random string of length 16, used to identify the client's next call\
+        `g1`: base _There are two, second set is optional and used to derive a salt._ Encoded in base64\
+        `p1`: modulus. Encoded in base64\
+        `A1`: server's public integer. Encoded in base64\
+        `conInitId`: UUID, used to identify the client's next call\
         `g2`, `p2`, `A2`: Are the base, modulus, and server's public integer for deriving a shared _dynamic_ salt (_if `useDynamicSalt` was true in the client's request_).
+        `selectedCipher`: cipher algorithm we've accepted
+        `selectedKeyGroup`: key group we're using
+        `selectedHashAlgorithm`: hash algorithm we've accepted 
 
-2) Client sends HTTP post to `/api/v1/server/newSocketConnection/{conInitId}`:\
+2) Client sends HTTP post to `/api/v1/server/initiateConnection/{conInitId}`:\
     POST:\
         `B1`: client's public integer\
         `B2`: client's public integer (dynamic salt)\
         `clientId`: the client identifier (this is who we are, this encrypted)\
-        `pairId`: encrypted. Tells the server which client we are, used in deriving the salt used to create the AES key and iv. Provides the server with an assurance that we've talked before. If a client and server have not paired before, this will be empty.
-        `newPair`: if the server and client have not paired before, this will be true, otherwise false or exempt. Singles that a pair request will follow after socket connection.
+        `pairId`: encrypted. Tells the server which client we are, used in deriving the salt used to create the AES key and iv. Provides the server with an assurance that we've talked before. If a client and server have not paired before, this will be empty.\
+        `newPair`: if the server and client have not paired before, this will be true, otherwise false or exempt. Signals that a pair request will follow after socket connection.\
         `chkMsg`: encrypted random string of length 64. Encrypted using the derived AES key and iv created from the shared secret (DH). Used to validate encryption (both parties have the same key).\
         `chkMsgHash`: hash (SHA256/SHA1) of the decrypted `chkMsg` string.\
         `chkMsgHashFunction`: sha256, sha1, md5. Function used to create `chkMsgHash`.
@@ -60,9 +63,35 @@ Data is set at the body. We do not use "the packet" for this.
         `socketId`: the socket id the client needs to connect to (`/api/v1/server/socket/{socketId}`).\
         `confMsg`: hash of the decrypted `chkMsg` concatenated with the `chkMsgHash`. Used to tell the client the server can decrypt and encrypt.
 
-3) Client connects to the socket `/api/v1/server/socket/{socketId}` and finalizes connection setup:\
-_client can also use HTTP POST to `localhost:25560/api/v1/server/socket/{{socketUUID}}/http` rather than a socket_
-    Send (if already paired):\
+3) Client connects to the socket `/api/v1/server/socket/{socketId}`. Everything is setup!:\
+_client can also use HTTP POST to `localhost:25560/api/v1/server/socket/{{socketUUID}}/http` rather than a socket\
+If a new pair connection is needed, send:
+```json
+{
+    "command": "/api/v1/server/newPairRequest`",
+    "data": {
+        "clientId": "UUID", // the client identifier (unique, hopefully)\
+        "friendlyName": "John's Phone", // the client's display name (_John's Phone_)\
+        "configuration": {} // the configuration data, same data as `/api/v1/server/updateConfiguration`.
+    }
+}
+```
+
+Server would process the data, prompt the user to accept and then respond with:
+```json
+{
+
+}
+    "command": "/api/v1/server/newPairResponse",
+    "data": {
+        "pairId": "1234", // the unique identifier (UUID) to represent a pair relationship between two devices (server and client)\
+        "pairKey": "1234", // a shared key of length 64 used in encryption.  Only the server and client know this. Persistent for as long as the devices are paired, however, can be changed via a request.
+        "serverId": "1234", // UUID of the server
+    }
+```
+
+
+    This was never implemented, and is no longer needed, but to finalize the connection initiation, client would've sent (if already paired):\
         `command`: `/api/v1/server/newClientConnection`,\
         `pairId`: ensure the correct pair identifier was sent (likely redundant, pairIds used to derive salt/pepper)\
         `TTL`: time-to-live, how long until we require a renegotiation. (our maximum accepted time).
@@ -72,24 +101,7 @@ _client can also use HTTP POST to `localhost:25560/api/v1/server/socket/{{socket
         `TTL`: decided time-to-live (will be <= client's requested TTL)\
         `connectionId`: a unique identifier to represent this client connection. 
 
-
-    Alternatively, if a new pair connection is needed, send:\
-        `command`: `/api/v1/server/newPairRequest`,\
-        `TTL`: time-to-live, how long until we require a renegotiation. (our maximum accepted time).
-        `clientId`: the client identifier (unique, hopefully)\
-        `friendlyName`: the client's display name (_John's Phone_)\
-        `listeningIpAddress`: likely the current IP of the client device, whatever the SocketServer is bound to\
-        `listeningPort`: port SocketServer is bound to\
-        `configuration`: the configuration data, JSON key value pair. Similar to `/api/v1/server/updateConfiguration`.
-
-    Reply:\
-        `command`: `/api/v1/server/newPairResponse`,\
-        `pairId`: the unique identifier to represent a pair relationship between two devices (server and client)\
-        `pairKey`: a shared key used in encryption (think of this as the salt or the pepper used to derive the AES keys). Only the server and client know this. Persistent for as long as the devices are paired, however, can be changed via a request.\
-        `TTL`: decided time-to-live (will be <= client's requested TTL)\
-        `connectionId`: a unique identifier to represent this client connection. 
-        
-At any time the client can send a scrap request to halt the connection `/api/v1/server/newSocketConnection/{conInitId}/scrap`. The server will delete any socket and remove any references.
+At any time the client can send a scrap request to halt the connection `/api/v1/server/initiateConnection/{conInitId}/scrap`. The server will delete any socket and remove any references.
 
 
 ## Notifications
@@ -226,7 +238,7 @@ Similar for server->client, just change client to server.
 
 
 ## Unpairing a device
-Command: `/api/v1/server/unpair` or `/api/v1/server/unpair`:
+Command: `/api/v1/server/unpair` or `/api/v1/client/unpair`:
 Used to unpair the server from the client or vice-versa.
 ```json
 {
@@ -283,7 +295,7 @@ Client / server request.
 
 
 `/api/v1/server/destroySocket`:
-Kills a socket and connection, requires a new connection to be setup via `/api/v1/server/newSocketConnection`.\
+Kills a socket and connection, requires a new connection to be setup via `/api/v1/server/initiateConnection`.\
 Client / server request.
 ```json
 {

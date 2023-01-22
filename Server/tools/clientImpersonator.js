@@ -46,7 +46,7 @@ const convert = (str, from, to) => Buffer.from(str, from).toString(to);
 const NeptuneCrypto = require("../src/Support/NeptuneCrypto.js");
 
 // https://nodejs.org/api/crypto.html#class-diffiehellman
-app.post('/respondTo/api/v1/server/newSocketConnection', (req, res) => {
+app.post('/respondTo/api/v1/server/initiateConnection', (req, res) => {
     let bob = crypto.createDiffieHellman(Buffer.from(req.body.p1,'base64'), Buffer.from(req.body.g1,'base64'));
     let bobKey = bob.generateKeys();
 

@@ -28,6 +28,7 @@ import android.content.Intent;
 import com.google.gson.JsonParseException;
 import com.neptune.app.Backend.ClientConfig;
 import com.neptune.app.Backend.ConfigurationManager;
+import com.neptune.app.Backend.ConnectionManager;
 import com.neptune.app.Backend.IPAddress;
 import com.neptune.app.Backend.NotificationListenerService;
 import com.neptune.app.Backend.Server;
@@ -36,6 +37,8 @@ import com.neptune.app.Backend.ServerManager;
 import org.json.JSONException;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements RenameDialog.RenameDialogListener{
@@ -47,7 +50,6 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     public static Context Context;
 
 
-    public Server server;
     //public Config config
     private TextView devName;
     private ImageView editName;
@@ -78,7 +80,11 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             ClientConfig = new ClientConfig("clientConfiguration.json", configurationManager);
             ClientConfig.save();
             serverManager = new ServerManager(ClientConfig, configurationManager);
-
+            Server[] servers = serverManager.getServers();
+            for (int i = 0; i<servers.length; i++) {
+                addNameLine(servers[i]);
+            }
+            serverManager.connectToServers(); // Connects all servers up
         } catch (IOException | JSONException e) {
             e.printStackTrace();
             // Failed to load main config! First run I guess
@@ -176,14 +182,17 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         addDialog = builder.create();
     }
 
-    public void addNameLine(String name) {
+    public void addNameLine(Server server) {
+        if (server == null)
+            return;
+
         final View view = getLayoutInflater().inflate(R.layout.name_line, null);
 
         devName = view.findViewById(R.id.name);
         editName = view.findViewById(R.id.editName);
         delete = view.findViewById(R.id.delete);
 
-        devName.setText(name);
+        devName.setText(server.friendlyName);
         devName.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -201,14 +210,13 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         delete.setOnClickListener(new ImageView.OnClickListener() {
             @Override
             public void onClick(View v) {
-                /*try{
-                    server = serverManager.getServer(devName.getText().toString());
+                try{
                     serverManager.removeServer(server);
+                    addLine.removeView(view);
                 } catch (Exception e) {
-
+                    e.printStackTrace();
+                    showErrorMessage("Failed to unpair server", e.getMessage());
                 }
-                server.unpair();*/
-                addLine.removeView(view);
             }
         });
 
@@ -267,7 +275,20 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         super.onStop();
     }
 
+
+    public void showErrorMessage(String title, String message) {
+        AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
+        alertBuilder.setTitle(title);
+        alertBuilder.setMessage(message);
+        alertBuilder.setPositiveButton("Ok", (dialog, which) -> {
+            // do stuff here?
+        });
+
+        alertBuilder.create().show();
+    }
+
     private void addServer(String name, String ipAddr) {
+        Server server = null;
         try {
             // Later we need to get the UUID from the server via a HTTP request or something..
             // Or at the very least rename the config file to the real UUID
@@ -277,18 +298,27 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             server.save();
             serverManager.addServer(server);
             server.setupConnectionManager();
+            serverManager.saveServers();
 
-            //Maybe set IP address here, this would need to be grabbed from the server when the connection is made so probably just calling something like
-            //server.setIPAddress(something); Maybe the setIPAddress should have no params, or its param is getIPAddress and that gets the IP somehow
-            //It's that or getting+setting the IP directly here, but feels more like a backend thing.
-            server.pair();
-
+            Server finalServer = server;
+            runOnUiThread(() -> addNameLine(finalServer));
         } catch (JsonParseException e) {
             e.printStackTrace();
+            if (server != null)
+                server.delete();
+            runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
+
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            runOnUiThread(() -> addNameLine(name));
+            if (server != null)
+                server.delete();
+            runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
+
+        } catch (ConnectionManager.FailedToPair e) {
+            e.printStackTrace();
+            if (server != null)
+                server.delete();
+            runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
         }
     }
 }

@@ -147,6 +147,17 @@ class NeptuneConfig extends ConfigItem {
 		this.#setEntries();
 		super.save();
 	}
+
+	/**
+	 * Save the configuration
+	 * @return {void}
+	 */
+	saveSync() {
+		this.#setEntries();
+		super.saveSync();
+	}
+
+
 	
 
 	/**

@@ -64,6 +64,7 @@ const ConfigurationManager = require('./Classes/ConfigurationManager.js');
 const NeptuneConfig = require('./Classes/NeptuneConfig.js');
 const ClientManager = require('./Classes/ClientManager.js');
 const NotificationManager = require('./Classes/NotificationManager.js');
+/** @typedef {import('./Classes/Client')} Client */
 /** @type {import('./Classes/LogMan').LogMan} */
 const LogMan = require('./Classes/LogMan.js').LogMan;
 const IPAddress = require("./Classes/IPAddress.js");
@@ -316,7 +317,7 @@ async function main() {
 	}
 
 	if (keyFound && Neptune.config.encryption.enabled === false) {
-		Neptune.log.verbose("Key found, yet encryption is disabled. Odd. Running rekey to completely disable.")
+		Neptune.log.verbose("Key found, yet encryption is disabled. Odd. Running re-key to completely disable.")
 		Neptune.configManager.rekey(); // Encryption is set to off, but the key is there? Make sure to decrypt everything and remove key
 	}
 
@@ -336,7 +337,7 @@ async function main() {
 		encryptionKey = NeptuneCrypto.randomString(encryptionKey.length*2); // Don't need that, configuration manager has it now
 
 	Neptune.events.application.on('shutdown', (shutdownTimeout) => {
-		Neptune.configManager.destroy(); // Save all configs!
+		Neptune.clientManager.destroy(); // Remove any unpaired 
 	});
 
 	Neptune.log("Loading previous clients...");
@@ -499,6 +500,31 @@ async function main() {
 	});
 
 
+
+	/**
+	 * @typedef {object} conInitObject
+	 * @property {Logger} log - Logging object
+	 * @property {crypto.DiffieHellmanGroup} aliceDHObject - This is our keys
+	 * @property {crypto.DiffieHellmanGroup} dynamicSaltDHObject - The dynamic salt DH keys
+	 * @property {boolean} enabled - Whether we're allowing step 2 or 3 to go through
+	 * @property {boolean} socketCreated - Accepting connections via the socket
+	 * @property {string} socketUUID - Socket id
+	 * @property {string} secret - Shared secret key
+	 * @property {string} createdTime - ISO timestamp when this initiation attempt started. 5 minutes after this time we invalidate this attempt
+	 * @property {string[]} supportedCiphers - Array of NeptuneCrypto ciphers the client wishes to use
+	 * @property {string} selectedCipher - Cipher algorithm we've accepted
+	 * @property {string[]} supportedHashAlgorithms - Array of NeptuneCrypto HKDF hash algorithms the client wishes to use
+	 * @property {string} selectedHashAlgorithm - Hash algorithm we've accepted
+	 * @property {string[]} supportedKeyGroups - Array of DH key groups the client supported
+	 * @property {string} selectedKeyGroup - Key group we've agreed to use
+	 * @property {string} clientId - Client UUID
+	 * @property {Client} client - Client object
+	 */
+
+	/**
+	 * A collection of connection initiation ids. Key is the conInitUUID, 
+	 * @type {Map<String,conInitObject>}
+	 */
 	var conInitUUIDs = {};
 	
 
@@ -507,37 +533,99 @@ async function main() {
 
 	// https://nodejs.org/api/crypto.html#class-diffiehellman
 	// This is the initial endpoint for the client
-	app.post('/api/v1/server/newSocketConnection', (req, res) => {
+	app.post('/api/v1/server/initiateConnection', (req, res) => {
 		let conInitUUID = crypto.randomUUID(); // NeptuneCrypto.convert(NeptuneCrypto.randomString(16), "utf8", "hex"); // string (len 16) -> HEX
-		Neptune.webLog.info("Initiating new client connection, uuid: " + conInitUUID);
+		let conInitLog = Neptune.logMan.getLogger("ConInit-" + conInitUUID);
+		conInitLog.info("Initiating new client connection, uuid: " + conInitUUID);
 
-		let alice = crypto.getDiffieHellman('modp14');
-		let alicePublic = alice.generateKeys();
-
-		conInitUUIDs[conInitUUID] = {
-			"enabled": true,
-			"socketCreated": false,
-			dhObject: alice,
-			"g1": alice.getGenerator().toString('base64'),
-			"p1": alice.getPrime().toString('base64'),
-			"a1": alice.getPublicKey().toString('base64'),
-			createdAt: new Date().toISOString(),
-			cipher: req.body.acceptedCrypto,
-			hashAlgorithm: req.body.acceptedHashTypes
+		// https://nodejs.org/api/crypto.html#class-diffiehellmangroup
+		let supportedKeyGroups = ['modp14', 'modp15', 'modp16', 'modp17', 'modp18'];
+		let keyGroup = 'modp16';
+		if (req.body.supportedKeyGroups !== undefined) {
+			for (var i = 0; i<req.body.supportedKeyGroups.length; i++) {
+				if (supportedKeyGroups.indexOf(req.body.supportedKeyGroups[i]) != -1) {
+					keyGroup = req.body.supportedKeyGroups[i];
+				}
+			}
 		}
 
-		res.status(200).send(JSON.stringify({
-			"g1": conInitUUIDs[conInitUUID]["g1"],
-			"p1": conInitUUIDs[conInitUUID]["p1"],
-			"a1": conInitUUIDs[conInitUUID]["a1"],
+		// Select the cipher and hash
+		let supportedCiphers = ["chacha20-poly1305", "chacha20", "aes-256-gcm", "aes-128-gcm"];
+		let supportedHashAlgorithms = ["sha256", "sha512"];
+		let cipher = "aes-128-gcm";
+		let hashAlgorithm = "sha256";
+
+		if (req.body.supportedCiphers !== undefined) {
+			for (var i = 0; i<req.body.supportedCiphers.length; i++) {
+				if (supportedCiphers.indexOf(req.body.supportedCiphers[i]) != -1) {
+					cipher = req.body.supportedCiphers[i];
+				}
+			}
+		}
+		if (req.body.supportedHashAlgorithm !== undefined) {
+			for (var i = 0; i<req.body.supportedHashAlgorithm.length; i++) {
+				if (supportedHashAlgorithms.indexOf(req.body.supportedHashAlgorithm[i]) != -1) {
+					hashAlgorithm = req.body.supportedHashAlgorithm[0];
+				}
+			}
+		}
+		
+
+		conInitLog.debug("DH key group: " + keyGroup);
+		let alice = crypto.getDiffieHellman(keyGroup);
+		alice.generateKeys();
+
+		let useDynamicSalt = false;
+		let dynamicSalt;
+		if (req.body.useDynamicSalt == true) {
+			conInitLog.silly("Using dynamicSalt");
+			useDynamicSalt = true;
+			dynamicSalt = crypto.getDiffieHellman(keyGroup);
+			dynamicSalt.generateKeys();
+		}
+
+
+		// Store this data. Create our response
+		conInitUUIDs[conInitUUID] = {
+			log: conInitLog,
+			enabled: true,
+			socketCreated: false,
+			aliceDHObject: alice,
+			createdTime: new Date().toISOString(),
+			supportedCiphers: req.body.acceptedCrypto,
+			selectedCipher: cipher,
+			supportedHashAlgorithms: req.body.acceptedHashTypes,
+			selectedHashAlgorithm: hashAlgorithm,
+			supportedKeyGroups: req.body.acceptedKeyGroups,
+			selectedKeyGroup: keyGroup,
+		}
+
+		let myResponsePacket = {
+			"g1": alice.getGenerator('base64'),
+			"p1": alice.getPrime('base64'),
+			"a1": alice.getPublicKey('base64'),
 			"conInitUUID": conInitUUID,
-		}));
+			selectedKeyGroup: keyGroup,
+			selectedCipher: cipher,
+			selectedHashAlgorithm: hashAlgorithm
+		};
+
+		if (useDynamicSalt && dynamicSalt !== undefined) {
+			myResponsePacket.g2 = dynamicSalt.getGenerator('base64');
+			myResponsePacket.p2 = dynamicSalt.getPrime('base64');
+			myResponsePacket.a2 = dynamicSalt.getPublicKey('base64');
+			conInitUUIDs[conInitUUID].dynamicSaltDHObject = dynamicSalt;
+		}
+
+		res.status(200).send(JSON.stringify(myResponsePacket));
 	});
 
+
+
 	// This is the final part of negotiation, creates the socket and opens up command inputting
-	app.post('/api/v1/server/newSocketConnection/:conInitUUID', (req, res) => {
+	app.post('/api/v1/server/initiateConnection/:conInitUUID', (req, res) => {
 		let conInitUUID = req.params.conInitUUID;
-		Neptune.webLog.silly("POST: /api/v1/server/newSocketConnection/" + conInitUUID + " .. body: " + JSON.stringify(req.body));
+		Neptune.webLog.silly("POST: /api/v1/server/initiateConnection/" + conInitUUID + " .. body: " + JSON.stringify(req.body));
 		if (conInitUUIDs[conInitUUID] !== undefined) {
 			if (conInitUUIDs[conInitUUID].socketCreated !== false) {
 				Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
@@ -550,122 +638,114 @@ async function main() {
 			return;
 		}
 
+		/** @type {conInitObject} */
+		let conInitObject = conInitUUIDs[conInitUUID];
+
 		// Validate timestamp
 		let timeNow = new Date();
-		let createdTime = conInitUUIDs[conInitUUID].createdAt;
-
-		if (((timeNow - createdTime)/(60000)) >= 5) { // Older than 5 minutes
-			Neptune.webLog.warn("Attempt to use old conInitUUID! UUID: " + conInitUUID + " . createdAt: " + createdTime.toISOString());
+		if (((timeNow - conInitObject.createdTime)/(60000)) >= 5) { // Older than 5 minutes
+			conInitObject.log.warn("Attempt to use old conInitUUID! UUID: " + conInitUUID + " . createdAt: " + conInitObject.createdTime.toISOString());
 			delete conInitUUIDs[conInitUUID];
 			res.status(408).send('{ "error": "Request timeout for conInitUUID" }');
 		}
 
-		let socketUUID = crypto.randomUUID();
 
-		let aliceSecret = conInitUUIDs[conInitUUID].dhObject.computeSecret(Buffer.from(req.body.b1,'base64'));
-		conInitUUIDs[conInitUUID].secret = NeptuneCrypto.HKDF(aliceSecret, "mySalt1234", {hashAlgorithm: "sha256", keyLength: 32}).key;
-
-		// Neptune.webLog.silly(conInitUUID + " bob public key (hex): " + Buffer.from(req.body.b1,'base64').toString('hex'));
-		// Neptune.webLog.silly(conInitUUID + " alice public key (hex): " + Buffer.from(conInitUUIDs[conInitUUID]["a1"], "base64").toString('hex'));
-		// Neptune.webLog.silly(conInitUUID + " DH secret key (hex): " + aliceSecret.toString('hex'));
-		// Neptune.webLog.silly(conInitUUID + " shared key (hex): " + conInitUUIDs[conInitUUID].secret.toString('hex'));
+		// Generate shared secret
+		let aliceSecret = conInitObject.aliceDHObject.computeSecret(Buffer.from(req.body.b1,'base64'));
+		conInitObject.secret = NeptuneCrypto.HKDF(aliceSecret, "mySalt1234", {hashAlgorithm: "sha256", keyLength: 32}).key;
 
 		
-
+		// Validate chkMsg
 		var chkMsg = req.body.chkMsg;
+		conInitObject.clientId = req.body.clientId;
+		var client;
 		try {
+			if (NeptuneCrypto.isEncrypted(conInitObject.clientId))
+				conInitObject.clientId = NeptuneCrypto.decrypt(conInitObject.clientId, conInitObject.secret);
+
+			// Get/create client object
+			/** @type {Client} client **/
+			client = Neptune.clientManager.getClient(conInitObject.clientId)
+			client.clientId = conInitObject.clientId;
+			conInitObject.client = client;
+
+			if (client.pairKey !== undefined) {
+				// Regenerate key using shared pair key
+				conInitObject.log.debug("Using pairKey!");
+				conInitObject.secret = NeptuneCrypto.HKDF(aliceSecret, client.pairKey, {hashAlgorithm: "sha256", keyLength: 32}).key;
+			}
+
 			if (NeptuneCrypto.isEncrypted(chkMsg))
-				chkMsg = NeptuneCrypto.decrypt(chkMsg, conInitUUIDs[conInitUUID].secret);
+				chkMsg = NeptuneCrypto.decrypt(chkMsg, conInitObject.secret);
 		} catch (err) {
+			conInitObject.log.silly(err);
 			if (err instanceof NeptuneCrypto.Errors.InvalidDecryptionKey || err instanceof NeptuneCrypto.Errors.MissingDecryptionKey) {
 				// bad key.
-				Neptune.webLog.warn("Socket setup, bad key! UUID: " + conInitUUID);
-				// res.status(400).send(`{ "error": "Invalid encryption key" }`);
+				conInitObject.log.warn("Socket setup, bad key! UUID: " + conInitUUID);
+				res.status(400).send(`{ "error": "Invalid encryption key" }`);
 			} else {
 				// Another error
-				Neptune.webLog.warn("Decryption of chkMsg failed, error: " + err.message);
+				conInitObject.log.warn("Decryption of chkMsg failed, error: " + err.message);
 				res.status(400).send(`{ "error": "Decryption of chkMsg failed" }`);
 			}
-			//return;
+			delete conInitUUIDs[conInitUUID];
+			return;
 		}
 		
 		let chkMsgHash = crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg).digest('hex');
 		chkMsgHash = req.body.chkMsgHash; // remove this later
 
 		if (chkMsgHash !== req.body.chkMsgHash) {
-			Neptune.webLog.warn(`Invalid chkMsg hash! chkMsg: ${chkMsg} ... ourHash: ${chkMsgHash} ... clientHash: ${req.body.chkMsgHash}`);
+			conInitObject.log.warn(`Invalid chkMsg hash! chkMsg: ${chkMsg} ... ourHash: ${chkMsgHash} ... clientHash: ${req.body.chkMsgHash}`);
 			res.status(400).send(`{ "error": "Invalid chkMsgHash" }`);
 			return;
-		} else {
-			Neptune.webLog.info("Generating socket, id: " + socketUUID);
-			conInitUUIDs[conInitUUID].socketCreated = false; // Done
-			// Create the socket here.
-			// get the client
-			conInitUUIDs[conInitUUID].clientId = NeptuneCrypto.decrypt(req.body.clientId, conInitUUIDs[conInitUUID].secret.toString('utf8'));
-			/** @type {Client} client **/
-			let client = Neptune.clientManager.getClient(conInitUUIDs[conInitUUID].clientId)
-
-			
-			if (req.socket.remoteAddress !== "::1") {
-				client.IPAddress = new IPAddress(req.socket.remoteAddress, "25560");
-			}
-
-
-			// DELETE these later!
-			global.client = client;
-			client.friendlyName = "Test device";
-			client.clientId = conInitUUIDs[conInitUUID].clientId;
-			client.dateAdded = new Date();
-
-			conInitUUIDs[conInitUUID].client = client; // this is temporary.. delete later
-
-			var ws = new WebSocketServer({server: httpServer, path: '/api/v1/server/socket/' + socketUUID});
-
-			ws.on("connection", function(ws){
-				Neptune.webLog.info("Client connected to socket " + socketUUID);
-				client.setupConnectionManagerWebsocket(ws);
-			});
-
-			client.setupConnectionManager(conInitUUIDs[conInitUUID].secret, {
-				conInitUUID: conInitUUID,
-				createdAt: conInitUUIDs[conInitUUID].createdAt,
-			});
-			
-
-			// This should be encrypted.
-			let response = JSON.stringify({
-				confMsg: crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg + req.body.chkMsgHash).digest('hex'),
-				socketUUID: socketUUID,
-			});
-
-			let supportedCiphers = ["chacha20-poly1305", "chacha20", "aes-256-gcm", "aes-128-gcm"];
-			let supportedHashAlgorithms = ["sha256", "sha512"];
-
-			var cipher = "chacha20-poly1305";
-			var hashAlgorithm = "sha256";
-
-			if (conInitUUIDs[conInitUUID].cipher !== undefined) {
-				for (var i = 0; i<conInitUUIDs[conInitUUID].cipher.length; i++) {
-					if (supportedCiphers.indexOf(conInitUUIDs[conInitUUID].cipher[i]) != -1) {
-						cipher = conInitUUIDs[conInitUUID].cipher[i];
-					}
-				}
-			}
-
-			if (conInitUUIDs[conInitUUID].hashAlgorithm !== undefined) {
-				for (var i = 0; i<conInitUUIDs[conInitUUID].hashAlgorithm.length; i++) {
-					if (supportedHashAlgorithms.indexOf(conInitUUIDs[conInitUUID].hashAlgorithm[i]) != -1) {
-						hashAlgorithm = conInitUUIDs[conInitUUID].hashAlgorithm[0];
-					}
-				}
-			}
-
-			let encryptedResponse = NeptuneCrypto.encrypt(response, conInitUUIDs[conInitUUID].secret, undefined, {hashAlgorithm: hashAlgorithm, cipherAlgorithm: cipher})
-
-			Neptune.webLog.info(conInitUUID + " setup completed.");
-
-			res.status(200).send(encryptedResponse);
 		}
+
+
+
+		if (req.socket.remoteAddress !== "::1")
+			client.IPAddress = new IPAddress(req.socket.remoteAddress, "25560");
+
+
+
+		// Create socket
+		let socketUUID = crypto.randomUUID();
+		conInitObject.log.info("Generating socket, id: " + socketUUID);
+
+		var ws = new WebSocketServer({server: httpServer, path: '/api/v1/server/socket/' + socketUUID});
+
+		ws.on("connection", function(ws){
+			conInitObject.log.info("Client connected to socket " + socketUUID);
+			client.setupConnectionManagerWebsocket(ws);
+		});
+		conInitObject.socketCreated = true; // Done		
+
+		// Setup connection manager (enables HTTP listener)
+		client.setupConnectionManager(conInitObject.secret, {
+			conInitUUID: conInitUUID,
+			encryptionParameters: {
+				cipherAlgorithm: conInitObject.selectedCipher,
+				hashAlgorithm: conInitObject.selectedHashAlgorithm,
+			}
+		});
+		
+
+		// Create response
+		let response = JSON.stringify({
+			confMsg: crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg + req.body.chkMsgHash).digest('hex'),
+			socketUUID: socketUUID,
+		});
+
+		
+
+		let encryptedResponse = NeptuneCrypto.encrypt(response, conInitObject.secret, undefined, {
+			hashAlgorithm: conInitObject.selectedHashAlgorithm,
+			cipherAlgorithm: conInitObject.selectedCipher
+		});
+
+		conInitObject.log.info(conInitUUID + " setup completed.");
+
+		res.status(200).send(encryptedResponse);
 	});
 
 
@@ -685,25 +765,25 @@ async function main() {
 		// }
 
 		conInitUUIDs[conInitUUID].client.processHTTPRequest(JSON.stringify(req.body), (data) => {
-			Neptune.webLog.silly(data);
+			conInitUUIDs[conInitUUID].log.silly(data);
 			if (!sentResponse) {
 				sentResponse = true;
 				res.status(200).send(data);
 			}
 		});
 
-		setTimeout(()=>{ // sends OK after 10 seconds (likely no response from server?)
+		setTimeout(()=>{ // sends OK after 30 seconds (likely no response from server?)
 			if (!sentResponse) {
 				sentResponse = true;
 				res.status(200).send("{}");
 			}
-		}, 10000);
+		}, 30000);
 	})
 
 
 	// Listener
 	httpServer.listen(Neptune.config.web.port, () => {
-		Neptune.webLog("Express server listening on port " + Neptune.config.web.port);
+		Neptune.webLog.info("Express server listening on port " + Neptune.config.web.port);
 	});
 
 

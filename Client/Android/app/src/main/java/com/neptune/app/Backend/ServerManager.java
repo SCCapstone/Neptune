@@ -1,7 +1,10 @@
 package com.neptune.app.Backend;
 
+import android.util.Log;
+
 import com.neptune.app.MainActivity;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,6 +25,7 @@ public class ServerManager {
 
     public void removeServer(Server s) {
         servers.remove(s.serverId);
+        s.unpair();
         saveServers();
     }
 
@@ -31,14 +35,14 @@ public class ServerManager {
     }
 
 
-    public void pair(UUID serverId, IPAddress ipAddress) {
+    public void pair(UUID serverId, IPAddress ipAddress) throws ConnectionManager.FailedToPair {
         Server server = servers.get(serverId);
         server.ipAddress = ipAddress;
         server.pair();
     }
 
-    public boolean unpair(UUID server) {
-        return servers.get(server).unpair();
+    public void unpair(UUID server) {
+        servers.get(server).unpair();
     }
 
     public Server getServer(String serverId) {
@@ -46,7 +50,13 @@ public class ServerManager {
     }
 
     public Server[] getServers() {
-        return (Server[])servers.values().toArray(); // Maybe?
+        Server[] servers = new Server[this.servers.size()];
+        int i = 0;
+        for (UUID serverId : this.servers.keySet()) {
+            servers[i] = this.servers.get(serverId);
+            i++;
+        }
+        return servers;
     }
 
     public void loadServers() {
@@ -54,11 +64,21 @@ public class ServerManager {
 
         ArrayList<String> removeTheseIds = new ArrayList<>();
 
+        Log.i("ServerManager", "loadServers: loading servers");
+
         for (String serverId : clientConfig.savedServerIds) {
             try {
-                servers.put(UUID.fromString(serverId), new Server(serverId, configurationManager));
+                File fileObject = new File(MainActivity.Context.getFilesDir(), "server_" + serverId + ".json");
+                if (fileObject.exists()) {
+                    Server server = new Server(serverId, configurationManager);
+                    servers.put(UUID.fromString(serverId), server);
+                } else {
+                    Log.e("ServerManager", "loadServers: failed to load server " + serverId + " as the server config file does not exist.");
+                    removeTheseIds.add(serverId);
+                }
             } catch (IOException e) {
                 // Remove ID
+                Log.e("ServerManager", "loadServers: failed to load server: " + serverId, e);
                 removeTheseIds.add(serverId);
             }
         }
@@ -89,6 +109,25 @@ public class ServerManager {
         }
     }
 
+    public void connectToServers() {
+        Thread connectThread = new Thread(() -> {
+                Server[] servers = this.getServers();
+                for (Server server : servers) {
+                    try {
+                        Log.i("ServerManager", "connectToServer: setting up server " + server.serverId);
+                        server.setupConnectionManager();
+                    } catch (ConnectionManager.FailedToPair e) {
+                        Log.e("ServerManager", "connectToServer: " + server.serverId + " failed to pair?", e);
+                    }
+                }
+        });
+        connectThread.setName("ServerManager-ConnectToServers");
+        connectThread.start();
+    }
+
+    /**
+     * Save all the server configs, add saved servers to the client config list of savedServerIds
+     */
     public void saveServers() {
         ArrayList<String> saveTheseServers = new ArrayList<>(servers.size());
         for (Server server : servers.values()) {

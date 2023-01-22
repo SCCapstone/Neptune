@@ -93,14 +93,14 @@ public class ConfigItem {
         }
     }
 
-    public void load() throws IOException, JsonParseException {
+    public String read() throws IOException {
         Log.d(TAG, "loadConfig(): reading configuration data from file");
 
         if (!fileObject.isFile() || !fileObject.exists()) {
             Log.d(TAG,"loadConfig(): can't load what doesn't exist! Skipping load, making writable.");
             // Doesn't exist.
             makeWritable();
-            return;
+            return "{}";
         }
 
         makeWritable();
@@ -119,12 +119,18 @@ public class ConfigItem {
 
         } finally {
             String contents = contentsBuilder.toString();
-            try {
-                fromJson(contents);
-            } catch (JsonParseException e) {
-                e.printStackTrace();
-                // Mal-formed!
-            }
+            return contents;
+
+        }
+    }
+
+    public void load() throws IOException, JsonParseException {
+        try {
+            String contents = read();
+            fromJson(contents);
+        } catch (JsonParseException e) {
+            e.printStackTrace();
+            throw e;
         }
     }
 
@@ -181,7 +187,8 @@ public class ConfigItem {
      * @param jsonObject JsonObject to load from (the Json)
      */
     public void fromJson(JsonObject jsonObject) {
-        this.version = new Version(jsonObject.get("version").getAsString());
+        if (jsonObject.has("version"))
+            this.version = new Version(jsonObject.get("version").getAsString());
     }
     /**
      * Set class properties to those in a Json string. Load class properties from Json.
@@ -203,5 +210,22 @@ public class ConfigItem {
      */
     public boolean getIsAlive() {
         return isAlive;
+    }
+
+    public void delete() {
+        if (fileObject.exists())
+            fileObject.delete();
+    }
+
+    public void rename(String fileName) {
+        if (!fileName.endsWith(".json"))
+            fileName += ".json";
+
+        this.fileName = fileName;
+
+        this.TAG = "ConfigItem-" + fileName;
+
+        File newName = new File(MainActivity.Context.getFilesDir(), fileName);
+        fileObject.renameTo(newName);
     }
 }

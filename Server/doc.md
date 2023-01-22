@@ -30,6 +30,31 @@ Other properties:
 `Neptune.debug`: Whether this application is in debug mode or not
 
 
+conInitUUID: A collection of connection initiation request data.
+```json
+{
+	"UUID": {
+		"log": {}, // LogMan.Logger object for logging
+		"enabled": true, // Whether we are allowing this UUID to setup a connection (set to false once completed)
+		"socketCreated": false,
+		"socketId": "1234", // Socket UUID
+		"aliceDHObject": {}, // Our DH keys (type: crypto.DiffieHellmanGroup)
+		"aliceDynamicSaltDHObject": {}, // Our dynamic salt DH keys
+		"createdTime": "2023-01-21T16:46:53.286Z", // Time the connection initiation request began (we invalidate this request after 5 minutes) 
+		"supportedCiphers": ["aes-128-gcm","chacha20-poly1305"], // Array provided by the newSocketConnection request from client, ciphers the client supports
+		"selectedCipher": "aes-128-gcm", // Selected cipher
+		"supportedHashAlgorithms": ["sha256", "sha512"], // Provided by client (above), hash algorithms support by the client (sha256).
+		"selectedHashAlgorithm": "sha256", // Selected hash function
+		"supportedKeyGroups": ["modp14", "modp16"], // Provided by client (above)
+		"selectedKeyGroup": "modp16", // Selected key group for DH key
+
+
+
+		"clientId": "1234", // Client UUID
+		"client": {} // Client object (from clientManager) - after paired 
+	}
+}
+```
 
 
 

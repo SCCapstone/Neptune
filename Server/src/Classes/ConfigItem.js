@@ -7,7 +7,6 @@
  * 		Capstone Project 2022
  */
 
-
 /**
  * Config item
  */
@@ -121,7 +120,14 @@ class ConfigItem {
 	 * @return {void}
 	 */
 	async saveSync() {
-		return await save();
+		if (this.#isAlive) {
+			this.log.silly("Saved");
+			return this.#configManager.writeFileContentsSync(JSON.stringify(this.entries), this.#filePath);
+		}
+		else {
+			this.log.warn("Failed to save, config file closed and not active.", false);
+			throw new Error("Config file closed, not active.");
+		}
 	}
 	
 
@@ -154,11 +160,20 @@ class ConfigItem {
 	}
 	
 	/**
-	 * 
+	 * Returns the configItem's file path
 	 * @return {string}
 	 */
 	getConfigFilePath() {
 		return this.#filePath;
+	}
+	/**
+	 * Sets the configItem's file path (does not rename it!)
+	 * @param {string} filePath
+	 */
+	setConfigFilePath(filePath) {
+		if (typeof filePath !== "string")
+			throw new TypeError("filePath expected string got " + (typeof filePath).toString());
+		this.#filePath = filePath;
 	}
 
 	/**
@@ -189,6 +204,21 @@ class ConfigItem {
 	 */
 	setJSON(JSONObject) {
 		this.entries = { ... JSONObject };
+	}
+
+	/**
+	 * Deletes the config file from the system.
+	 */
+	delete() {
+		this.#configManager.delete(this)
+	}
+
+	/**
+	 * Renames the config file
+	 * @param {string} fileName - New file name
+	 */
+	rename(fileName) {
+		this.#configManager.rename(this, fileName, false);
 	}
 }
 

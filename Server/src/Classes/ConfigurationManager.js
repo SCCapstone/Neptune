@@ -363,6 +363,41 @@ class ConfigurationManager {
 		return true;
 	}
 
+	/**
+	 * Deletes a config and removes it from the cache
+	 * @param {ConfigItem} config
+	 */
+	delete(config) {
+		let filePath = config.getConfigFilePath();
+		if (fs.existsSync(filePath)) {
+			this.#log.debug("Deleting \"" + config.getConfigFilePath() + "\"");
+			fs.unlinkSync(filePath);
+		}
+	}
+
+	/**
+	 * Renames the config file
+	 * @param {ConfigItem} config
+	 * @param {string} fileName - New file name
+	 * @param {string} isPath - Provided fileName is actual the real path
+	 */
+	rename(config, fileName, isPath) {
+		if (typeof fileName !== "string")
+			throw new TypeError("fileName expected string got " + (typeof fileName).toString());
+
+
+		if (isPath !== true) {
+			if (!fileName.endsWith(".json"))
+				fileName += ".json"
+
+			fileName = this.#configDirectory + fileName;
+		}
+
+		this.#log.debug("Renaming \"" + config.getConfigFilePath() + "\" to \"" + fileName + "\"");
+		fs.renameSync(config.getConfigFilePath(), fileName);
+		config.setConfigFilePath(fileName);
+	}
+
 }
 
 module.exports = ConfigurationManager;

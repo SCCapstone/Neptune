@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.neptune.app.Backend.Adapters.ClientConfigEncryptionAdapter;
 import com.neptune.app.Backend.Structs.ClientConfigEncryption;
@@ -29,6 +30,9 @@ public class ClientConfig extends ConfigItem {
     // Unique client id
     public UUID clientId = UUID.randomUUID();
 
+    // Friendly name of client
+    public String friendlyName = "My Phone";
+
     // Config file encryption settings
     public ClientConfigEncryption encryption = new ClientConfigEncryption();
 
@@ -44,6 +48,7 @@ public class ClientConfig extends ConfigItem {
         super(filePath, parent);
 
         gsonBuilder.registerTypeAdapter(ClientConfigEncryption.class, new ClientConfigEncryptionAdapter());
+        allowLoad = true;
         load();
     }
 
@@ -52,13 +57,24 @@ public class ClientConfig extends ConfigItem {
         if (!allowLoad)
             return;
 
-        super.fromJson(jsonObject);
+        //super.fromJson(jsonObject);
 
         Gson gson = gsonBuilder.create();
         this.version = new Version(jsonObject.get("version").getAsString());
         this.clientId = UUID.fromString(jsonObject.get("clientId").getAsString());
         this.firstRun = jsonObject.get("firstRun").getAsBoolean();
+        this.friendlyName = jsonObject.get("friendlyName").getAsString();
         this.encryption = gson.fromJson(jsonObject.getAsJsonObject("encryption"), ClientConfigEncryption.class);
+
+        if (jsonObject.has("savedServerIds")) {
+            JsonArray savedServerIds = jsonObject.getAsJsonArray("savedServerIds");
+            this.savedServerIds = new String[savedServerIds.size()];
+            for (int i = 0; i < savedServerIds.size(); i++) {
+                this.savedServerIds[i] = savedServerIds.get(i).getAsString();
+            }
+        } else {
+            this.savedServerIds = new String[0];
+        }
     }
 
     @Override
@@ -70,6 +86,7 @@ public class ClientConfig extends ConfigItem {
             return jsonObject;
         jsonObject.addProperty("clientId", this.clientId.toString());
         jsonObject.addProperty("firstRun", this.firstRun);
+        jsonObject.addProperty("friendlyName", this.friendlyName);
 
         if (encryption == null) encryption = new ClientConfigEncryption();
         JsonElement encryptionElement = JsonParser.parseString(gson.toJson(this.encryption, ClientConfigEncryption.class)).getAsJsonObject();

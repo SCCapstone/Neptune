@@ -34,7 +34,7 @@ public class ServerConfig extends ConfigItem {
     // Pair info
     public UUID pairId;
     // Unique pair key, prenegotiated shared key
-    public byte[] pairKey;
+    public String pairKey;
 
 
     // User defined name
@@ -64,33 +64,47 @@ public class ServerConfig extends ConfigItem {
     public void fromJson(JsonObject jsonObject) {
         super.fromJson(jsonObject);
 
-        this.serverId = UUID.fromString(jsonObject.get("serverId").getAsString());
+        if (jsonObject.has("serverId"))
+            this.serverId = UUID.fromString(jsonObject.get("serverId").getAsString());
 
-        this.ipAddress = new IPAddress(jsonObject.get("ipAddress").getAsString());
-        this.friendlyName = jsonObject.get("friendlyName").getAsString();
+        if (jsonObject.has("ipAddress"))
+            this.ipAddress = new IPAddress(jsonObject.get("ipAddress").getAsString());
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            TemporalAccessor ta = DateTimeFormatter.ISO_INSTANT.parse(jsonObject.get("dateAdded").getAsString());
-            Instant i = null;
-            i = Instant.from(ta);
-            Date date = Date.from(i);
-            this.dateAdded = date;
-        } else {
-            try {
-                DateFormat df1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-                this.dateAdded = df1.parse(jsonObject.get("dateAdded").getAsString());
-            } catch (ParseException e) {
-                e.printStackTrace();
+        if (jsonObject.has("friendlyName"))
+            this.friendlyName = jsonObject.get("friendlyName").getAsString();
+
+        if (jsonObject.has("dateAdded")) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                TemporalAccessor ta = DateTimeFormatter.ISO_INSTANT.parse(jsonObject.get("dateAdded").getAsString());
+                Instant i = null;
+                i = Instant.from(ta);
+                Date date = Date.from(i);
+                this.dateAdded = date;
+            } else {
+                try {
+                    DateFormat df1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+                    this.dateAdded = df1.parse(jsonObject.get("dateAdded").getAsString());
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
             }
+        } else {
+            this.dateAdded = new Date();
         }
 
-        this.pairId = UUID.fromString(jsonObject.get("pairId").getAsString());
-        this.pairKey = NeptuneCrypto.convertBase64ToBytes(jsonObject.get("pairKey").getAsString());
+        if (jsonObject.has("pairId"))
+            this.pairId = UUID.fromString(jsonObject.get("pairId").getAsString());
+        if (jsonObject.has("pairKey"))
+            this.pairKey = jsonObject.get("pairKey").getAsString();
 
-        JsonArray notificationBlacklistApps = jsonObject.getAsJsonArray("notificationBlacklistApps");
-        this.notificationBlacklistApps = new String[notificationBlacklistApps.size()];
-        for (int i=0; i<notificationBlacklistApps.size(); i++) {
-            this.notificationBlacklistApps[i] = notificationBlacklistApps.get(i).getAsString();
+        if (jsonObject.has("notificationBlacklistApps")) {
+            JsonArray notificationBlacklistApps = jsonObject.getAsJsonArray("notificationBlacklistApps");
+            this.notificationBlacklistApps = new String[notificationBlacklistApps.size()];
+            for (int i = 0; i < notificationBlacklistApps.size(); i++) {
+                this.notificationBlacklistApps[i] = notificationBlacklistApps.get(i).getAsString();
+            }
+        } else {
+            this.notificationBlacklistApps = new String[0];
         }
     }
 
@@ -111,9 +125,9 @@ public class ServerConfig extends ConfigItem {
         if (ipAddress != null)
             jsonObject.addProperty("ipAddress", this.ipAddress.toString());
 
-        if (pairId != null && pairKey.length > 0) {
+        if (pairId != null && !pairKey.isEmpty()) {
             jsonObject.addProperty("pairId", this.pairId.toString());
-            jsonObject.addProperty("pairKey", NeptuneCrypto.convertBytesToBase64(this.pairKey));
+            jsonObject.addProperty("pairKey", this.pairKey);
         }
 
         if (notificationBlacklistApps != null) {
@@ -125,5 +139,9 @@ public class ServerConfig extends ConfigItem {
         }
 
         return jsonObject;
+    }
+
+    public void updateConfigName() {
+        this.rename("server_" + this.serverId + ".json");
     }
 }

@@ -21,6 +21,7 @@ const Client = require('./Client');
  */
 
 const ws = require('ws');
+const crypto = require("node:crypto");
 const EventEmitter = require('node:events');
 const NeptuneCrypto = require('../Support/NeptuneCrypto');
 
@@ -72,6 +73,11 @@ class ConnectionManager extends EventEmitter {
     // temp, for sending response via HTTP
     #sendRequestCallback
 
+ 	/**
+ 	 * @type {NeptuneCrypto.EncryptionOptions}
+ 	 */
+    #encryptionParameters;
+
 
 
 	constructor(client, sharedSecret, miscData) {
@@ -83,8 +89,13 @@ class ConnectionManager extends EventEmitter {
 
 		this.#client = client;
 		this.#secret = sharedSecret;
-
 		this.#conInitUUID = miscData.conInitUUID;
+		this.#encryptionParameters = {
+			cipherAlgorithm: miscData.encryptionParameters.cipherAlgorithm,
+			hashAlgorithm: miscData.encryptionParameters.hashAlgorithm
+		}
+
+		this.#log.debug("cipher: " + this.#encryptionParameters.cipherAlgorithm + " -- hashAlgorithm: " + this.#encryptionParameters.hashAlgorithm);
 	}
 
 
@@ -104,7 +115,7 @@ class ConnectionManager extends EventEmitter {
 		this.#log.debug("Sending request to client: " + apiURL);
 
 		let data = JSON.stringify(requestData);
-		let encryptedData = NeptuneCrypto.encrypt(data, this.#secret);
+		let encryptedData = NeptuneCrypto.encrypt(data, this.#secret, undefined, this.#encryptionParameters);
 
 		let packet = JSON.stringify({
 			"conInitUUID": this.#conInitUUID,
@@ -198,12 +209,50 @@ class ConnectionManager extends EventEmitter {
 		}
 	}
 
+	/**
+	 * This is called to pair the device
+	 * @param {object} packet - POST request data
+	 */
+	#processPairRequest(packet) {
+		this.#log.debug("Processing pair request: " + packet);
+		if (this.#client.isPaired)
+			return true;
+		if (packet.command == "/api/v1/server/newPairRequest") {
+			// new window/notification to accept pair request
+			let newPairId = crypto.randomUUID();
+			let newPairKey = NeptuneCrypto.randomString(64, 65, 122);
+
+			this.#client.pairId = newPairId;
+			this.#client.pairKey = newPairKey;
+			this.#client.isPaired = true;
+			this.sendRequest("/api/v1/server/newPairResponse", {
+				pairId: newPairId,
+				pairKey: newPairKey,
+				serverId: global.Neptune.config.serverId,
+			});
+
+			this.#log.info("Successfully paired! PairId: " + newPairId);
+			Neptune.clientManager.updateSavedClientsInNeptuneConfig();
+		}
+	}
 
 	processHTTPRequest(packet, callback) {
 		packet = this.#unwrapPacket(packet);
 		this.#log.debug("HTTP request received.");
 		this.#log.silly(packet.data);
 		this.#sendRequestCallback = callback;
+
+		if (this.#client.pairId === undefined || this.#client.pairId == "") // Paired?
+			if (!this.#processPairRequest(packet)) // Okay, paired now?
+				return; // Do not process, failed to pair.
+
+		if (packet.command == "/api/v1/server/newPairRequest") {
+			this.sendRequest("/api/v1/server/newPairResponse", {
+				error: "alreadyPaired",
+				errorMessage: "Device has already been paired. Please unpair in the server to repair device."
+			})
+		}
+
 		this.emit('command', packet.command, packet.data);
 	}
 
@@ -213,6 +262,10 @@ class ConnectionManager extends EventEmitter {
 			packet = this.#unwrapPacket(packet);
 			this.#log.debug("Web socket request received.");
 			this.#log.silly(packet.data);
+			
+			if (this.#client.pairId === undefined || this.#client.pairId == "") // Paired?
+				if (!this.#processPairRequest(packet)) // Okay, paired now?
+					return; // Do not process, failed to pair.
 
 			this.emit('command', packet.command, packet.data);
 		});

@@ -5,6 +5,8 @@ import android.util.Log;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+import com.neptune.app.MainActivity;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -30,31 +32,35 @@ public class Server extends ServerConfig {
 
     public Server(String serverId, ConfigurationManager configurationManager) throws JsonParseException, IOException {
         super(serverId, configurationManager);
+        Log.i("Server", "Server(): " + serverId);
     }
     public Server(UUID serverId, ConfigurationManager configurationManager) throws JsonParseException, IOException {
         super(serverId.toString(), configurationManager);
+        Log.i("Server", "Server(): " + serverId.toString());
     }
 
     public Server(JsonObject jsonObject, ConfigurationManager configurationManager) throws JsonParseException, IOException {
         super(jsonObject.get("serverId").getAsString(), configurationManager);
         fromJson(jsonObject);
+        Log.i("Server", "Server(): " + this.serverId.toString());
     }
 
     // This will create the connection manager and initiate connection
-    public void setupConnectionManager() {
+    public void setupConnectionManager() throws ConnectionManager.FailedToPair {
         connectionManager = new ConnectionManager(this.ipAddress, this);
         Log.d("SERVER", "setupConnectionManager: we did something");
-        connectionManager.initiateConnection();
+        connectionManager.initiateConnectionSync();
     }
 
     public void sendNotification(NeptuneNotification notification) {
         try {
+            if (connectionManager == null)
+                return;
+
             if (connectionManager.getHasNegotiated()) {
-                connectionManager.sendRequestAsync("/api/v1/server/sendNotification", new JSONObject(notification.toString()));
+                connectionManager.sendRequestAsync("/api/v1/server/sendNotification", JsonParser.parseString(notification.toString()).getAsJsonObject());
             }
-        } catch (JSONException e) {
-            e.printStackTrace();
-        } catch (MalformedURLException e) {
+        } catch (JsonParseException e) {
             e.printStackTrace();
         }
     }
@@ -75,19 +81,29 @@ public class Server extends ServerConfig {
     }
 
 
-    public boolean unpair() {
-
-        return false;
+    public void unpair() {
+        if (pairKey != null) {
+            if (!pairKey.isEmpty()) {
+                JsonObject data = new JsonObject();
+                data.addProperty("pairId", this.pairId.toString());
+                data.addProperty("clientId", MainActivity.ClientConfig.clientId.toString());
+                this.connectionManager.sendRequestAsync("/api/v1/unpair", data);
+            }
+        }
+        this.connectionManager.destroy(true);
+        this.delete();
     }
 
-    public boolean pair() {
-        if (connectionManager == null)
+    public void pair() throws ConnectionManager.FailedToPair {
+        if (connectionManager == null) {
             setupConnectionManager();
+        }
 
         if (!connectionManager.getHasNegotiated());
             connectionManager.initiateConnection();
 
         connectionManager.pair();
-        return false;
     }
+
+
 }

@@ -99,6 +99,7 @@ class ClientManager {
         if (client === undefined) {
             let config = ConfigurationManager.loadConfig(global.Neptune.config.clientDirectory + clientId);
             client = new Client(config);
+            this.#clients.set(clientId, client);
         }
         return client;
     }
@@ -127,7 +128,28 @@ class ClientManager {
             this.getClient(clientId);
             // this.#clients.set(clientId, new Client(clientId));
         });
-        
+    }
+
+    dropClient(client) {
+        this.#clients.delete(client?.clientId);
+        this.updateSavedClientsInNeptuneConfig();
+    }
+
+    /**
+     * Updates the NeptuneConfig.clients array to the current clients we've loaded.
+     */
+    updateSavedClientsInNeptuneConfig() {
+        this.#log.debug("Updating saved clients in Neptune config");
+        NeptuneConfig.clients = [];
+        this.#clients.forEach(client => {
+            if (client !== undefined || client !== null) {
+                if (client.clientId !== null) {
+                    this.#log.silly("adding clientId: " + client.clientId);
+                    NeptuneConfig.clients.push(client.clientId);
+                }
+            }
+        });
+        NeptuneConfig.saveSync();
     }
 
     /**
@@ -135,11 +157,33 @@ class ClientManager {
      * @returns {void}
      */
     saveClients() {
-        this.#log.info("Loading clients ...");
+        this.#log.info("Saving clients ...");
         // ehh
         this.#clients.forEach(client => {
             client.save();
         });
+    }
+
+    destroy() {
+        // Save all, unload. Deletes any clients NOT paired!
+        this.#log.info("Destroying...");
+        this.#clients.forEach(client => {
+            try {
+                if (client.pairKey !== undefined) {
+                    try {
+                        client.save();
+                    } catch(e) {
+                        // huh
+                        this.#log.error("Failed to save " + client.clientId + "! Error: " + e.message);
+                        this.#log.debug(e);
+                        // client.delete();
+                    }
+                } else {
+                    client.delete(); // Remove the config file.
+                }
+            } catch (e) {}
+        });
+        this.updateSavedClientsInNeptuneConfig();
     }
 }
 

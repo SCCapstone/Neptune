@@ -46,7 +46,13 @@ class Client {
 	#pairId;
 	/** @type {string} */
 	#pairKey;
+	/** @type {boolean} */
+	#isPaired;
 
+	/**
+	 * @type {import('./LogMan').Logger}
+	 */
+	#log;
 
 	// Public properties (the same as private, + getter and setters)
 	// The one JSDoc type will apply to both.
@@ -125,7 +131,7 @@ class Client {
 		if (typeof pairId !== "string")
 			throw new TypeError("pairId expected string got " + (typeof pairId).toString());
 		this.#pairId = pairId;
-		this.#config.entries = pairId;
+		this.#config.entries.pairId = pairId;
 		this.#config.save();
 	}
 
@@ -138,6 +144,16 @@ class Client {
 			throw new TypeError("pairKey expected string got " + (typeof pairKey).toString());
 		this.#pairKey = pairKey;
 		this.#config.entries.pairKey = pairKey;
+		this.#config.save();
+	}
+	get isPaired() {
+		return this.#pairKey;
+	}
+	set isPaired(isPaired) {
+		if (typeof isPaired !== "boolean")
+			throw new TypeError("isPaired expected boolean got " + (typeof isPaired).toString());
+		this.#isPaired = isPaired;
+		this.#config.entries.isPaired = isPaired;
 		this.#config.save();
 	}
 
@@ -182,16 +198,14 @@ class Client {
 			data = new global.Neptune.configManager.loadConfig(global.Neptune.config.clientDirectory + data);
 		}
 		if (data instanceof ConfigItem) {
-			this.#config = data;
 			try {
-				if (this.#isValidConfigData(data.entries))
+				if (this.#isValidConfigData(data.entries, true)) {
 					this.#config = data;
-				else {
-
-					//throw new TypeError("ConfigItem is invalid, does not represent the config of a client.");
+				} else {
+					throw new TypeError("ConfigItem is invalid, does not represent the config of a client.");
 				}
 			} catch (e) {
-				// yep, it's broken
+				// throw e
 			}
 		} else if (typeof data === "string") {
 			let data = JSON.parse(data);
@@ -205,6 +219,7 @@ class Client {
 		}
 
 		this.#notificationManager = new NotificationManager(this);
+		this.#log = Neptune.logMan.getLogger("Client-" + this.#clientId);
 	}
 
 	/**
@@ -216,24 +231,24 @@ class Client {
 		if (obj === undefined)
 			throw new TypeError("data cannot be undefined.");
 
-		if (typeof obj.IPAddress === "string") {
-			obj.IPAddress = new IPAddress(obj.IPAddress);
-		} else if (!(obj.IPAddress instanceof IPAddress))
-			throw new TypeError("IPAddress expected instance of IPAddress, got " + (typeof obj.IPAddress).toString());
+		// if (typeof obj.IPAddress === "string") {
+		// 	obj.IPAddress = new IPAddress(obj.IPAddress);
+		// } else if (!(obj.IPAddress instanceof IPAddress))
+		// 	throw new TypeError("IPAddress expected instance of IPAddress, got " + (typeof obj.IPAddress).toString());
 
 		if (typeof obj.clientId !== "string")
 			throw new TypeError("clientId expected type got " + (typeof obj.clientId).toString());
 
-		if (typeof obj.friendlyName !== "string")
-			throw new TypeError("friendlyName expected string got " + (typeof obj.friendlyName).toString());
+		// if (typeof obj.friendlyName !== "string")
+		// 	throw new TypeError("friendlyName expected string got " + (typeof obj.friendlyName).toString());
 
-		if (!(obj.dateAdded instanceof Date)) {
-			dateTime = new Date(obj.dateAdded);
-			if (!isNaN(obj.dateTime))
-				this.#dateAdded = dateTime;
-			else
-				throw new RangeError("Invalid time value.");
-		}
+		// if (!(obj.dateAdded instanceof Date)) {
+		// 	dateTime = new Date(obj.dateAdded);
+		// 	if (!isNaN(obj.dateTime))
+		// 		this.#dateAdded = dateTime;
+		// 	else
+		// 		throw new RangeError("Invalid time value.");
+		// }
 
 		// pairId and pairKey not needed?
 		if (setData) {
@@ -247,6 +262,8 @@ class Client {
 			if (typeof obj.pairKey === "string")
 				this.#pairKey = obj.pairKey;
 		}
+
+		return true;
 	}
 
 
@@ -259,18 +276,22 @@ class Client {
 		this.#secret = secret;
 		this.#connectionManager = new ConnectionManager(this, secret, miscData);
 
+		this.#log.debug("Connection manager setup successful, listening for commands.");
+
 		this.#connectionManager.on('command', (command, data) => {
 			//this.#log.debug("Received command:" + command);
 
 			if (command == "/api/v1/echo") {
 				this.#connectionManager.sendRequest("/api/v1/echoed", data);
+			} else if (command == "/api/v1/server/unpair") {
+				this.unpair();
 			} else if (command == "/api/v1/server/sendNotification") {
 				if (Array.isArray(data)) {
 					for (var i = 0; i<data.length; i++) {
 						this.receiveNotification(new Notification(data[i]));
 					}
 				} else {
-					// invalid data.. should be array but whatever
+					// invalid data.. should be an array but whatever
 					this.receiveNotification(new Notification(data));
 				}
 			}
@@ -280,7 +301,6 @@ class Client {
 	setupConnectionManagerWebsocket(webSocket) {
 		this.#connectionManager.setWebsocket(webSocket);
 	}
-
 	processHTTPRequest(data, callback) { // ehh
 		this.#connectionManager.processHTTPRequest(data, callback);
 	}
@@ -358,6 +378,11 @@ class Client {
 	 * @return {boolean}
 	 */
 	unpair() {
+		this.#log.info("Unpairing");
+		this.#pairId = null;
+		this.#pairKey = null;
+		this.#isPaired = false;
+		this.delete();
 		return false;
 	}
 
@@ -371,7 +396,7 @@ class Client {
 
 	/**
 	 * This will return the client in a JSON format
-	 * @return {JSONObject}
+	 * @return {string}
 	 */
 	toJSON() {
 		return JSON.stringify({
@@ -381,6 +406,7 @@ class Client {
 			dateAdded: this.#dateAdded,
 			pairId: this.#pairId,
 			pairKey: this.#pairKey,
+			isPaired: this.#isPaired,
 		})
 	}
 
@@ -394,13 +420,31 @@ class Client {
 	 * @return {void}
 	 */
 	save() {
-		this.#config.entries.IPAddress = this.#IPAddress;
-		this.#config.entries.clientId = this.#clientId;
-		this.#config.entries.friendlyName = this.#friendlyName;
-		this.#config.entries.dateAdded = this.#dateAdded;
-		this.#config.entries.pairId = this.#pairId;
-		this.#config.entries.pairKey = this.#pairKey;
+		this.#config.setProperty("IPAddress", this.#IPAddress);
+		this.#config.setProperty("clientId", this.#clientId);
+		this.#config.setProperty("friendlyName", this.#friendlyName);
+		this.#config.setProperty("dateAdded", this.#dateAdded);
+		this.#config.setProperty("pairId", this.#pairId);
+		this.#config.setProperty("pairKey", this.#pairKey);
+		this.#config.setProperty("isPaired", this.#isPaired);
 		this.#config.save();
+	}
+
+	load() {
+		this.#config.load();
+		this.#IPAddress = this.#config.getProperty("IPAddress");
+		this.#clientId = this.#config.getProperty("clientId");
+		this.#friendlyName = this.#config.getProperty("friendlyName");
+		this.#dateAdded = this.#config.getProperty("dateAdded");
+		this.#pairId = this.#config.getProperty("pairId");
+		this.#pairKey = this.#config.getProperty("pairKey");
+		this.#isPaired = this.#config.getProperty("isPaired");
+	}
+
+	delete() {
+		Neptune.clientManager.dropClient(this);
+		this.#connectionManager.destroy();
+		this.#config.delete();
 	}
 }
 
