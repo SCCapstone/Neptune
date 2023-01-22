@@ -96,18 +96,22 @@ public class Version {
         str.append(".");
         str.append(patch);
 
-        if (!preRelease.isEmpty()) {
-            if (wrapInBracket)
-                str.append("{" + preRelease + "}");
-            else
-                str.append("-" + preRelease);
+        if (preRelease != null) {
+            if (!preRelease.isEmpty()) {
+                if (wrapInBracket)
+                    str.append("{" + preRelease + "}");
+                else
+                    str.append("-" + preRelease);
+            }
         }
 
-        if (!metaData.isEmpty()) {
-            if (wrapInBracket)
-                str.append("[" + metaData + "]");
-            else
-                str.append("+" + metaData);
+        if (metaData != null) {
+            if (!metaData.isEmpty()) {
+                if (wrapInBracket)
+                    str.append("[" + metaData + "]");
+                else
+                    str.append("+" + metaData);
+            }
         }
 
         return str.toString();
