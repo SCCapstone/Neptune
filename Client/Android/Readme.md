@@ -11,7 +11,12 @@ https://developer.android.com/studio
 
 Dependencies:
     https://github.com/patrickfav/hkdf 1.1 `implementation group: 'at.favre.lib', name: 'hkdf', version: '1.1.0'`\
-    https://github.com/google/gson 2.10.1, Json library `implementation 'com.google.code.gson:gson:2.10.1'`
+    https://github.com/google/gson 2.10.1, Json library `implementation 'com.google.code.gson:gson:2.10.1'`\
+    https://developer.android.com/jetpack/androidx/releases/constraintlayout 2.1.4 `implementation 'androidx.constraintlayout:constraintlayout:2.1.4'`\
+    https://androidx.tech/artifacts/test.espresso/espresso-intents/ 3.5.1 `androidTestImplementation 'androidx.test.espresso:espresso-intents:3.5.1'`\
+    https://developer.android.com/jetpack/androidx/releases/test#runner 1.5.2 `androidTestImplementation 'androidx.test:runner:1.5.2'`\
+    https://developer.android.com/jetpack/androidx/releases/test#rules 1.5.0 `androidTestImplementation 'androidx.test:rules:1.5.0'`\
+    https://androidx.tech/artifacts/test.ext/junit-ktx/ 1.1.5 `androidTestImplementation 'androidx.test.ext:junit-ktx:1.1.5'`
 
 
 Java version: `1.8`\
