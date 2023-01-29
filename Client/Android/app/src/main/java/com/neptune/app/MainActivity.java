@@ -296,8 +296,8 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             server.ipAddress = new IPAddress(ipAddr, 25560);
             server.friendlyName = name;
             server.save();
-            serverManager.addServer(server);
             server.setupConnectionManager();
+            serverManager.addServer(server);
             serverManager.saveServers();
 
             Server finalServer = server;

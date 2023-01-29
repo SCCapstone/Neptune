@@ -199,6 +199,8 @@ class Client {
 		}
 		if (data instanceof ConfigItem) {
 			try {
+				this.#config = data;
+
 				if (this.#isValidConfigData(data.entries, true)) {
 					this.#config = data;
 				} else {
@@ -285,6 +287,7 @@ class Client {
 				this.#connectionManager.sendRequest("/api/v1/echoed", data);
 			} else if (command == "/api/v1/server/unpair") {
 				this.unpair();
+				
 			} else if (command == "/api/v1/server/sendNotification") {
 				if (Array.isArray(data)) {
 					for (var i = 0; i<data.length; i++) {

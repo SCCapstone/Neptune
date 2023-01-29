@@ -79,15 +79,13 @@ If a new pair connection is needed, send:
 
 Server would process the data, prompt the user to accept and then respond with:
 ```json
-{
-
 }
     "command": "/api/v1/server/newPairResponse",
     "data": {
         "pairId": "1234", // the unique identifier (UUID) to represent a pair relationship between two devices (server and client)\
         "pairKey": "1234", // a shared key of length 64 used in encryption.  Only the server and client know this. Persistent for as long as the devices are paired, however, can be changed via a request.
         "serverId": "1234", // UUID of the server
-    }
+}
 ```
 
 
