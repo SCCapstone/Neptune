@@ -45,6 +45,12 @@ _To run only unit tests (no GUI), run: `npm run test-code`_
 
 _To run only behavioral (GUI) tests, run `npm run test-gui`_
 
+
+Tests are stored inside the directory named `./tests/`\
+Behavioral/GUI tests end in `.guitest.js` and regular tests end in `.test.js`.\
+`JestSetup-GUI.js` and `JestSetup.js` are called before tests are ran, and `JestTeardown.js` is ran after all tests complete.
+
+
 ---
 
 
