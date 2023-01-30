@@ -46,6 +46,6 @@ Testing is done using Android Studio.\
 3) Click `Run 'Tests in 'com''` _this will run behavioral and unit tests inside an emulator or connected device_
 <img src="https://user-images.githubusercontent.com/55852895/215351718-dc7958dd-c9b7-462a-98d4-66e7d3abaab2.png" height="450px" alt="Run requiring Android"/>
 
-4) Right click the green `com (test)` folder
+4) Right click the green `com (test)` folder. (`Neptune/Client/Android/app/src/test/java/com/neptune/app`)
 5) Click `Run 'Tests in 'com''` _this will run unit tests that are not require to run on Android_
 <img src="https://user-images.githubusercontent.com/55852895/215351723-1bd9a09f-d42f-4a69-adf2-ed0d28fdac6c.png" height="525px" alt="Run tests NOT requiring Android"/>
