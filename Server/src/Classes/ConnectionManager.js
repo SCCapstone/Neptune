@@ -151,6 +151,14 @@ class ConnectionManager extends EventEmitter {
 	ping() {
 
 	}
+
+	pair() {
+
+	}
+	unpair() {
+		this.client.pairId = undefined;
+		this.client.pairKey = undefined;
+	}
 	
 	/**
 	 * @param {boolean} force
@@ -219,12 +227,16 @@ class ConnectionManager extends EventEmitter {
 			return true;
 		if (packet.command == "/api/v1/server/newPairRequest") {
 			// new window/notification to accept pair request
+
+
 			let newPairId = crypto.randomUUID();
 			let newPairKey = NeptuneCrypto.randomString(64, 65, 122);
 
 			this.#client.pairId = newPairId;
 			this.#client.pairKey = newPairKey;
-			this.#client.isPaired = true;
+			this.#client.friendlyName = packet.data.friendlyName;
+			this.#client.save();
+			
 			this.sendRequest("/api/v1/server/newPairResponse", {
 				pairId: newPairId,
 				pairKey: newPairKey,

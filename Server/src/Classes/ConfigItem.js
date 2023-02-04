@@ -7,23 +7,31 @@
  * 		Capstone Project 2022
  */
 
+const Version = require('./Version');
+
 /**
  * Config item
  */
 class ConfigItem {
-
 	/**
-	 * Cached configurations
-	 * @type {object}
+	 * Config file version
+	 * @type {Version}
 	 */
-	entries = {};
+	version = new Version(1,1,0);
 
+
+
+	/** @type {import('./ConfigurationManager')} */
+	#configManager;
+
+	/** @type {import('./LogMan').Logger} */
+	log;
 
 	/**
-	 * File path to the config file
+	 * Name of the config file
 	 * @type {string}
 	 */
-	#filePath = "";
+	#fileName = "";
 
 	/**
 	 * Indicates that the file is still open
@@ -31,33 +39,25 @@ class ConfigItem {
 	 */
 	#isAlive = true;
 
-
-	/**
-	 * @type {import('./ConfigurationManager')}
-	 */
-	#configManager;
-
-	/**
-	 * @type {import('./LogMan').Logger}
-	 */
-	log;
-	// Private MEANS private in JavaScript, no protected properties here. So log cannot be private as subclasses will be using it :/
+	
 
 
 	/**
-	 * @param {string} filePath The path to the config file
+	 * @param {import('./ConfigurationManager')} configManager ConfigurationManager instance
+	 * @param {string} fileName The path to the config file
 	 * @return {ConfigItem}
 	 */
-	constructor(configManager, filePath) {
-		if (typeof filePath !== "string")
-			throw new TypeError("filePath expected string got " + (typeof filePath).toString());
+	constructor(configManager, fileName) {
+		if (typeof fileName !== "string")
+			throw new TypeError("fileName expected string got " + (typeof fileName).toString());
 
-		// check if file exists
+		if (!fileName.endsWith(".json"))
+			fileName += ".json"
 
-		this.#filePath = filePath;
+		this.#fileName = fileName;
 		this.#configManager = configManager;
 
-		this.log = Neptune.logMan.getLogger("Config-" + filePath);
+		this.log = Neptune.logMan.getLogger("Config-" + fileName);
 
 		// load
 		this.loadSync();
@@ -68,36 +68,58 @@ class ConfigItem {
 	 * @return {void}
 	 */
 	close(save) {
+		if (!this.#isAlive)
+			return;
+
+		this.log.debug("closing configuration file.");
+
 		if (save === true)
 			this.save();
+
 		this.#isAlive = false;
-		delete this.entries;
+		
+		this.#configManager.removeConfigItemFromCache(this)
+	}
+
+	/**
+	 * Reads the config file from disk and sets the contents
+	 * @return {void}
+	 */
+	load() {
+		this.read().then((data) => {
+			this.fromJSON(data);
+		});
+	}
+	/**
+	 * Reads the config file from disk (synchronously) and sets the contents
+	 * @return {void}
+	 */
+	async loadSync() {
+		let data = this.readSync()
+		this.fromJSON(data);
 	}
 	
 	/**
-	 * Reload the configuration from disk
-	 * @return {Promise<boolean>} Load successful
+	 * Read the configuration from disk
+	 * @return {Promise<string>} Load successful
 	 */
-	load() {
+	read() {
 		return new Promise((resolve, reject) => {
-			this.#configManager.readFileContents(this.#filePath).then((data) => {
-				this.entries = data;
-				resolve(true);
+			this.#configManager.readFileContents(this.#fileName).then((data) => {
+				resolve(data);
 			}).catch(err => {
 				this.log.error("Error loading, message: " + err.message, false);
 				this.log.error("Stack: " + err.stack, false);
 				reject(err);
 			});
 		});
-		
 	}
 	/**
-	 * Loads the configuration from disk (synchronously)
-	 * @return {boolean} Load successful
+	 * Read the configuration from disk (synchronously)
+	 * @return {string} Config file data
 	 */
-	async loadSync() {
-		this.entries = this.#configManager.readFileContentsSync(this.#filePath);
-		return true;
+	readSync() {
+		return this.#configManager.readFileContentsSync(this.#fileName);
 	}
 	
 	/**
@@ -106,12 +128,12 @@ class ConfigItem {
 	 */
 	save() {
 		if (this.#isAlive) {
-			this.log.silly("Saved");
-			return this.#configManager.writeFileContents(JSON.stringify(this.entries), this.#filePath);
+			this.log.debug("Saving");
+			return this.#configManager.writeFileContents(this.toString(), this.#fileName);
 		}
 		else {
 			this.log.warn("Failed to save, config file closed and not active.", false);
-			throw new Error("Config file closed, not active.");
+			//throw new Error("Config file closed, not active.");
 		}
 	}
 	
@@ -119,62 +141,75 @@ class ConfigItem {
 	 * Save the configuration
 	 * @return {void}
 	 */
-	async saveSync() {
+	saveSync() {
 		if (this.#isAlive) {
-			this.log.silly("Saved");
-			return this.#configManager.writeFileContentsSync(JSON.stringify(this.entries), this.#filePath);
+			this.log.silly("Saving");
+			return this.#configManager.writeFileContentsSync(this.toString(), this.#fileName);
 		}
 		else {
 			this.log.warn("Failed to save, config file closed and not active.", false);
-			throw new Error("Config file closed, not active.");
+			//throw new Error("Config file closed, not active.");
 		}
 	}
 	
 
-
-
-
-	/**
-	 * Get a config value
-	 * @param {string} key The configuration item to get
-	 * @return {object}
-	 */
-	getProperty(key) {
-		if (typeof key !== "string")
-			throw new TypeError("key expected string got " + (typeof key).toString());
-
-		return this.entries[key];
-	}
-	
-	/**
-	 * @param {string} key Configuration item to save
-	 * @param {any} value Value to set the item to
-	 * @return {void}
-	 */
-	setProperty(key, value) {
-		if (typeof key !== "string")
-			throw new TypeError("key expected string got " + (typeof key).toString());
-
-		this.entries[key] = value;
-		this.save();
-	}
-	
 	/**
 	 * Returns the configItem's file path
 	 * @return {string}
 	 */
-	getConfigFilePath() {
-		return this.#filePath;
+	getFileName() {
+		return this.#fileName;
 	}
 	/**
 	 * Sets the configItem's file path (does not rename it!)
-	 * @param {string} filePath
+	 * Use rename(fileName) to rename the file
+	 * @param {string} fileName
 	 */
-	setConfigFilePath(filePath) {
-		if (typeof filePath !== "string")
-			throw new TypeError("filePath expected string got " + (typeof filePath).toString());
-		this.#filePath = filePath;
+	setFileName(fileName) {
+		if (typeof fileName !== "string")
+			throw new TypeError("fileName expected string got " + (typeof fileName).toString());
+		this.#fileName = fileName;
 	}
+
+
+	/**
+	 * Return JSON stringifying version of this config item
+	 * @return {string}
+	 */
+	toString() {
+		let str = JSON.stringify(this.toJSON());
+		this.log.silly("str: " + str)
+		return (str !== undefined && str !== "")? str : "{}";
+	}
+
+	/**
+	 * Get a sterilized version of this config item
+	 * @return {object}
+	 */
+	toJSON() {
+		return {
+			version: this.version
+		};
+	}
+
+	/**
+	 * Set config properties using provided json
+	 * @param {(string|object)} JSONObject JSON interpretation of the configuration 
+	 * @return {void}
+	 */
+	fromJSON(JSONObject) {
+		if (typeof JSONObject !== "string" && typeof JSONObject !== "object")
+			throw new TypeError("JSONObject expected string or object got " + (typeof JSONObject).toString());
+		
+		if (typeof JSONObject === "string")
+			JSONObject = JSON.parse(JSONObject);
+
+		this.log.silly("fromJSON(): " + JSONObject);
+
+		if (JSONObject["version"] !== undefined)
+			this.version = JSONObject["version"];
+	}
+
 
 	/**
 	 * Indicates that the config is still open
@@ -182,28 +217,6 @@ class ConfigItem {
 	 */
 	getIsAlive() {
 		return this.#isAlive;
-	}
-
-
-	/**
-	 * @return {JSON}
-	 */
-	toJSON() {
-		return { ... this.entries };
-	}
-
-	/**
-	 * @return {string}
-	 */
-	toString() {
-		return JSON.stringify(this.entries);
-	}
-
-	/**
-	 * @param {JSON} JSONObject JSON interpretation of the configuration 
-	 */
-	setJSON(JSONObject) {
-		this.entries = { ... JSONObject };
 	}
 
 	/**
