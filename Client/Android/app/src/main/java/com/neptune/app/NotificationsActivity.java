@@ -8,11 +8,14 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -62,7 +65,49 @@ public class NotificationsActivity extends AppCompatActivity {
         }
 
         Arrays.sort(apps);
-        notifView.setAdapter(new ArrayAdapter<String>(NotificationsActivity.this, android.R.layout.simple_list_item_multiple_choice, apps));
+        //notifView.setAdapter(new ArrayAdapter<String>(NotificationsActivity.this, android.R.layout.simple_list_item_multiple_choice, apps));
+        ArrayAdapter<String> allApps = new ArrayAdapter<String>(NotificationsActivity.this, android.R.layout.simple_list_item_multiple_choice, apps);
+        notifView.setAdapter(allApps);
+
+        /*I did it this way because List<String> blacklistedApps = new ArrayList<String>(Arrays.asList(apps)) didn't work. Neither did making the blacklist global.
+        I don't know why, it was just being weird so I made the blacklist this way. Will try to fix if there's time but it works now.
+        * */
+        List<String> blacklistedApps = new ArrayList<String>();
+        for(int k=0; k< apps.length; k++) {
+            blacklistedApps.add(apps[k]);
+        }
+
+        notifView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                String selectedItem = (String) parent.getItemAtPosition(position);
+                blackListedAppsCheck(blacklistedApps, selectedItem);
+
+                /* Log to check if the apps are being stored correctly in the list. They do.
+                for (int j = 0; j<blacklistedApps.size(); j++) {
+                    Log.i("App", blacklistedApps.get(j));
+                }*/
+            }
+        });
+
+    }
+
+    /*This method keeps track of the apps that are checked off so only those app's notifications are sent. It adds and removes apps from the list as they are checked
+    off.*/
+    private List<String> blackListedAppsCheck(List<String> before, String app) {
+        if(before.size()==0) {
+            before.add(app);
+            return before;
+        }
+
+        for(int i=0; i<before.size(); i++) {
+            if(app.equals(before.get(i))) {
+                before.remove(i);
+                return before;
+            }
+        }
+        before.add(app);
+        return before;
     }
 
     @Override
@@ -90,6 +135,7 @@ public class NotificationsActivity extends AppCompatActivity {
         super.onSaveInstanceState(bundle);
     }
 
+    //This method supports going to the previous activity. This allows users to move between activities that directly link to each other.
     @Override
     public boolean onSupportNavigateUp() {
         onBackPressed();
