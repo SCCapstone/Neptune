@@ -54,6 +54,8 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 		windowName.replace(/[^0-9a-zA-Z]/g, ""); // Remove anything not a digit or a character! This will be thrown at the filesystem!
 		let newWindow = new (require("./" + windowName + ".js"))(args);
 
+		this.#widgets[windowName] = newWindow;
+
 		// newWindow.setParent(this); // puts the new window inside us...not what I was thinking?
 		return newWindow;
 	}

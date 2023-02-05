@@ -19,9 +19,10 @@
   ],
   "main": "index.js",
   "scripts": {
-    "build": "webpack --env production && fixBrokenBuildNames.bat && npx nodegui-packer --pack dist && call tools\\postBuild.bat",
-    "start": "webpack && fixBrokenBuildNames.bat && qode ./dist/index.js",
-    "debug": "webpack && fixBrokenBuildNames.bat && qode --inspect ./dist/index.js",
+    "setup": "\"tools\\setup.bat\"",
+    "build": "webpack --env production && tools\\fixBrokenBuildNames.bat && npx nodegui-packer --pack dist && call tools\\postBuild.bat",
+    "start": "webpack && tools\\fixBrokenBuildNames.bat && qode ./dist/index.js",
+    "debug": "webpack && tools\\fixBrokenBuildNames.bat && qode --inspect ./dist/index.js",
     "test": "jest && echo Now running GUI tests && npm run test-gui",
     "test-code": "jest --config=jest.config.js",
     "test-gui": "qode ./node_modules/jest/bin/jest --config=jest-GUI.config.js --detectOpenHandles"
