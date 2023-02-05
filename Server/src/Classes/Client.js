@@ -39,6 +39,26 @@ class Client extends ClientConfig {
 	#secret;
 
 
+
+	// Not config items, but related to the client
+	/**
+	 * Current battery level
+	 * @type {number}
+	 */
+	batteryLevel;
+	/**
+	 * Battery temperature reported by the client in terms of degrees C
+	 * @type {float}
+	 */
+	batteryTemperature;
+	/**
+	 * Charger type reported by the client (ac, discharging, etc)
+	 * @type {string}
+	 */
+	batteryChargerType;
+
+
+
 	/**
 	 * @typedef {object} constructorData
 	 * @property {IPAddress} IPAddress 
@@ -76,24 +96,109 @@ class Client extends ClientConfig {
 		this.log.debug("Connection manager setup successful, listening for commands.");
 
 		this.#connectionManager.on('command', (command, data) => {
-			//this.log.debug("Received command:" + command);
-
-			if (command == "/api/v1/echo") {
-				this.#connectionManager.sendRequest("/api/v1/echoed", data);
-			} else if (command == "/api/v1/server/unpair") {
-				this.unpair();
-				
-			} else if (command == "/api/v1/server/sendNotification") {
-				if (Array.isArray(data)) {
-					for (var i = 0; i<data.length; i++) {
-						this.receiveNotification(new Notification(data[i]));
-					}
-				} else {
-					// invalid data.. should be an array but whatever
-					this.receiveNotification(new Notification(data));
-				}
-			}
+			this.#handleCommand(command, data);
 		});
+	}
+
+	/**
+	 * Request handler
+	 * @param {string} command
+	 * @param {object} data
+	 */
+	#handleCommand(command, data) {
+		if (command == "/api/v1/echo") {
+			this.#connectionManager.sendRequest("/api/v1/echoed", data);
+
+		} else if (command == "/api/v1/server/ping") {
+			let receivedAt = new Date(data["timestamp"]);
+			let timestamp = new Date();
+			this.#connectionManager.sendRequest("/api/v1/client/pong", {
+				receivedAt: data["timestamp"],
+				timestamp: timestamp.toISOString()
+			});
+			this.log.debug("Ping response time: " + Math.round(timestamp.getTime() - receivedAt.getTime()) + "ms");
+
+		} else if (command == "/api/v1/server/unpair") {
+			this.log.debug("Unpair request from client, dropping");
+			this.pairId = "";
+			this.pairKey = "";
+			this.delete();
+			this.#connectionManager.sendRequest("/api/v1/server/unpair", {});
+
+		} else if (command == "/api/v1/client/battery/info") {
+			if (data["level"] !== undefined)
+				this.batteryLevel = data["level"]
+			if (data["temperature"] !== undefined)
+				this.batteryTemperature = data["temperature"]
+			if (data["chargerType"] !== undefined)
+				this.batteryChargerType = data["chargerType"]
+
+			let chargeMessage = (this.batteryChargerType!="discharging")? "charging via " + this.batteryChargerType : "discharging";
+			this.log.debug("Received battery data from client. Client is at " + this.batteryLevel + "% and is " + chargeMessage + ". Temperature: " + this.batteryTemperature);
+
+			this.#connectionManager.sendRequest("/api/v1/server/ack", {});
+
+
+		} else if (command == "/api/v1/server/sendNotification" || command == "/api/v1/server/updateNotification") {
+			if (this.notificationSettings.enabled === false)
+				return;
+
+			if (Array.isArray(data)) {
+				for (var i = 0; i<data.length; i++) {
+					this.receiveNotification(new Notification(data[i]));
+				}
+			} else {
+				// invalid data.. should be an array but whatever
+				this.receiveNotification(new Notification(data));
+			}
+			this.#connectionManager.sendRequest("/api/v1/server/ack", {});
+
+		// Config
+		} else if (command == "/api/v1/server/configuration/set") {
+			this.log.debug("Updating client config using: " + data);
+			
+			// Set things we care to update
+			if (typeof data["notificationSettings"] === "object") {
+				
+			}
+			if (typeof data["clipboardSettings"] === "object") {
+				if (data["clipboardSettings"].enabled === false) // Only allow client to disable it
+					this.clipboardSettings.enabled = false;
+			}
+
+			if (typeof data["fileSharingSettings"] === "object") {
+				if (data["fileSharingSettings"].enabled === false)
+					this.fileSharingSettings.enabled = false;
+
+				this.fileSharingSettings.clientBrowsable = (data["fileSharingSettings"].clientBrowsable === true)? true : false;
+			}
+
+			if (typeof data["friendlyName"] === "string")
+				this.friendlyName = data["friendlyName"];
+
+			this.save();
+
+			this.#connectionManager.sendRequest("/api/v1/server/ack", {});
+
+			//this.fromJSON(data);
+		} else if (command == "/api/v1/server/configuration/get") {
+			this.#connectionManager.sendRequest("/api/v1/client/pong", {
+				friendlyName: NeptuneConfig.friendlyName,
+				notificationSettings: {
+					enabled: this.notificationSettings.enabled
+				},
+				clipboardSettings: {
+					enabled: this.clipboardSettings.enabled,
+					autoSendToClient: this.clipboardSettings.autoSendToClient,
+				},
+				fileSharingSettings: {
+					enabled: this.fileSharingSettings.enabled,
+					autoReceiveFromClient: this.fileSharingSettings.autoReceiveFromClient,
+					serverBrowsable: this.fileSharingSettings.serverBrowsable,
+				}
+			});
+
+		}
 	}
 
 	setupConnectionManagerWebsocket(webSocket) {
@@ -173,13 +278,16 @@ class Client extends ClientConfig {
 
 	/**
 	 * This will unpair a client
-	 * @return {boolean}
+	 * @return {boolean} True if unpair request sent, or false if already unpaired
 	 */
 	unpair() {
-		this.log.info("Unpairing");
-		this.#connectionManager.unpair();
-		this.delete();
-		return false;
+		if (this.isPaired) {
+			this.log.info("Unpairing");
+			this.#connectionManager.unpair();
+			this.delete();
+			return true;
+		} else
+			return false
 	}
 
 	/**
@@ -193,10 +301,15 @@ class Client extends ClientConfig {
 
 	delete() {
 		global.Neptune.clientManager.dropClient(this);
-		this.unpair();
-		this.#connectionManager.destroy(true);
-		this.#notificationManager.destroy(true);
-		super.delete();
+		try {
+			this.unpair();
+			this.#connectionManager.destroy(true);
+			this.#notificationManager.destroy(true);
+		} catch (err) {}
+		finally {
+			super.delete();
+			this.log.warn("Deleted");
+		}
 	}
 }
 

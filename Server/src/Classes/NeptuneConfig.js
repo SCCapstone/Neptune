@@ -13,6 +13,8 @@ const ConfigItem = require('./ConfigItem.js');
 const crypto = require("node:crypto");
 const Version = require('./Version.js');
 
+const os = require("node:os");
+
 
 /**
  * Config item
@@ -94,6 +96,13 @@ class NeptuneConfig extends ConfigItem {
 
 
 	/**
+	 * Friendly device name
+	 * @type {string}
+	 */
+	friendlyName = os.hostname();
+
+
+	/**
 	 * @param {import('./ConfigurationManager')} configManager ConfigurationManager instance
 	 * @param {string} fileName The path to the config file
 	 * @return {NeptuneConfig}
@@ -109,6 +118,7 @@ class NeptuneConfig extends ConfigItem {
 	toJSON() {
 		let JSONObject = super.toJSON();
 		JSONObject["serverId"] = this.serverId;
+		JSONObject["friendlyName"] = this.friendlyName;
 		JSONObject["encryption"] = this.encryption;
 		JSONObject["web"] = this.web;
 		JSONObject["clients"] = this.clients;
@@ -133,6 +143,9 @@ class NeptuneConfig extends ConfigItem {
 
 		if (JSONObject["serverId"] !== undefined)
 			this.serverId = JSONObject["serverId"];
+		if (JSONObject["friendlyName"] !== undefined)
+			this.friendlyName = JSONObject["friendlyName"];
+
 		if (JSONObject["encryption"] !== undefined)
 			this.encryption = JSONObject["encryption"];
 		if (JSONObject["web"] !== undefined)

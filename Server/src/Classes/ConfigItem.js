@@ -178,7 +178,6 @@ class ConfigItem {
 	 */
 	toString() {
 		let str = JSON.stringify(this.toJSON());
-		this.log.silly("str: " + str)
 		return (str !== undefined && str !== "")? str : "{}";
 	}
 

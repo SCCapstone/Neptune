@@ -705,10 +705,17 @@ async function main() {
 		}
 
 
-
-		if (req.socket.remoteAddress !== "::1")
-			client.IPAddress = new IPAddress(req.socket.remoteAddress, "25560");
-		client.saveSync();
+		try {
+			if (typeof req.ip === "string" && req.ip !== "::1") {
+				let ip = req.ip;
+				if (ip.includes(":")) {
+					ipArray = ip.split(":");
+					ip = ipArray[ipArray.length-1];
+				}
+				client.IPAddress = new IPAddress(ip, "25560");
+			}
+			client.saveSync();
+		} catch (e) {}
 
 
 

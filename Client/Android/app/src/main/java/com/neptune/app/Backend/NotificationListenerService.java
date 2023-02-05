@@ -90,11 +90,11 @@ public class NotificationListenerService extends android.service.notification.No
         Bundle extras = notification.getNotification().extras;
 
         Log.d("NotificationListener", "Notification from package: " + notification.getPackageName());
-        if (extras.getString("android.title") == null) { //Some notifications are not handled correctly, so we'll just skip em
+        if (extras.getCharSequence("android.title") == null) { //Some notifications are not handled correctly, so we'll just skip em
             return;
         }
 
-        String title = extras.getString("android.title");
+        String title = extras.getCharSequence("android.title").toString();
         String text = "";
         if (extras.getCharSequence("android.text") != null) {
             text = extras.getCharSequence("android.text").toString();
