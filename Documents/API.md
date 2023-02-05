@@ -5,7 +5,7 @@
 
 ## API "packet":
 "Packet" set between `Server<->client`
-```json
+```json5
 {
     "command": "{command being called (URL)}",
     "data": "{data being sent}",
@@ -38,7 +38,7 @@ Client sends an HTTP POST request to the server endpoint
 Server endpoint: `/api/v1/server/initiateConnection`
 
 POST Data:
-```json
+```json5
 {
     "supportedKeyGroups": ["modp14", "modp15", "modp16", "modp17", "modp18"], // Supported DH key groups
     "supportedHashAlgorithm": ["sha256"], // allowed hash functions
@@ -48,7 +48,7 @@ POST Data:
 ```
 
 Response:
-```json
+```json5
 {
     "conInitId": "", // UUID, used to identify the client's next call
     
@@ -71,7 +71,7 @@ Client sends an HTTP POST request to the server endpoint
 Server endpoint: `/api/v1/server/initiateConnection/{conInitId}`
 
 POST Data:
-```json
+```json5
 {
     "b1": "APx0efpXjbQwbHHoKdKbYk+KdVWrM9hh71YNKWO67JkuANy1+ZPGjuDBE+YPri4uaXBUDZU94A5nkDtAQvlpfq4eiRLB/5e/fw/clara/Nx190Sv56Jmmg/do+BQ3gdmy3zxnhB+N0etM5r59qyR4JAEd2/ysI44jrd1vBE/eKvCCsYDXwqopXC6yxk8aXggGkdj/sUZnVQj//CHZ5wzwVwHTyFyweT2PFvDJi3OZF0Xw/Fsm8igqJ1LQNyxSMhp7q/xirTRvC90EOR9VROOWvt7oBRiKE6ik/DfW9XtxOcNg9rkmT0/dqK0CQlxPoY+CYBJ6mARjd8+PTCXKL3yk/Hq1ESsaZvqjxZYg7GtrkebjzUu4zpwStV4pI62OLtXmqgFUalUGJpkZMqPQzWUW+eB4cg+rN+nqsrclXFHjHhnZszRr8PCm/CuzZSAWMyhG2mBNIm+0s/d2vye3OFUCCY071wsUesrGph9mHWMm3S65BDr+mF9+sjRUx91HBqg2X70KsTAEXNZw2BZOXFfKSov1B1q6CJsmO3uPL8HUweAYFw1AZxlei9eXHYp0ngaFyOnkUoFAYBwmEkx6y92rRy8PQQBjYzdz9M/fjK/N88Jcj/1t1ETqL6CgBYT6DmCNB8WoqhpG0m6Ijta7uNm9cM7wY0zn3hVS46KMFH7T95a", // Client's public DH key\
     "b2": "", // Client's public DH key (if using dynamic salt)
@@ -87,7 +87,7 @@ POST Data:
 ```
 
 Response:
-```json
+```json5
 {
     "socketId": "708384c6-e8fe-4188-97b0-95988b5db546", // The socket id the client needs to connect to (/api/v1/server/socket/{socketId}).
     "confMsg": "c6e5e46c59267114f91d64df0e069b0dae176f9a134656820bba1e6164318980", // Hash of the decrypted chkMsg concatenated with the chkMsgHash. Used to tell the client the server can decrypt and encrypt.
@@ -108,7 +108,7 @@ Used to pair the two devices together. If the client and server are not paired, 
 Server endpoint: `/api/v1/server/newPairRequest` -> `/api/v1/server/newPairResponse`
 
 POST Data:
-```json
+```json5
 {
     "clientId": "1631278c-83d1-4371-a678-f0a9aae192f9", // Client UUID (repetitive, sent in previous request)\
     "friendlyName": "John's Phone", // Client's display name
@@ -116,7 +116,7 @@ POST Data:
 ```
 
 Response:
-```json
+```json5
 {
     "pairId": "2980d4de-d59d-4d6a-8cb2-88360a1d768f", // the unique identifier (UUID) to represent a pair relationship between two devices (server and client)\
     "pairKey": "sRDHHmu^VXDqpn[bAjuAywZxSfCiOyPf_tMMUqRcdTp][[kpLXRkZwNB`qUfMBTN", // A shared key only the server and client know. Persistent for as long as the devices are paired, but can changed via a request.
@@ -136,13 +136,13 @@ Used to create a unique "imageId" so we can upload an image
 Server endpoint: `/api/v1/server/image/newImageId`:
 
 POST Data:
-```json
+```json5
 {
     "imageType": "notificationIcon" // NotificationIcon, notificationImage, personImage, misc
 }
 ```
 Server replies with:
-```json
+```json5
 {
     "imageId": "" // Random string length 16
 }
@@ -176,7 +176,7 @@ Used to send one or more notifications to the server. Update, create or remove.
 Server endpoint: `/api/v1/server/sendNotification` -> (no response)
 
 POST Data:
-```json
+```json5
 [
  {
     "action": "create", // What to do with this data, how to process (create, remove, update)
@@ -227,7 +227,7 @@ Used to activate or dismiss a notification on the client.
 Client endpoint: `/api/v1/client/updateNotification` -> (no response)
 
 POST Data:
-```json
+```json5
 [
  {
     "applicationName": "Notification Tester", // The app that created the notification
@@ -252,7 +252,7 @@ Asks the client to send all active notifications over (via `/api/v1/server/sendN
 Client endpoint: `/api/v1/server/getNotifications` -> (no response)
 
 POST Data:
-```json
+```json5
 {
     "ignoreList": [ // Don't send these, (optional)
         {
@@ -279,7 +279,7 @@ Client endpoint: `/api/v1/client/configuration/set` -> (no response)
 
 
 Data
-```json
+```json5
 {
     "fiendlyName": "", // Device display name
     "notificationSettings": { // Notification settings
@@ -311,12 +311,12 @@ Sever endpoint: `/api/v1/server/configuration/get` -> `/api/v1/server/configurat
 Client endpoint: `/api/v1/client/configuration/get` -> `/api/v1/client/configuration`
 
 POST data:
-```json
+```json5
 {}
 ```
 
 Response:
-```json
+```json5
 {
     "fiendlyName": "", // Device display name
     "notificationSettings": { // Notification settings
@@ -347,7 +347,7 @@ Server endpoint: `/api/v1/server/unpair` -> no reply\
 Client endpoint: `/api/v1/client/unpair` -> no reply
 
 POST data:
-```json
+```json5
 {}
 ```
 
@@ -371,7 +371,7 @@ POST data:
 ```
 
 Response data:
-```json
+```json5
 {
     "level": 100, // Battery percentage
     "temperature": 36, // In Celsius.
@@ -381,14 +381,14 @@ Response data:
 
 
 
-#### Ping
+### Ping
 Used to measure the amount of delay between two devices.
 
 Server endpoint: `/api/v1/server/ping` -> `/api/v1/client/pong`\
 Client endpoint: `/api/v1/client/ping` -> `/api/v1/server/pong`
 
 POST data:
-```json
+```json5
 {
     "timestamp": "2040-04-23T18:25:43.511Z" // Time ping was sent
 }
@@ -396,7 +396,7 @@ POST data:
 
 
 Reply:
-```json
+```json5
 {
     "receivedAt": "2040-04-23T18:25:43.511Z", // Time we received the ping
     "timestamp": "2040-04-23T18:25:43.511Z" // Time reply was sent.
@@ -405,14 +405,14 @@ Reply:
 
 
 
-#### Scrap connection initiation
+### Scrap connection initiation
 Kills a connection, requires a new connection to be setup via `/api/v1/server/initiateConnection`.
 
 Server endpoint: `/api/v1/server/initiateConnection/{conInitId}/scrap` -> (no response)\
 Client endpoint: `/api/v1/client/initiateConnection/{conInitId}/scrap` -> (no response)
 
 POST data:
-```json
+```json5
 {
     "reason": "" // Optional reason, logged and shown to user
 }
@@ -422,15 +422,20 @@ No response
 
 
 
-#### Disconnect
+### Disconnect
 Used to disconnect from the device after a connection initiation has taken place. Will require a new connection to be setup via `/api/v1/server/initiateConnection` afterwards.
 
 Server endpoint: `/api/v1/server/disconnect` -> (no response)\
 Client endpoint: `/api/v1/client/disconnect` -> (no response)
 
 POST data:
-```json
+```json5
 {}
 ```
 
 No response (they've disconnected).
+
+### Acknowledge
+Used by the server to tell the client request was received and there is no response generated. (So the client stops waiting for a resposne.)
+
+Server will respond with `/api/v1/server/ack` on all requests that otherwise do NOT have a response. No data with this response.
