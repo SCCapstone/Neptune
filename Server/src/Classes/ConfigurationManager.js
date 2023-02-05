@@ -14,6 +14,8 @@ const keytar = require("keytar");
 const NeptuneCrypto = require('./../Support/NeptuneCrypto.js');
 
 const ConfigItem = require('./ConfigItem.js');
+const NeptuneConfig = require('./NeptuneConfig');
+const ClientConfig = require('./ClientConfig.js');
 const Neptune = global.Neptune;
 
 
@@ -39,11 +41,21 @@ class ConfigurationManager {
 	 * @type {string}
 	 */
 	#configDirectory = "./../data/";
+	get configDirectory() {
+		return this.#configDirectory
+	}
 
 	/**
 	 * @type {import('./LogMan').Logger}
 	 */
 	#log;
+
+
+	/**
+	 * Used to check if the config manager is being torn down
+	 * @type {boolean}
+	 */
+	#isDestroying = false;
 
 	/**
 	 * @param {string} [configDirectory = "./../data/"] Base folder containing the config files
@@ -81,6 +93,7 @@ class ConfigurationManager {
 	 */
 	destroy() {
 		this.#log.debug("Destroying...");
+		this.#isDestroying = true;
 		this.#cachedItems.forEach((config) => {
 			config.close(true);
 		});
@@ -100,6 +113,7 @@ class ConfigurationManager {
 	 * Load a configuration from disk
 	 * @param {string} configName The name of the configuration file (or path if isPath is set to true)
 	 * @param {boolean} isPath Indicates that configName is in fact the path to the config file. ONLY set this to true IF you are reading a known good file.
+	 * @param {(ConfigItem|NeptuneConfig|ClientConfig)} configClass Which class to initialize. This is the class type that will be returned
 	 * @return {(ConfigItem|NeptuneConfig|ClientConfig)}
 	 */
 	loadConfig(configName, isPath, configClass) {
@@ -134,6 +148,33 @@ class ConfigurationManager {
 		}
 	}
 
+
+	/**
+	 * @param {ConfigItem} configItem Which item to remove from the cache
+	 * @return {boolean} ConfigItem was removed from our cache
+	 */
+	removeConfigItemFromCache(configItem) {
+		if (this.#isDestroying || !this.#cachedItems.has(configItem.getFileName()))
+			return true;
+
+		this.#log.debug("Removing: " + configItem.getFileNath());
+		this.#cachedItems.delete(configItem.getFileName());
+		return true;
+	}
+
+	/**
+	 * Destroys the configuration manager and closes all open (cached) items
+	 * @param {boolean} saveConfigs Save the config files when closed
+	 */
+	destroy(saveConfigs) {
+		this.#log("Destroying");
+		this.#isDestroying = true;
+		this.#cachedItems.forEach((configItem) => {
+			//this.#cachedItems.delete(configItem.getFileName());
+			configItem.close(saveConfigs);
+		});
+		this.#cachedItems.clear();
+	}
 
 
 	/**
@@ -278,24 +319,26 @@ class ConfigurationManager {
 	/**
 	 * Returns the JSON contents of a file, decrypting/encrypting if need-be.
 	 * @param {string} path Path to the file you wish to read
-	 * @return {Promise<JSONObject>} The config contents
+	 * @return {object} The config contents
 	 */
 	readFileContentsSync(path) {
 		if (typeof path !== "string")
 			throw new TypeError("path expected string got " + (typeof path).toString());
 
 		if (!fs.existsSync(path)) {
-			this.#log.debug("(reading) Creating config file: " + path)
+			this.#log.debug("Creating config file: " + path);
 			fs.writeFileSync(path, "{}"); // Creates the config
 			return {};
 		}
 
 		let data = fs.readFileSync(path);
 		try {
-			if (NeptuneCrypto.isEncrypted(data))
+			if (NeptuneCrypto.isEncrypted(data)) 
 				data = NeptuneCrypto.decrypt(data, this.#encryptionKey);
 			return JSON.parse(data);
 		} catch (err) {
+			this.#log.warn("Error reading config file: " + path + " . Error: " + err.message);
+			this.#log.debug(err);
 			// console.log("[ConfigurationManager] Read error: somewhere on line 210: " + err);
 			if (err instanceof NeptuneCrypto.Errors.DataNotEncrypted) {
 				return JSON.parse(data); // Not encrypted.
@@ -368,11 +411,13 @@ class ConfigurationManager {
 	 * @param {ConfigItem} config
 	 */
 	delete(config) {
-		let filePath = config.getConfigFilePath();
+		let filePath = config.getFileName();
 		if (fs.existsSync(filePath)) {
-			this.#log.debug("Deleting \"" + config.getConfigFilePath() + "\"");
+			this.#log.debug("Deleting \"" + config.getFileName() + "\"");
 			fs.unlinkSync(filePath);
 		}
+
+		this.removeConfigItemFromCache(config);
 	}
 
 	/**
@@ -393,11 +438,12 @@ class ConfigurationManager {
 			fileName = this.#configDirectory + fileName;
 		}
 
-		this.#log.debug("Renaming \"" + config.getConfigFilePath() + "\" to \"" + fileName + "\"");
-		fs.renameSync(config.getConfigFilePath(), fileName);
-		config.setConfigFilePath(fileName);
+		this.#log.debug("Renaming \"" + config.getFileName() + "\" to \"" + fileName + "\"");
+		fs.renameSync(config.getFileName(), fileName);
+		this.#cachedItems.delete(config.getFileName());
+		config.setFileName(fileName);
+		this.#cachedItems.set(fileName, config);
 	}
-
 }
 
 module.exports = ConfigurationManager;

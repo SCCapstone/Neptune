@@ -11,6 +11,9 @@
 
 const ConfigItem = require('./ConfigItem.js');
 const crypto = require("node:crypto");
+const Version = require('./Version.js');
+
+const os = require("node:os");
 
 
 /**
@@ -20,9 +23,9 @@ class NeptuneConfig extends ConfigItem {
 
 	/**
 	 * Configuration version, so if we introduce any configuration updates that break older versions we can convert them.
-	 * @type {number}
+	 * @type {Version}
 	 */
-	configVersion = 1.1;
+	configVersion = new Version(1,1,0);
 
 	/**
 	 * First run?
@@ -93,118 +96,67 @@ class NeptuneConfig extends ConfigItem {
 
 
 	/**
-	 * @param {string} filePath The path to the config file
-	 * @return {ConfigItem}
+	 * Friendly device name
+	 * @type {string}
 	 */
-	constructor(configManager, filePath) {
-		super(configManager, filePath);
-	
-		// load
-		this.load();
-	}
-
-	/**
-	 * Sets the entries property with the config items
-	 */
-	#setEntries() {
-		this.entries["configVersion"] = this.configVersion;
-		this.entries["serverId"] = this.serverId;
-		this.entries["encryption"] = this.encryption;
-		this.entries["web"] = this.web;
-		this.entries["clients"] = this.clients;
-		this.entries["clientDirectory"] = this.clientDirectory;
-
-		this.entries["applicationSettings"] = this.applicationSettings;
-	}
-
+	friendlyName = os.hostname();
 
 
 	/**
-	 * Reload the configuration from disk
-	 * @return {Promise<boolean>} Load successful
+	 * @param {import('./ConfigurationManager')} configManager ConfigurationManager instance
+	 * @param {string} fileName The path to the config file
+	 * @return {NeptuneConfig}
 	 */
-	load() {
-		super.loadSync();
-
-		// Hand move the entries over
-		if (this.entries !== undefined) {
-			for (var [key, value] of Object.entries(this.entries)) {
-				if (this[key] !== undefined)
-					this[key] = value;
-			}
-		}
-	}
-
-	loadSync() {
-		this.load();
-	}
-	
-	/**
-	 * Save the configuration
-	 * @return {void}
-	 */
-	save() {
-		this.#setEntries();
-		super.save();
+	constructor(configManager, fileName) {
+		super(configManager, fileName);
+		this.loadSync();
 	}
 
 	/**
-	 * Save the configuration
-	 * @return {void}
-	 */
-	saveSync() {
-		this.#setEntries();
-		super.saveSync();
-	}
-
-
-	
-
-	/**
-	 * Get a config value
-	 * @param {string} key The configuration item to get
-	 * @return {object}
-	 */
-	getProperty(key) {
-		if (typeof key !== "string")
-			throw new TypeError("key expected string got " + (typeof key).toString());
-
-		return this[key];
-	}
-	
-	/**
-	 * @param {string} key Configuration item to save
-	 * @param {any} value Value to set the item to
-	 * @return {void}
-	 */
-	setProperty(key, value) {
-		if (typeof key !== "string")
-			throw new TypeError("key expected string got " + (typeof key).toString());
-
-		this[key] = value;
-		this.save();
-	}
-
-	/**
-	 * @return {JSON}
+	 * @inheritdoc
 	 */
 	toJSON() {
-		this.#setEntries();
-		return { ... this.entries };
+		let JSONObject = super.toJSON();
+		JSONObject["serverId"] = this.serverId;
+		JSONObject["friendlyName"] = this.friendlyName;
+		JSONObject["encryption"] = this.encryption;
+		JSONObject["web"] = this.web;
+		JSONObject["clients"] = this.clients;
+		JSONObject["clientDirectory"] = this.clientDirectory;
+		JSONObject["applicationSettings"] = this.applicationSettings;
+
+		return JSONObject;
 	}
 
 	/**
-	 * @param {JSON} JSONObject JSON interpretation of the configuration 
+	 * @inheritdoc
 	 */
-	setJSON(JSONObject) {
-		this.entries = { ... JSONObject };
-		// Hand move the entries over
-		if (this.entries !== undefined) {
-			for (var [key, value] of Object.entries(this.entries)) {
-				if (this[key] !== undefined)
-					this[key] = value;
-			}
-		}
+	fromJSON(JSONObject) {
+		if (typeof JSONObject !== "string" && typeof JSONObject !== "object")
+			throw new TypeError("JSONObject expected string or object got " + (typeof JSONObject).toString());
+		
+		if (typeof JSONObject === "string")
+			JSONObject = JSON.parse(JSONObject);
+
+		if (JSONObject["version"] !== undefined)
+			this.version = JSONObject["version"];
+
+		if (JSONObject["serverId"] !== undefined)
+			this.serverId = JSONObject["serverId"];
+		if (JSONObject["friendlyName"] !== undefined)
+			this.friendlyName = JSONObject["friendlyName"];
+
+		if (JSONObject["encryption"] !== undefined)
+			this.encryption = JSONObject["encryption"];
+		if (JSONObject["web"] !== undefined)
+			this.web = JSONObject["web"];
+		if (JSONObject["clients"] !== undefined)
+			this.clients = JSONObject["clients"];
+		if (JSONObject["clientDirectory"] !== undefined)
+			this.clientDirectory = JSONObject["clientDirectory"];
+
+		if (JSONObject["applicationSettings"] !== undefined)
+			this.applicationSettings = JSONObject["applicationSettings"];
 	}
 }
 

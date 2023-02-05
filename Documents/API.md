@@ -4,129 +4,179 @@
 `/api/v1/server/` <- Received by the SERVER, client sends these.
 
 ## API "packet":
-
-
 "Packet" set between `Server<->client`
-```json
+```json5
 {
-    "conInitUUID": "{currentConnectionId}",
     "command": "{command being called (URL)}",
     "data": "{data being sent}",
 }
 ```
 This data is a layer on the _actual_ data the client is sending. The `data` portion is encrypted using the shared AES key and contains the command, clientId, and command parameters.
 The server or client would receive this "packet" of data and peel it (decrypt the `data` portion) to read the request/response of the other application. This is to provide always applied encryption to requests and responses.\
-Before we have a conInitUUID, we add `"negotiating": true` to signify we're setting that up.\
-If the server receives a packet without a conInitUUID, only the `initiateConnection` command will be accepted. 
+
 
 
 ## Key negotiation, pairing
-Before the two applications can talk to each other, we need to setup a socket connection. A socket will allow the server to send data to the client device without having to host a whole web server on the client app.
-
-At the time of writing the idea is that the _client_ initiates the socket request, that is _client_ asks the server to for the socket details and then connects to that socket.
-
-It is possible to host a socket server on the client side, and this may be a reasonable option so long as it doesn't obliterate the battery of the device.
-
-A new socket connection can be called thru an existing socket itself to reestablish a shared secret. This is done once we hit the TTL limit.
+Before the two applications can talk to each other, we need to setup a socket connection. A socket will allow the server to send data to the client device without having to host a whole web server on the client app.\
+At the time of writing the idea is that the _client_ initiates the socket request, that is _client_ asks the server to for the socket details and then connects to that socket.\
+It is possible to host a socket server on the client side, and this may be a reasonable option so long as it doesn't obliterate the battery of the device.\
+A new socket connection can be called thru an existing socket itself to reestablish a shared secret. This is done once we hit the TTL limit.\
 
 Data is set at the body. We do not use "the packet" for this.
 
-1) Client sends HTTP post to `/api/v1/server/initiateConnection`:\
-    POST (client sends):\
-        `supportedKeyGroups`: DH key groups\
-        `supportedHashAlgorithm`: allowed hash functions\
-        `supportedCiphers`: allowed crypto functions (AES256-GCM, ChaCha20, AES256-CBC, AES128-GCM, AES128-CBC)\
-        `useDynamicSalt`: use separate DH exchange to derive the salt used to derive the AES key/iv.
+1) Client sends HTTP post to `/api/v1/server/initiateConnection`\
+2) Client sends HTTP post to `/api/v1/server/initiateConnection/{conInitId}`\
+3) Client connects to the socket `/api/v1/server/socket/{socketId}`. Everything is setup!\
+_(Client can also use HTTP POST to `localhost:25560/api/v1/server/socket/{{socketUUID}}/http` rather than a socket)._
 
-    REPLY (server sends): g1, p1, A1, conInitId, g2, p2, A2.\
-        `g1`: base _There are two, second set is optional and used to derive a salt._ Encoded in base64\
-        `p1`: modulus. Encoded in base64\
-        `A1`: server's public integer. Encoded in base64\
-        `conInitId`: UUID, used to identify the client's next call\
-        `g2`, `p2`, `A2`: Are the base, modulus, and server's public integer for deriving a shared _dynamic_ salt (_if `useDynamicSalt` was true in the client's request_).
-        `selectedCipher`: cipher algorithm we've accepted
-        `selectedKeyGroup`: key group we're using
-        `selectedHashAlgorithm`: hash algorithm we've accepted 
+After step 1, but before step 2, the client can send a scrap request to halt the connection `/api/v1/server/initiateConnection/{conInitId}/scrap`. They can also just not respond, conInitIds automatically expire after 5 minutes.
 
-2) Client sends HTTP post to `/api/v1/server/initiateConnection/{conInitId}`:\
-    POST:\
-        `B1`: client's public integer\
-        `B2`: client's public integer (dynamic salt)\
-        `clientId`: the client identifier (this is who we are, this encrypted)\
-        `pairId`: encrypted. Tells the server which client we are, used in deriving the salt used to create the AES key and iv. Provides the server with an assurance that we've talked before. If a client and server have not paired before, this will be empty.\
-        `newPair`: if the server and client have not paired before, this will be true, otherwise false or exempt. Signals that a pair request will follow after socket connection.\
-        `chkMsg`: encrypted random string of length 64. Encrypted using the derived AES key and iv created from the shared secret (DH). Used to validate encryption (both parties have the same key).\
-        `chkMsgHash`: hash (SHA256/SHA1) of the decrypted `chkMsg` string.\
-        `chkMsgHashFunction`: sha256, sha1, md5. Function used to create `chkMsgHash`.
 
-    REPLY:\
-        `socketId`: the socket id the client needs to connect to (`/api/v1/server/socket/{socketId}`).\
-        `confMsg`: hash of the decrypted `chkMsg` concatenated with the `chkMsgHash`. Used to tell the client the server can decrypt and encrypt.
+### Step 1, client engages
+Client sends an HTTP POST request to the server endpoint
 
-3) Client connects to the socket `/api/v1/server/socket/{socketId}`. Everything is setup!:\
-_client can also use HTTP POST to `localhost:25560/api/v1/server/socket/{{socketUUID}}/http` rather than a socket\
-If a new pair connection is needed, send:
-```json
+Server endpoint: `/api/v1/server/initiateConnection`
+
+POST Data:
+```json5
 {
-    "command": "/api/v1/server/newPairRequest`",
-    "data": {
-        "clientId": "UUID", // the client identifier (unique, hopefully)\
-        "friendlyName": "John's Phone", // the client's display name (_John's Phone_)\
-        "configuration": {} // the configuration data, same data as `/api/v1/server/updateConfiguration`.
-    }
+    "supportedKeyGroups": ["modp14", "modp15", "modp16", "modp17", "modp18"], // Supported DH key groups
+    "supportedHashAlgorithm": ["sha256"], // allowed hash functions
+    "supportedCiphers": ["aes-128-gcm"], // allowed crypto functions (AES256-GCM, ChaCha20, AES256-CBC, AES128-GCM, AES128-CBC)
+    "useDynamicSalt": false // use separate DH exchange to derive the salt used to derive the AES key/iv.
 }
 ```
 
-Server would process the data, prompt the user to accept and then respond with:
-```json
-}
-    "command": "/api/v1/server/newPairResponse",
-    "data": {
-        "pairId": "1234", // the unique identifier (UUID) to represent a pair relationship between two devices (server and client)\
-        "pairKey": "1234", // a shared key of length 64 used in encryption.  Only the server and client know this. Persistent for as long as the devices are paired, however, can be changed via a request.
-        "serverId": "1234", // UUID of the server
+Response:
+```json5
+{
+    "conInitId": "", // UUID, used to identify the client's next call
+    
+    "g1": "", // DH base, encoded in base64
+    "p1": "", // DH modulus encoded in base64
+    "a1": "", // Server's DH public key, encoded in base64
+    
+    "selectedCipher": "aes-128-gcm", // Cipher algorithm we've accepted
+    "selectedKeyGroup": "modp16", // Key group we're using
+    "selectedHashAlgorithm": "sha256", // Hash algorithm we've accepted 
+    
+    "g2": "", "p2": "", "a2": "", // The base, modulus, and server's public key for deriving a shared dynamic salt (if useDynamicSalt was true in the client's request).
 }
 ```
 
 
-    This was never implemented, and is no longer needed, but to finalize the connection initiation, client would've sent (if already paired):\
-        `command`: `/api/v1/server/newClientConnection`,\
-        `pairId`: ensure the correct pair identifier was sent (likely redundant, pairIds used to derive salt/pepper)\
-        `TTL`: time-to-live, how long until we require a renegotiation. (our maximum accepted time).
+### Step 2, client responds
+Client sends an HTTP POST request to the server endpoint
 
-    Reply:\
-        `command`: `/api/v1/server/newClientConnection`,\
-        `TTL`: decided time-to-live (will be <= client's requested TTL)\
-        `connectionId`: a unique identifier to represent this client connection. 
+Server endpoint: `/api/v1/server/initiateConnection/{conInitId}`
 
-At any time the client can send a scrap request to halt the connection `/api/v1/server/initiateConnection/{conInitId}/scrap`. The server will delete any socket and remove any references.
+POST Data:
+```json5
+{
+    "b1": "APx0efpXjbQwbHHoKdKbYk+KdVWrM9hh71YNKWO67JkuANy1+ZPGjuDBE+YPri4uaXBUDZU94A5nkDtAQvlpfq4eiRLB/5e/fw/clara/Nx190Sv56Jmmg/do+BQ3gdmy3zxnhB+N0etM5r59qyR4JAEd2/ysI44jrd1vBE/eKvCCsYDXwqopXC6yxk8aXggGkdj/sUZnVQj//CHZ5wzwVwHTyFyweT2PFvDJi3OZF0Xw/Fsm8igqJ1LQNyxSMhp7q/xirTRvC90EOR9VROOWvt7oBRiKE6ik/DfW9XtxOcNg9rkmT0/dqK0CQlxPoY+CYBJ6mARjd8+PTCXKL3yk/Hq1ESsaZvqjxZYg7GtrkebjzUu4zpwStV4pI62OLtXmqgFUalUGJpkZMqPQzWUW+eB4cg+rN+nqsrclXFHjHhnZszRr8PCm/CuzZSAWMyhG2mBNIm+0s/d2vye3OFUCCY071wsUesrGph9mHWMm3S65BDr+mF9+sjRUx91HBqg2X70KsTAEXNZw2BZOXFfKSov1B1q6CJsmO3uPL8HUweAYFw1AZxlei9eXHYp0ngaFyOnkUoFAYBwmEkx6y92rRy8PQQBjYzdz9M/fjK/N88Jcj/1t1ETqL6CgBYT6DmCNB8WoqhpG0m6Ijta7uNm9cM7wY0zn3hVS46KMFH7T95a", // Client's public DH key\
+    "b2": "", // Client's public DH key (if using dynamic salt)
+    
+    "clientId": "ncrypt::1:aes-128-gcm:sha256:RUVeekg1dmI0WS9XPiUmV0R1KFIzXiBxbDpINUNOLig=:KUw6RUZtTksjcmBhJGNFJg==:3EC393B11AA8CBD149930839:8hRlIsC2qkESBAIBkuPBQFZRf3Ii+cVcALGXlyb4BXWW7qBY:QmU+IHk4Jz5wMnNWMTlKZg==:919A25DC8B99CD2076C78920C0A603A3", // The client UUID (this is who we are, encrypted)
+    "newPair": true, // If the server and client have not paired before, this will be true, otherwise false / exempt. Signals that a pair request will follow after socket connection.
+    "pairId": null, // Encrypted, used in deriving the salt used to create the AES key and iv. Provides the server with an assurance that we've talked before. Empty if client/server have not paired before.
+    
+    "chkMsg": "ncrypt::1:aes-128-gcm:sha256:O2cqOX1meEtpezNDPW1CLzpxSCx8J011b144UygqLEs=:QmVVV3c/OUk/bEVHYXBMVg==:22EC86E04EE135E955A622BC:mMHBlVYVyO87M4/3vNA3Rk3gzAHF9p+i7P9lrAUU1faswy8oTINkhAo8GYkmR6xHPNoo2cJtyyVfoziujO3hQZS/cfhW42RfQNxmWJsDV3MqsVk6ko9kcg==:YXxLeW85ZGp9IT00MU9bKg==:8589AC6767870C8B6A06767A13E035CF", // Encrypted random string of length 64. Encrypted using the derived AES key and iv created from the shared secret (DH). Used to validate encryption (both parties have the same key).
+    "chkMsgHash": "C44E54A1A4DA0C8FE4FEA4C6270BBBFE918481CBA17BCB59D41156328463991E", // hash (SHA256/SHA1) of the decrypted chkMsg string.
+    "chkMsgHashFunction": "sha256", // sha256, sha1, md5. Function used to create chkMsgHash. Should be the selectedHashAlgorithm
+}
+```
+
+Response:
+```json5
+{
+    "socketId": "708384c6-e8fe-4188-97b0-95988b5db546", // The socket id the client needs to connect to (/api/v1/server/socket/{socketId}).
+    "confMsg": "c6e5e46c59267114f91d64df0e069b0dae176f9a134656820bba1e6164318980", // Hash of the decrypted chkMsg concatenated with the chkMsgHash. Used to tell the client the server can decrypt and encrypt.
+}
+```
+
+
+### Step 3, client connects
+Client connects to the socket hosted at `/api/v1/server/socket/{socketId}`.\
+Everything is setup!\
+_Client can also use HTTP POST to `localhost:25560/api/v1/server/socket/{{socketUUID}}/http` rather than a socket._
+
+
+
+### Pairing
+Used to pair the two devices together. If the client and server are not paired, the server ignores all requests and deletes the client configuration on exit.
+
+Server endpoint: `/api/v1/server/newPairRequest` -> `/api/v1/server/newPairResponse`
+
+POST Data:
+```json5
+{
+    "clientId": "1631278c-83d1-4371-a678-f0a9aae192f9", // Client UUID (repetitive, sent in previous request)\
+    "friendlyName": "John's Phone", // Client's display name
+}
+```
+
+Response:
+```json5
+{
+    "pairId": "2980d4de-d59d-4d6a-8cb2-88360a1d768f", // the unique identifier (UUID) to represent a pair relationship between two devices (server and client)\
+    "pairKey": "sRDHHmu^VXDqpn[bAjuAywZxSfCiOyPf_tMMUqRcdTp][[kpLXRkZwNB`qUfMBTN", // A shared key only the server and client know. Persistent for as long as the devices are paired, but can changed via a request.
+    "serverId": "726b3f84-ff46-4a84-b42d-dfd8acd882a6", // UUID of the server
+    "friendlyName": "Bob's computer" // Friendly name of the server
+}
+```
+
+
 
 
 ## Notifications
-Command: `/api/v1/server/image/newImageId`:
+
+### New image id
 Used to create a unique "imageId" so we can upload an image
-```json
+
+Server endpoint: `/api/v1/server/image/newImageId`:
+
+POST Data:
+```json5
 {
     "imageType": "notificationIcon" // NotificationIcon, notificationImage, personImage, misc
 }
 ```
 Server replies with:
-```json
+```json5
 {
     "imageId": "" // Random string length 16
 }
 ```
 
-Images are then uploaded to the file endpoint via HTTPS `/api/v1/server/image/{imageId}/upload`.
-After successful upload, then we can reference that imageId. Client can request to delete an image with command: `/api/v1/server/image/{imageId}/delete`.
-Images can be pulled down via `/api/v1/server/image/{imageId}/get`
+Images are then uploaded to the file endpoint via HTTPS (POST) `/api/v1/server/image/{imageId}`.\
+After successful upload, then we can reference that imageId.\
+Client can request to delete an image with command a DELETE request to: `/api/v1/server/image/{imageId}`.
+Images can be pulled down via a GET request to: `/api/v1/server/image/{imageId}`
+
+
+### Images
+Used to upload, delete or get an image using a provided image id
+
+HTTP ONLY!
+Server endpoint: `/api/v1/server/image/{imageId}`
+
+
+POST: image binary.\
+No response.
+
+GET: Returns the image binary.
+
+DELETE: Deletes the image.
 
 
 
-### Sending data to the server:
-Command: `/api/v1/server/sendNotification`:
+### Sending notifications to the server:
 Used to send one or more notifications to the server. Update, create or remove.
-```json
+
+Server endpoint: `/api/v1/server/sendNotification` -> (no response)
+
+POST Data:
+```json5
 [
  {
     "action": "create", // What to do with this data, how to process (create, remove, update)
@@ -167,11 +217,17 @@ Used to send one or more notifications to the server. Update, create or remove.
 ]
 ```
 
+No response:
 
-### Reacting to a notification (response to client):
-Command: `/api/v1/client/updateNotification`:
+
+
+### Activating/dismissing a notification:
 Used to activate or dismiss a notification on the client.
-```json
+
+Client endpoint: `/api/v1/client/updateNotification` -> (no response)
+
+POST Data:
+```json5
 [
  {
     "applicationName": "Notification Tester", // The app that created the notification
@@ -180,18 +236,25 @@ Used to activate or dismiss a notification on the client.
     "action": "action", // Activate, dismiss, action
     "actionParameters": {
         "id": "action_read", // Name of the action user clicked on server
+        "text": "" // If action included text, this would be the text.
     }
  }   
 ]
 ```
 
+No response
+
+
 
 ### Misc notification requests
-Command: `/api/v1/server/getNotifications`:
 Asks the client to send all active notifications over (via `/api/v1/server/sendNotification`).
-```json
+
+Client endpoint: `/api/v1/server/getNotifications` -> (no response)
+
+POST Data:
+```json5
 {
-    "ignoreList": [ // Don't send these
+    "ignoreList": [ // Don't send these, (optional)
         {
             "applicationName": "Notification Tester", // The app that created the notification
             "applicationPackage": "com.cnewb.notificationtester", // The package name of that application
@@ -201,77 +264,139 @@ Asks the client to send all active notifications over (via `/api/v1/server/sendN
 }
 ```
 
+No response
+
+
 
 
 
 ## Configuration
-### Updating client config
-Command: `/api/v1/server/setConfiguration`:
-Used for the client to tell the server of configuration changes. Sent during a pair as the "configuration" item)
-Similar for server->client, just change client to server.
-```json
+### Set configuration
+Used to sync common configuration settings between the two devices.
+
+Sever endpoint: `/api/v1/server/configuration/set` -> (no response)\
+Client endpoint: `/api/v1/client/configuration/set` -> (no response)
+
+
+Data
+```json5
 {
-    "clientId": "", // In case this needs to be updated (should not happen!)
-    "pairKey": "", // To update the shared pair key
     "fiendlyName": "", // Device display name
-    "ipAddress": "", // Current IP address of device
-    "port": 123, // Port to connect to ?
-    "syncNotifications": true, // Send notification data
-    "notificationSettings": {}, // Notification settings
-    "syncClipboard": false,
-    "clipboardSettings": {
-        "autoSendToServer": "", // Automatically send to server
-        "autoSendToClient": "" // Automatically send to client
+    "notificationSettings": { // Notification settings
+        "enabled": true // Send notification data
     },
-    "fileSharing": false, // Enable file sharing
+    "clipboardSettings": {
+        "enabled": false, // this && two below
+        "autoSendToServer": false, // Automatically send to server (sent and ignored by client)
+        "autoSendToClient": false // Automatically send to client (sent and ignored by server)
+    },
     "fileSharingSettings": {
-        "autoReceiveFromServer": false, // Auto receive files from the server
-        "autoReceiveFromClient": false, // Auto receive files from the client
-        "clientBrowsable": false, // Server can view the files on client (remotely)
-        "serverBrowsable": false // Client can view the files on the server
+        "enabled": false, // Enable file sharing
+        "autoReceiveFromServer": false, // Auto receive files from the server (sent and ignored by client)
+        "autoReceiveFromClient": false, // Auto receive files from the client (sent and ignored by server)
+        "serverBrowsable": false, // Client can view the files on the server (sent and ignored by server)
+        "clientBrowsable": false // Server can view the files on client (remotely) (sent and ignored by client)
+    }
+}
+```
+
+No response
+
+
+
+### Get configuration
+Used to retrieve current configuration data from the other side
+
+Sever endpoint: `/api/v1/server/configuration/get` -> `/api/v1/server/configuration`\
+Client endpoint: `/api/v1/client/configuration/get` -> `/api/v1/client/configuration`
+
+POST data:
+```json5
+{}
+```
+
+Response:
+```json5
+{
+    "fiendlyName": "", // Device display name
+    "notificationSettings": { // Notification settings
+        "enabled": true // Send notification data
+    },
+    "clipboardSettings": {
+        "enabled": false, // this && two below
+        "autoSendToServer": false, // Automatically send to server (sent and ignored by client)
+        "autoSendToClient": false // Automatically send to client (sent and ignored by server)
+    },
+    "fileSharingSettings": {
+        "enabled": false, // Enable file sharing
+        "autoReceiveFromServer": false, // Auto receive files from the server (sent and ignored by client)
+        "autoReceiveFromClient": false, // Auto receive files from the client (sent and ignored by server)
+        "serverBrowsable": false, // Client can view the files on the server (sent and ignored by server)
+        "clientBrowsable": false // Server can view the files on client (remotely) (sent and ignored by client)
     }
 }
 ```
 
 
 
-## Unpairing a device
-Command: `/api/v1/server/unpair` or `/api/v1/client/unpair`:
-Used to unpair the server from the client or vice-versa.
-```json
-{
-    "pairId": "", // Id for this particular pair
-    "clientId": "", // (if going to server) client identifier
-    "serverId": "", // (if going to client) server identifier
-}
-```
-Other end will respond with `200: OK`, allowing the device that sent the request to remove and unpair.
 
+## Unpairing a device
+Used to unpair the server from the client or vice-versa.
+
+Server endpoint: `/api/v1/server/unpair` -> no reply\
+Client endpoint: `/api/v1/client/unpair` -> no reply
+
+POST data:
+```json5
+{}
+```
+
+Other end will not respond, the device that sent the request will remove and unpair regardless of the other end.
+
+
+---
 
 
 ## Misc commands
-`/api/v1/server/getBatteryInfo`:
-For server to request battery information of the client, no parameters.
-Reply (also the data the client sends with `/api/v1/client/sendBatteryLevel`):
-```json
+
+### Battery
+Used to request battery information of a device, no parameters.
+
+
+Server command: `/api/v1/server/battery/getInfo` -> (reply) `/api/v1/server/battery/info`\
+Client command: `/api/v1/client/battery/getInfo` -> (reply) `/api/v1/client/battery/info`\
+POST data:
+```
+{}
+```
+
+Response data:
+```json5
 {
     "level": 100, // Battery percentage
     "temperature": 36, // In Celsius.
-    "chargerType": "discharging" // discharging, AC, computer
+    "chargerType": "discharging" // discharging, AC, computer, whatever
 }
 ```
 
 
 
-`/api/v1/server/ping`:
-For pinging the client. Same for server, just change "client" to "server"
-```json
+### Ping
+Used to measure the amount of delay between two devices.
+
+Server endpoint: `/api/v1/server/ping` -> `/api/v1/client/pong`\
+Client endpoint: `/api/v1/client/ping` -> `/api/v1/server/pong`
+
+POST data:
+```json5
 {
-    "timestamp": "2040-04-23T18:25:43.511Z" // Time command was sent
+    "timestamp": "2040-04-23T18:25:43.511Z" // Time ping was sent
 }
 ```
+
+
 Reply:
-```json
+```json5
 {
     "receivedAt": "2040-04-23T18:25:43.511Z", // Time we received the ping
     "timestamp": "2040-04-23T18:25:43.511Z" // Time reply was sent.
@@ -280,24 +405,37 @@ Reply:
 
 
 
+### Scrap connection initiation
+Kills a connection, requires a new connection to be setup via `/api/v1/server/initiateConnection`.
 
-`/api/v1/server/destroyConnection`:
-Kills a connection, requires a new connection to be setup via `/api/v1/server/newClientConnection`.\
-Client / server request.
-```json
+Server endpoint: `/api/v1/server/initiateConnection/{conInitId}/scrap` -> (no response)\
+Client endpoint: `/api/v1/client/initiateConnection/{conInitId}/scrap` -> (no response)
+
+POST data:
+```json5
 {
-    "connectionId": "" // The connection id
+    "reason": "" // Optional reason, logged and shown to user
 }
 ```
 
+No response
 
 
-`/api/v1/server/destroySocket`:
-Kills a socket and connection, requires a new connection to be setup via `/api/v1/server/initiateConnection`.\
-Client / server request.
-```json
-{
-    "socketId": "", // Id of the socket
-    "connectionId": "" // The connection id
-}
+
+### Disconnect
+Used to disconnect from the device after a connection initiation has taken place. Will require a new connection to be setup via `/api/v1/server/initiateConnection` afterwards.
+
+Server endpoint: `/api/v1/server/disconnect` -> (no response)\
+Client endpoint: `/api/v1/client/disconnect` -> (no response)
+
+POST data:
+```json5
+{}
 ```
+
+No response (they've disconnected).
+
+### Acknowledge
+Used by the server to tell the client request was received and there is no response generated. (So the client stops waiting for a resposne.)
+
+Server will respond with `/api/v1/server/ack` on all requests that otherwise do NOT have a response. No data with this response.

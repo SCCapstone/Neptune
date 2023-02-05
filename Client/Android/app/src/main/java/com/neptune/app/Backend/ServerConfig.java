@@ -51,6 +51,14 @@ public class ServerConfig extends ConfigItem {
     public List<String> notificationBlacklistApps;
 
 
+    // Settings
+    public boolean syncNotifications = true;
+    public boolean syncClipboard = true;
+    // Allow server to push data to us (receive)
+    public boolean fileSharingAllowPushing = false;
+    // Allow server to pull data from us (request)
+    public boolean fileSharingAllowPulling = false;
+
 
     public ServerConfig(String serverId, ConfigurationManager parent) throws IOException, JsonParseException {
         super("server_" + serverId + ".json", parent);

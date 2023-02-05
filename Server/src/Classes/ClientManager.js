@@ -7,11 +7,7 @@
  *      Capstone Project 2022
  */
 
-const EventEmitter = require('node:events');
 const Client = require('./Client');
-
-/** @type {import('./ConfigurationManager.js')} */
-var ConfigurationManager = global.Neptune.configManager;
 
 /** @type {import('./NeptuneConfig.js')} */
 var NeptuneConfig = global.Neptune.config;
@@ -21,24 +17,13 @@ var NeptuneConfig = global.Neptune.config;
  */
 class ClientManager {
     /** @typedef {import('./Client')} Client */
-    /**
-     * @typedef {object} PairData
-     * @property {string} pairId Id representing this pair
-     * @property {string} pairKey Shared secret used to enhance encryption
-     * @property {string} clientId Id of the client this pair is for
-     */
-
 
 
     /** @type {Map<string, Client>} */
     #clients = new Map();
 
-    /** @type {Map<string, string>} */
-    #pairIdMap = new Map(); // eh
-
-
-    Events = new EventEmitter();
-
+    /** @type {import('./ConfigurationManager.js')} */
+    #configManager;
 
     #log;
 
@@ -46,37 +31,22 @@ class ClientManager {
     /**
      * This is the constructor
      */
-    constructor() {
+    constructor(configurationManager) {
         this.#log = global.Neptune.logMan.getLogger("ClientManager");
         NeptuneConfig = global.Neptune.config;
-        ConfigurationManager = global.Neptune.configManager;
+        this.#configManager = configurationManager;
         this.loadClients();
     }
 
-    /**
-     * This will remove a Client, call after unpair. Literal cleanup.
-     * @returns {void}
-     */
-    #removeClient() {
-        return;
-    }
-
-    /**
-     * This will add a Client ??
-     * @returns {void}
-     */
-    #addClient() {
-        return;
-    }
 
     /**
      * This will pair a new Client
-     * @param {string} name 
+     * @param {client} client 
      * @param {IPAddress} IPAddress 
      * @returns {Client}
      */
-    pair(name, IPAddress) {
-        return;
+    pair(client, IPAddress) {
+        client.pair(); // ehhh
     }
 
     /**
@@ -85,7 +55,7 @@ class ClientManager {
      * @returns {boolean}
      */
     unpair(client) {
-        return false;
+        client.unpair();
     }
 
     /**
@@ -97,8 +67,8 @@ class ClientManager {
         this.#log.info("Grabbing client " + clientId);
         let client = this.#clients.get(clientId);
         if (client === undefined) {
-            let config = ConfigurationManager.loadConfig(global.Neptune.config.clientDirectory + clientId);
-            client = new Client(config);
+            //let config = this.#configManager.loadConfig(global.Neptune.config.clientDirectory + clientId);
+            client = new Client(this.#configManager, clientId);
             this.#clients.set(clientId, client);
         }
         return client;

@@ -286,7 +286,8 @@ async function main() {
 	
 
 	// Config empty?
-	if (Object.keys(Neptune.config.entries).length < 1) {
+	let data = Neptune.config.readSync()
+	if (data == "" || data == "{}") {
 		firstRun = true
 		Neptune.log.verbose("Config is completely empty, setting as first run...");
 	} else {
@@ -330,18 +331,20 @@ async function main() {
 
 
 	Neptune.log.debug("Neptune config:");
-	utilLog(Neptune.config.entries);
+	utilLog(Neptune.config);
 
 	Neptune.log.debug("Encryption KEY: " + encryptionKey);
-	if (encryptionKey !== undefined)
-		encryptionKey = NeptuneCrypto.randomString(encryptionKey.length*2); // Don't need that, configuration manager has it now
+	if (encryptionKey !== undefined) {
+		encryptionKey = NeptuneCrypto.randomString(encryptionKey.length); // Don't need that, configuration manager has it now
+		//delete encryptionKey
+	}
 
 	Neptune.events.application.on('shutdown', (shutdownTimeout) => {
 		Neptune.clientManager.destroy(); // Remove any unpaired 
 	});
 
 	Neptune.log("Loading previous clients...");
-	Neptune.clientManager = new ClientManager();
+	Neptune.clientManager = new ClientManager(Neptune.configManager);
 
 
 
@@ -702,9 +705,17 @@ async function main() {
 		}
 
 
-
-		if (req.socket.remoteAddress !== "::1")
-			client.IPAddress = new IPAddress(req.socket.remoteAddress, "25560");
+		try {
+			if (typeof req.ip === "string" && req.ip !== "::1") {
+				let ip = req.ip;
+				if (ip.includes(":")) {
+					ipArray = ip.split(":");
+					ip = ipArray[ipArray.length-1];
+				}
+				client.IPAddress = new IPAddress(ip, "25560");
+			}
+			client.saveSync();
+		} catch (e) {}
 
 
 

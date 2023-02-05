@@ -107,6 +107,7 @@ class ConnectionManager extends EventEmitter {
 
 	
 	/**
+	 * Sends a request to the client OR a response!
 	 * @param {string} apiURL
 	 * @param {object} requestData
 	 * @return {void}
@@ -114,14 +115,18 @@ class ConnectionManager extends EventEmitter {
 	sendRequest(apiURL, requestData) {
 		this.#log.debug("Sending request to client: " + apiURL);
 
-		let data = JSON.stringify(requestData);
-		let encryptedData = NeptuneCrypto.encrypt(data, this.#secret, undefined, this.#encryptionParameters);
+		if (typeof requestData !== "string" && typeof requestData !== "object")
+			throw new TypeError("requestData expected type string or object got " + (typeof requestData).toString());
+
+		if (typeof requestData !== "string")
+			requestData = JSON.stringify(requestData);
+		let encryptedData = NeptuneCrypto.encrypt(requestData, this.#secret, undefined, this.#encryptionParameters);
 
 		let packet = JSON.stringify({
 			"conInitUUID": this.#conInitUUID,
 			"command": apiURL,
 			"data": encryptedData,
-			"dataDecrypted": data,
+			//"dataDecrypted": requestData,
 		});
 
 		if (this.#webSocket !== undefined)
@@ -150,6 +155,14 @@ class ConnectionManager extends EventEmitter {
 	 */
 	ping() {
 
+	}
+
+	pair() {
+
+	}
+	unpair() {
+		this.client.pairId = undefined;
+		this.client.pairKey = undefined;
 	}
 	
 	/**
@@ -219,16 +232,21 @@ class ConnectionManager extends EventEmitter {
 			return true;
 		if (packet.command == "/api/v1/server/newPairRequest") {
 			// new window/notification to accept pair request
+
+
 			let newPairId = crypto.randomUUID();
 			let newPairKey = NeptuneCrypto.randomString(64, 65, 122);
 
 			this.#client.pairId = newPairId;
 			this.#client.pairKey = newPairKey;
-			this.#client.isPaired = true;
+			this.#client.friendlyName = packet.data.friendlyName;
+			this.#client.save();
+			
 			this.sendRequest("/api/v1/server/newPairResponse", {
 				pairId: newPairId,
 				pairKey: newPairKey,
 				serverId: global.Neptune.config.serverId,
+				friendlyName: global.Neptune.config.friendlyName
 			});
 
 			this.#log.info("Successfully paired! PairId: " + newPairId);
@@ -251,6 +269,7 @@ class ConnectionManager extends EventEmitter {
 				error: "alreadyPaired",
 				errorMessage: "Device has already been paired. Please unpair in the server to repair device."
 			})
+			return;
 		}
 
 		this.emit('command', packet.command, packet.data);
@@ -263,7 +282,7 @@ class ConnectionManager extends EventEmitter {
 			this.#log.debug("Web socket request received.");
 			this.#log.silly(packet.data);
 			
-			if (this.#client.pairId === undefined || this.#client.pairId == "") // Paired?
+			if (this.#client.isPaired === false) // Paired?
 				if (!this.#processPairRequest(packet)) // Okay, paired now?
 					return; // Do not process, failed to pair.
 

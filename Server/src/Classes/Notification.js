@@ -174,6 +174,10 @@ class Notification extends EventEmitter {
         // Simulate a dismiss (swiped away)
         this.emit("dismissed");
     }
+
+    delete() {
+        //?
+    }
 }
 
 module.exports = Notification;

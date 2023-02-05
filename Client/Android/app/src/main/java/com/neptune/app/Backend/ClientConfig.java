@@ -31,7 +31,7 @@ public class ClientConfig extends ConfigItem {
     public UUID clientId = UUID.randomUUID();
 
     // Friendly name of client
-    public String friendlyName = "My Phone";
+    public String friendlyName = android.os.Build.MODEL;
 
     // Config file encryption settings
     public ClientConfigEncryption encryption = new ClientConfigEncryption();
@@ -60,11 +60,17 @@ public class ClientConfig extends ConfigItem {
         //super.fromJson(jsonObject);
 
         Gson gson = gsonBuilder.create();
-        this.version = new Version(jsonObject.get("version").getAsString());
-        this.clientId = UUID.fromString(jsonObject.get("clientId").getAsString());
-        this.firstRun = jsonObject.get("firstRun").getAsBoolean();
-        this.friendlyName = jsonObject.get("friendlyName").getAsString();
-        this.encryption = gson.fromJson(jsonObject.getAsJsonObject("encryption"), ClientConfigEncryption.class);
+        if (jsonObject.has("version"))
+            this.version = new Version(jsonObject.get("version").getAsString());
+
+        if (jsonObject.has("clientId"))
+            this.clientId = UUID.fromString(jsonObject.get("clientId").getAsString());
+        if (jsonObject.has("firstRun"))
+            this.firstRun = jsonObject.get("firstRun").getAsBoolean();
+        if (jsonObject.has("friendlyName"))
+            this.friendlyName = jsonObject.get("friendlyName").getAsString();
+        if (jsonObject.has("encryption"))
+            this.encryption = gson.fromJson(jsonObject.getAsJsonObject("encryption"), ClientConfigEncryption.class);
 
         if (jsonObject.has("savedServerIds")) {
             JsonArray savedServerIds = jsonObject.getAsJsonArray("savedServerIds");

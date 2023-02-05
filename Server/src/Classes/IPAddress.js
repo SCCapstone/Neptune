@@ -24,7 +24,7 @@ class IPAddress {
 	 * @param {int} [port] The port, leave blank if appended to the ip address
 	 */
 	constructor(address, port) {
-		if (port === undefined) {
+		if (port === undefined && address !== undefined) {
 			let split = address.split(":");
 			if (split.length == 2) {
 				address = split[0];
