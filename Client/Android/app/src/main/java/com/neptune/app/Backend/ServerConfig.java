@@ -12,13 +12,16 @@ import com.neptune.app.Backend.Structs.ClientConfigEncryption;
 import org.json.JSONException;
 
 import java.io.IOException;
+import java.sql.Array;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -44,7 +47,8 @@ public class ServerConfig extends ConfigItem {
     public Date dateAdded;
 
     // Which app's notifications we do not send to this server. Array of app package names
-    public String[] notificationBlacklistApps;
+    //public String[] notificationBlacklistApps;
+    public List<String> notificationBlacklistApps;
 
 
 
@@ -99,12 +103,15 @@ public class ServerConfig extends ConfigItem {
 
         if (jsonObject.has("notificationBlacklistApps")) {
             JsonArray notificationBlacklistApps = jsonObject.getAsJsonArray("notificationBlacklistApps");
-            this.notificationBlacklistApps = new String[notificationBlacklistApps.size()];
+            //this.notificationBlacklistApps = new String[notificationBlacklistApps.size()];
+            this.notificationBlacklistApps = new ArrayList<String>(notificationBlacklistApps.size());
             for (int i = 0; i < notificationBlacklistApps.size(); i++) {
-                this.notificationBlacklistApps[i] = notificationBlacklistApps.get(i).getAsString();
+                //this.notificationBlacklistApps[i] = notificationBlacklistApps.get(i).getAsString();
+                this.notificationBlacklistApps.set(i,notificationBlacklistApps.get(i).getAsString());
             }
         } else {
-            this.notificationBlacklistApps = new String[0];
+            //this.notificationBlacklistApps = new String[0];
+            this.notificationBlacklistApps = new ArrayList<String>();
         }
     }
 
@@ -132,8 +139,10 @@ public class ServerConfig extends ConfigItem {
 
         if (notificationBlacklistApps != null) {
             JsonArray notificationBlacklistApps = new JsonArray();
-            for (int i = 0; i< this.notificationBlacklistApps.length; i++) {
-                notificationBlacklistApps.add(this.notificationBlacklistApps[i]);
+            //Previously this.notificationBlacklistApps.length because it was an Array. Now it is and List.
+            for (int i = 0; i< this.notificationBlacklistApps.size(); i++) {
+                //notificationBlacklistApps.add(this.notificationBlacklistApps[i]);
+                notificationBlacklistApps.add(this.notificationBlacklistApps.get(i));
             }
             jsonObject.add("notificationBlacklistApps", notificationBlacklistApps);
         }
