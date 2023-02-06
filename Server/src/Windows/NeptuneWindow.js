@@ -54,6 +54,8 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 		windowName.replace(/[^0-9a-zA-Z]/g, ""); // Remove anything not a digit or a character! This will be thrown at the filesystem!
 		let newWindow = new (require("./" + windowName + ".js"))(args);
 
+		this.#widgets[windowName] = newWindow;
+
 		// newWindow.setParent(this); // puts the new window inside us...not what I was thinking?
 		return newWindow;
 	}
@@ -102,14 +104,31 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 
 	/**
 	 * 
-	 * @param {string} name 
-	 * @returns {NodeGUI.QLineEdit}
+	 * @param {string} name Widget name of the input
+	 * @returns {NodeGUI.QLineEdit} 
 	 */
 	createInput(name) {
 		let input = new NodeGUI.QLineEdit();
 		input.setObjectName(name);
 
 		this.#widgets[name] = input;
+		this.#widgets["rootLayout"].addWidget(this.#widgets[name]);
+
+		return this.#widgets[name];
+	}
+
+	/**
+	 * 
+	 * @param {string} checkBoxName Widget name of the check box (used internally)
+	 * @param {string} text The text after the check box
+	 * @returns 
+	 */
+	createCheckBox(name, text) {
+		const checkBox = new NodeGUI.QCheckBox();
+		checkBox.setObjectName(name);
+		checkBox.setText(text);
+
+		this.#widgets[name] = checkBox;
 		this.#widgets["rootLayout"].addWidget(this.#widgets[name]);
 
 		return this.#widgets[name];

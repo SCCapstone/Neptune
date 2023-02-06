@@ -29,12 +29,16 @@ class mainWindow extends NeptuneWindow {
 		const label = this.createLabel("lblMain","Project Neptune");
 		label.setInlineStyle("font-size: 24px; font-weight: light; qproperty-alignment: AlignCenter; margin: 10px;");
 
-		const connectButton = this.createButton("toConnect", "Connect Page");
-		connectButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
-	
 		const aboutButton = this.createButton("toAbout", "About Page");
 		aboutButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
 
+		const deviceListLabel = this.createLabel("deviceList", "List of Devices Connected: ");
+		deviceListLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
+		
+
+		const connectButton = this.createButton("toConnect", "Connect Page");
+		connectButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
+		
 		const detailButton = this.createButton("toDetail", "Connection Details");
 		detailButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
 
@@ -63,7 +67,8 @@ class mainWindow extends NeptuneWindow {
 			this.openConnect();
 		});
 
-		detailButton.addEventListener('clicked', () => this.openConnectionDetails(global.Neptune.connected));
+		//detailButton.addEventListener('clicked', () => this.openConnectionDetails(global.Neptune.connected));
+		detailButton.addEventListener('clicked', () => this.openDeviceInfo());
 
 		this.setStyleSheet(
 			`
@@ -105,6 +110,12 @@ class mainWindow extends NeptuneWindow {
 			connectionDetails.show();
 		}
 	}
+
+	openDeviceInfo() {
+		let deviceInfo = this.newChildWindow('deviceInfo');
+		deviceInfo.show();
+	}
+
 }
 
 module.exports = mainWindow;
