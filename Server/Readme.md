@@ -13,11 +13,14 @@ Configuration options available in `./data/NeptuneConfig.json` (may be encrypted
 
 
 ## Building
-Building is not necessarily compiling, this is a scripting language after all, but does move everything needed to run Server into a single place.
+Building is not necessarily compiling, this is a scripting language after all, but does move everything needed to run Server into a single place.\
 This utilizes the nodegui-packer.
 
-To build (as in the full executable), run: `npm run build`\
-This will build the packed executable and other files, explorer will automatically open the deploy folder.
+Before your first build you **must** run: `npx nodegui-packer --init NeptuneServer`\
+Then to build (as in the full executable), run: `npm run build`\
+This will build the packed executable and other files, explorer will automatically open the deploy folder (which will look like the image below):
+<img src="https://user-images.githubusercontent.com/55852895/215352720-9e2eceec-5175-415a-acca-b11022312798.png" alt="Resulting build files" width="850px" />
+
 
 
 
@@ -33,13 +36,20 @@ This starts qode with `--inspector`, which opens the the Node.JS debugger (web s
 
 
 ## Testing
-Testing utilizes Jest.
-To run all tests: `npm run test`
+Testing utilizes Jest.\
+To run all tests, run: `npm run test`\
+<img src="https://user-images.githubusercontent.com/55852895/215353063-f863a5b7-42f2-4844-a7bc-511fe26d02b2.png" alt="Tests results" width="550px" />
 
 
-To run only unit tests, run: `npm run test-code`
+_To run only unit tests (no GUI), run: `npm run test-code`_
 
-To run only behavioral (GUI) tests, run `npm run test-gui`
+_To run only behavioral (GUI) tests, run `npm run test-gui`_
+
+
+Tests are stored inside the directory named `./tests/`\
+Behavioral/GUI tests end in `.guitest.js` and regular tests end in `.test.js`.\
+`JestSetup-GUI.js` and `JestSetup.js` are called before tests are ran, and `JestTeardown.js` is ran after all tests complete.
+
 
 ---
 
@@ -58,11 +68,11 @@ Packages:
     `node-loader`: Required for webpack\
     `ts-loader`: Required for webpack\
     `typescript`: Required for webpack\
-    -
+    -\
     `express`: Web application framework, the "web server" portion of server that receives data from the client, hosts the REST API.\
     `multer`: For uploading files (used for notification icons in addition to general documents).\
     `ws`: For socket communications with the client app.\
-    -
+    -\
     `futoin-hkdf`: Used to generate a shared encryption key.\
     `keytar`: Interfacing with the OS keychain (Windows Credential Manager, MacOS Keychain)\
     `node-notifier`: For sending notifications to the server OS.

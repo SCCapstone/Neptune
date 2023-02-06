@@ -240,7 +240,7 @@ NeptuneCrypto.encrypt = function(plainText, key, salt, options) {
 		throw new TypeError("plainText expected string got " + (typeof plainText).toString());
 	if (typeof key !== "string" && !Buffer.isBuffer(key))
 		throw new TypeError("key expected string got " + (typeof key).toString());
-	if (salt !== undefined) {
+	if (salt !== undefined && salt !== null) {
 		if (typeof salt !== "string")
 			throw new TypeError("salt expected string got " + (typeof salt).toString());
 	} else {
@@ -328,8 +328,8 @@ NeptuneCrypto.decrypt = function(encryptedText, key) {
 
 
 	if (encryptedText.substring(0, encryptedPrefix.length) != encryptedPrefix) {// Check for prefix
-		return encryptedText;
-		//throw new DataNotEncrypted();
+		//return encryptedText;
+		throw new DataNotEncrypted();
 	}
 	else if (key === undefined || key === "")
 		throw new MissingDecryptionKey();

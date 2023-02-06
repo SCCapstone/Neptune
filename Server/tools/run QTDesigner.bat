@@ -1,0 +1,1 @@
+start ..\node_modules\@nodegui\nodegui\miniqt\5.15.2\msvc2019_64\bin\designer.exe

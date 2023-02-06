@@ -29,11 +29,11 @@ public class NeptuneNotification {
 
         Bundle extras = notification.getNotification().extras;
 
-        if (extras.getString("android.title") == null) { //Some notifications are not handled correctly, so we'll just skip em
+        if (extras.getCharSequence("android.title") == null) { //Some notifications are not handled correctly, so we'll just skip em
             throw new Exception("Invalid notification");
         }
 
-        String title = extras.getString("android.title");
+        String title = extras.getCharSequence("android.title").toString();
         String text = "";
         if (extras.getCharSequence("android.text") != null) {
             text = extras.getCharSequence("android.text").toString();
