@@ -14,5 +14,4 @@
 *.sublime-project
 *.sublime-workspace
 
-/NeptuneNotifier/
 /vendor
