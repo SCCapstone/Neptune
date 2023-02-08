@@ -58,8 +58,11 @@ public class Server extends ServerConfig {
                 return;
 
             if (connectionManager.getHasNegotiated()) {
-                connectionManager.sendRequestAsync("/api/v1/server/sendNotification", JsonParser.parseString(notification.toString()).getAsJsonObject());
+                //if (!notificationBlacklistApps.contains(notification.appPackageName)) {
+                    connectionManager.sendRequestAsync("/api/v1/server/sendNotification", JsonParser.parseString(notification.toString()).getAsJsonObject());
+                //}
             }
+
         } catch (JsonParseException e) {
             e.printStackTrace();
         }

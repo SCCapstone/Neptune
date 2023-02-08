@@ -23,9 +23,6 @@ public class NotificationListenerService extends android.service.notification.No
 
     Context context;
 
-    //private String TAG = this.getClass().getSimpleName();
-    //private NotificationServiceReceiver notificationServiceReceiver;
-
     @Override
     public void onCreate() {
         super.onCreate();
@@ -33,12 +30,6 @@ public class NotificationListenerService extends android.service.notification.No
 
         Log.d("NotificationListener", "Created.");
 
-        // Call this activity to ask the user to allow access .. but not from here, do it from the main activity or setup
-        //startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
-       // notificationServiceReceiver = new NotificationServiceReceiver();
-        //IntentFilter filter = new IntentFilter();
-        //filter.addAction("com.neptune.app.Backend");
-       // registerReceiver(notificationServiceReceiver, filter);
     }
 
     public void cancelNotification (Notification[] notification) {
@@ -65,16 +56,9 @@ public class NotificationListenerService extends android.service.notification.No
 
     public void onDestroy() {
         super.onDestroy();
-       // unregisterReceiver(notificationServiceReceiver);
     }
 
     public void onNotificationPosted(StatusBarNotification notification) {
-       /* Log.i(TAG, "****** onNotificationPosted");
-        Log.i(TAG, "ID :" + notification.getId() + "\t" + notification.getNotification().tickerText + "\t" + notification.getPackageName());
-        Intent i = new Intent("com.neptune.app.Backend");
-        i.putExtra("notification_event", "onNotificationPosted :" + notification.getPackageName() + "\n");
-        sendBroadcast(i); */
-
         // Note, only do global filtering here. Things like THIS app get filtered..
         // The Server class will filter out whatever it doesn't want
 
@@ -131,12 +115,6 @@ public class NotificationListenerService extends android.service.notification.No
     }
 
     public void onNotificationRemoved(StatusBarNotification notification) {
-        /* Log.i(TAG, "******* onNotificationRemoved");
-        Log.i(TAG, "ID :" + notification.getId() + "\t" + notification.getNotification().tickerText + "\t" + notification.getPackageName());
-        Intent i = new Intent("com.neptune.app.Backend");
-        i.putExtra("notification_event", "onNotificationRemoved :" + notification.getPackageName() + "\n");
-        sendBroadcast(i);*/
-
         Log.i("Msg", "Notification Removed");
 
     }
@@ -161,32 +139,4 @@ public class NotificationListenerService extends android.service.notification.No
 
     }
 
-  /*  class NotificationServiceReceiver extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.getStringExtra("command").equals("clearall")) {
-                NotificationListenerService.this.cancelAllNotifications();
-            }
-
-            else if (intent.getStringExtra("command").equals("list")) {
-                Intent intent1 = new Intent("com.neptune.app.Backend");
-                intent1.putExtra("notification_event", "=============");
-                sendBroadcast(intent1);
-                int i = 1;
-
-                for (StatusBarNotification notification : NotificationListenerService.this.getActiveNotifications()) {
-                    Intent intent2 = new Intent("com.neptune.app.Backend");
-                    intent2.putExtra("notification_event", i + " " + notification.getPackageName() + "\n");
-                    sendBroadcast(intent2);
-                    i++;
-                }
-
-                Intent intent3 = new Intent("com.neptune.app.Backend");
-                intent3.putExtra("notification_event", "==== Notification List ====");
-                sendBroadcast(intent3);
-            }
-
-        }
-    } */
 }
