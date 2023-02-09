@@ -87,7 +87,7 @@ public class Server extends ServerConfig {
                 JsonObject data = new JsonObject();
                 data.addProperty("pairId", this.pairId.toString());
                 data.addProperty("clientId", MainActivity.ClientConfig.clientId.toString());
-                this.connectionManager.sendRequestAsync("/api/v1/unpair", data);
+                this.connectionManager.sendRequestAsync("/api/v1/server/unpair", data);
             }
         }
         this.connectionManager.destroy(true);
@@ -99,7 +99,7 @@ public class Server extends ServerConfig {
             setupConnectionManager();
         }
 
-        if (!connectionManager.getHasNegotiated());
+        if (!connectionManager.getHasNegotiated())
             connectionManager.initiateConnection();
 
         connectionManager.pair();

@@ -236,7 +236,7 @@ public class ConnectionManager {
                 connection.setRequestProperty("Accept", "application/json");
                 connection.setDoOutput(true);
 
-                String connectionParameters = "{\"supportedKeyGroups\": [14,16,17],\"supportedCiphers\": [\"aes-128-gcm\"],\"supportedHashAlgorithm\": [\"sha256\"], \"useDynamicSalt\": false }";
+                String connectionParameters = "{\"supportedKeyGroups\": [\"modp16\"],\"supportedCiphers\": [\"aes-128-gcm\"],\"supportedHashAlgorithm\": [\"sha256\"], \"useDynamicSalt\": false }";
 
                 try(OutputStream stream = connection.getOutputStream()) { // dump the string into output
                     byte[] input = connectionParameters.getBytes(StandardCharsets.UTF_8);
@@ -255,11 +255,21 @@ public class ConnectionManager {
                 Log.d("Connection-Manager", "Received response: " + response.toString());
 
                 JSONObject serverResponse = new JSONObject(response.toString());
+                if (serverResponse.has("error"))
+                    throw new FailedToPair(serverResponse.getString("error"));
+
 
                 // We need g1, p1, a1, and conInitUUID (all in b64, except uuid)
                 BigInteger g1 = new BigInteger(1, NeptuneCrypto.convertBase64ToBytes(serverResponse.getString("g1"))); //new BigInteger("2"); // I don't make the rules
                 BigInteger p1 = new BigInteger(1, NeptuneCrypto.convertBase64ToBytes(serverResponse.getString("p1"))); //new BigInteger(NeptuneCrypto.convertBase64ToString(serverResponse.getString("p1")));
                 BigInteger a1 = new BigInteger(1, NeptuneCrypto.convertBase64ToBytes(serverResponse.getString("a1"))); //new BigInteger(NeptuneCrypto.convertBase64ToString(serverResponse.getString("a1")));
+
+                String selectedCipher = "aes-128-gcm";
+                if (serverResponse.has("selectedCipher"))
+                    selectedCipher = serverResponse.getString("selectedCipher");
+                String selectedHashAlgorithm = "sha256";
+                if (serverResponse.has("selectedHashAlgorithm"))
+                    selectedHashAlgorithm = serverResponse.getString("selectedHashAlgorithm");
 
                 this.conInitUUID = serverResponse.getString("conInitUUID");
                 DHPublicKey alicePublic = (DHPublicKey) KeyFactory.getInstance("DH").generatePublic(new DHPublicKeySpec(a1, p1, g1));
@@ -277,7 +287,7 @@ public class ConnectionManager {
                 keyAgreement.doPhase(alicePublic, true);
 
                 byte[] dhSecret = keyAgreement.generateSecret();
-                this.cipherData = new NeptuneCrypto.CipherData("aes-128-gcm", "sha256");
+                this.cipherData = new NeptuneCrypto.CipherData(selectedCipher, selectedHashAlgorithm);
                 NeptuneCrypto.HKDFOptions options = new NeptuneCrypto.HKDFOptions(this.cipherData);
                 options.keyLength = 32; // We want the shared key to be 32byte
                 AESKey sharedAESKey = NeptuneCrypto.HKDF(dhSecret, "mySalt1234", options);
@@ -291,7 +301,7 @@ public class ConnectionManager {
 //                Log.d("Connection-Manager", "shared secret: " + NeptuneCrypto.convertBytesToHex(this.sharedSecret.getEncoded()));
 
                 // hash
-                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                MessageDigest digest = MessageDigest.getInstance((selectedHashAlgorithm.equalsIgnoreCase("sha512"))? "SHA-512" : "SHA-256");
                 byte[] chkMsgEncodedHash = digest.digest(chkMsg.getBytes(StandardCharsets.UTF_8));
                 String chkMsgHash = NeptuneCrypto.convertBytesToHex(chkMsgEncodedHash);
 
@@ -327,6 +337,23 @@ public class ConnectionManager {
                 try(OutputStream stream2 = connection2.getOutputStream()) { // dump the string into output
                     byte[] input = step2.getBytes(StandardCharsets.UTF_8);
                     stream2.write(input, 0, input.length);
+                }
+
+                int code = connection2.getResponseCode();
+                if (code == 400 || code == 408 || code == 401 || code == 403) {
+                    StringBuilder response2 = new StringBuilder();
+                    try(BufferedReader br2 = new BufferedReader(new InputStreamReader(connection2.getErrorStream(), StandardCharsets.UTF_8))) {
+                        String responseLine2 = null;
+                        while ((responseLine2 = br2.readLine()) != null) {
+                            response2.append(responseLine2.trim());
+                        }
+                    }
+
+                    JSONObject serverResponse2 = new JSONObject(response2.toString());
+                    if (serverResponse2.has("error"))
+                        throw new FailedToPair(serverResponse2.getString("error"));
+                    else
+                        throw new FailedToPair("Server returned code " + code);
                 }
 
                 StringBuilder response2 = new StringBuilder();
@@ -366,22 +393,21 @@ public class ConnectionManager {
             } catch (IOException e) {
                 // damn
                 e.printStackTrace();
+                throw new FailedToPair("No response from server.");
             } catch (JSONException e) {
                 // damn, shouldn't happen tho
                 e.printStackTrace();
+                throw new FailedToPair("Invalid server response.");
             } catch (NumberFormatException e) {
                 // damn, shouldn't happen tho
                 e.printStackTrace();
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            } catch (InvalidAlgorithmParameterException e) {
-                e.printStackTrace();
+                throw new FailedToPair("Number format exception.");
             } catch (InvalidKeyException e) {
                 e.printStackTrace();
-            } catch (NoSuchPaddingException e) {
+                throw new FailedToPair("Unable to generate shared key.");
+            } catch (NoSuchPaddingException | InvalidKeySpecException | InvalidAlgorithmParameterException | NoSuchAlgorithmException e) {
                 e.printStackTrace();
-            } catch (InvalidKeySpecException e) {
-                e.printStackTrace();
+                throw new FailedToPair("Invalid cipher selected.");
             }
 
         }
@@ -458,8 +484,12 @@ public class ConnectionManager {
             }
 
             this.Server.serverId = UUID.fromString(response.get("serverId").getAsString());
+            if (response.has("friendlyName"))
+                this.Server.friendlyName = response.get("friendlyName").getAsString();
+
             this.Server.pairId = UUID.fromString(response.get("pairId").getAsString());
             this.Server.pairKey = response.get("pairKey").getAsString();
+
             this.Server.dateAdded = new Date();
 
             this.Server.updateConfigName();

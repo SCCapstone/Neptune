@@ -4,9 +4,9 @@ const Client = require('./Client.js');
 
 class NotificationManager {
 	
-	/** @typedef {Client} */
+	/** @type {Client} */
 	#client;
-	/** @typedef {Map<string, Notification>} */
+	/** @type {Map<string, Notification>} */
 	#notifications = new Map();
 	
 	/**
@@ -28,29 +28,54 @@ class NotificationManager {
 
 	/**
 	 * 
-	 * @param {string} string 
+	 * @param {string} id - Notification's identification (provided by client)
 	 * @return {void}
 	 */
-	updateNotification(string) {
+	updateNotification(id, newData) {
 		return;
 	}
 
 	/**
-	 * 
-	 * @param {number} id - Id of the notification that was dismissed
-	 * @return {void}
+	 * Remove a notification from the OS tray and this manager
+	 * @param {string} id - Notification's identification (provided by client)
+	 * @return {boolean} True if notification was delete or false if the notification does not exist
 	 */
-	notificationDismissed(id) {
-		this.#notifications.delete(id);
+	deleteNotification(id) {
+		if (this.#notifications.has(id) == true) {
+			this.#notifications.get(id).delete();
+		}
+		return this.#notifications.delete(id);
 	}
+
 
 	/**
 	 * 
-	 * @param {number} id - Id of the notification that was activated
+	 * @param {string} id - Notification's identification (provided by client)
 	 * @return {void}
 	 */
-	notificationActivated(string) {
-		this.#notifications.delete(id);
+	notificationDismissed(id) {
+		deleteNotification(id);
+	}
+
+	/**
+	 * Notification was activated by the client on the client side
+	 * Removes the notification from the OS notification tray and this manager
+	 * @param {string} id - Notification's identification (provided by client)
+	 * @return {void}
+	 */
+	notificationActivated(id) {
+		deleteNotification(id);
+	}
+
+	/**
+	 * @param {boolean} [dismissAllNotifications=false] Remove all notifications from this manager from the OS notification tray
+	 */
+	destroy(dismissAllNotifications) {
+		if (dismissAllNotifications === true)
+			this.#notifications.forEach((notification) => {
+				notification.delete();
+			});
+		this.#notifications.clear();
 	}
 }
 

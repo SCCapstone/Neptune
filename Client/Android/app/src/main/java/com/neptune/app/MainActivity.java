@@ -3,6 +3,7 @@ package com.neptune.app;
 //Create a method that searches the ServerManager's Map of servers and compare the serverId with the textView that we wanna delete.
 //Use either list views to make a lists of the names and edit buttons, or create a new TextView and ImageView for each new device. Depending on what you choose
 // you will have to delete the entries from the list or the entire views when removing a device.
+
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
@@ -13,9 +14,11 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
+import android.text.format.Formatter;
 import android.view.View;
 import android.view.textclassifier.ConversationActions;
 import android.widget.Button;
@@ -151,6 +154,23 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
             }
         });*/
+
+        TextView lblFriendlyName = findViewById(R.id.lblMyFriendlyName);
+        lblFriendlyName.setText(ClientConfig.friendlyName);
+
+        TextView lblMyIP = findViewById(R.id.lblMyIP);
+        try {
+            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            String ip = Formatter.formatIpAddress(wm.getConnectionInfo().getIpAddress());
+            lblMyIP.setText("Device IP: " + ip);
+        } catch (Exception err) {
+            err.printStackTrace();
+            lblMyIP.setVisibility(View.INVISIBLE);
+        }
+
+        TextView lblVersion = findViewById(R.id.lblVersion);
+        lblVersion.setText("Version: " + BuildConfig.VERSION_NAME);
+
     }
 
     private void buildAddDialog() {
@@ -296,8 +316,8 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             server.ipAddress = new IPAddress(ipAddr, 25560);
             server.friendlyName = name;
             server.save();
-            serverManager.addServer(server);
             server.setupConnectionManager();
+            serverManager.addServer(server);
             serverManager.saveServers();
 
             Server finalServer = server;
