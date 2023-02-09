@@ -34,28 +34,37 @@ class deviceInfo extends NeptuneWindow {
 
         //let name = "Device Name: " + client.friendlyName;
 		const nameLabel = this.createLabel("name", "name");
-        nameLabel.setInlineStyle("font-size: 24px; font-weight: light; qproperty-alignment: AlignCenter; margin: 10px;");
+        nameLabel.setInlineStyle("font-size: 30px; font-weight: light; qproperty-alignment: AlignCenter; margin: 2px;");
 
+        const sendFileButton = this.createButton("sendFileButton", "Send File");
+
+        const sendClipboardButton = this.createButton("sendClipboardButton", " Send Clipboard");
+
+        const receiveClipboardButton = this.createButton("receiveClipboardButton", "Receive Clipboard");
+        
         const syncLable = this.createLabel("syncLabel","Sync Settings");
-        syncLable.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
+        syncLable.setInlineStyle("font-size: 20px; font-weight: light; padding: 2px; min-width: 225px; max-width: 225px; magin-left: 3px;");
         
         const syncNotif = this.createCheckBox("syncChekBox", "Sync Notifications");
-        syncNotif.setInlineStyle("font-size: 18px; font-weight: light;");
+        syncNotif.setInlineStyle("font-size: 18px; font-weight: light; margin-left: 15px;");
 
         const syncClip = this.createCheckBox("syncClipBoard", "Sync ClipBoard");
-        syncClip.setInlineStyle("font-size: 18px; font-weight: light;");
+        syncClip.setInlineStyle("font-size: 18px; font-weight: light; margin-left: 15px;");
 
         const autoSend = this.createCheckBox("autoSendSet", "Automatically Send");
-        autoSend.setInlineStyle("font-size: 18px; font-weight: light;");
+        autoSend.setInlineStyle("font-size: 18px; font-weight: light; margin-left: 30px; margin-bottom: 2px;");
+
+        const fileShareLabel = this.createLabel("fileShareLabel", "File Sharing Settings");
+        fileShareLabel.setInlineStyle("font-size: 20px; font-weight: light; padding: 2px; min-width: 225px; max-width: 225px; magin-left: 3px;");
 
         const fileShare = this.createCheckBox("fileShareSetting", "File Sharing");
-        fileShare.setInlineStyle("font-size: 18px; font-weight: light;");
+        fileShare.setInlineStyle("font-size: 18px; font-weight: light; margin-left: 15px;");
 
         const autoAccept = this.createCheckBox("autoAcceptSetting", "Automatically Accept");
-        autoAccept.setInlineStyle("font-size: 18px; font-weight: light;");
+        autoAccept.setInlineStyle("font-size: 18px; font-weight: light; margin-left: 30px");
 
         const notifyReceive = this.createCheckBox("notifOnReceive", "Notify on receive");
-        notifyReceive.setInlineStyle("font-size: 18px; font-weight: light;");
+        notifyReceive.setInlineStyle("font-size: 18px; font-weight: light; margin-left: 30px;");
 
         const browsePath = this.createInput("browsePath");
         browsePath.setInlineStyle("font-size: 18px; font-weight: light;");
@@ -64,16 +73,16 @@ class deviceInfo extends NeptuneWindow {
         browseButton.setInlineStyle("font-size: 18px; font-weight: light;");
 
         const ConnectSettingsLabel = this.createLabel("connectSettingsLabel", "Connection Settings");
-        ConnectSettingsLabel.setInlineStyle("font-size: 18px; font-weight: light;");
+        ConnectSettingsLabel.setInlineStyle("font-size: 20px; font-weight: light; padding: 2px; min-width: 225px; max-width: 225px; magin-left: 3px;");
 
         const autoNegoate = this.createCheckBox("autoNegate", "Auto Negotiate");
-        autoNegoate.setInlineStyle("font-size: 18px; font-weight: light;");
+        autoNegoate.setInlineStyle("font-size: 18px; font-weight: light; margin-left: 15px;");
 
         const preShareBox  = this.createCheckBox("preShareBox", "Pre-Shared Key");
-        preShareBox.setInlineStyle("font-size: 18px; font-weight: light;");
+        preShareBox.setInlineStyle("font-size: 18px; font-weight: light; margin-left: 15px;");
 
         const ipLabel = this.createLabel("ipLabel", "IP Address: ");
-        ipLabel.setInlineStyle("font-size: 18px; font-weight: light;");
+        ipLabel.setInlineStyle("font-size: 18px; font-weight: light; margin-left: 15px;");
 
         const testConnectionButton = this.createButton("testConnectionButton", "Test Connection");
         testConnectionButton.setInlineStyle("font-size: 18px; font-weight: light;");
@@ -89,6 +98,8 @@ class deviceInfo extends NeptuneWindow {
 
         const closeButton = this.createButton("closeButton", "Close Window");
         closeButton.setInlineStyle("font-size: 18px; font-weight: light;");
+
+        // Functionallity for all buttons
 
         closeButton.addEventListener('clicked', (checked) => this.hideWindow());
     }
