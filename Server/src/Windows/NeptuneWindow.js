@@ -41,6 +41,13 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 
 		this.setWindowTitle('Neptune');
 		this.resize(800, 600);
+
+		if (process.platform == 'win32') {
+			// This allows NeptuneRunner to fix the window's taskbar data
+			this.addEventListener(NodeGUI.WidgetEventTypes.Show, () => {
+				Neptune.NeptuneRunnerPipe.write("fixwinhwnd" + this.winId() + "");
+			});
+		}
 	}
 
 

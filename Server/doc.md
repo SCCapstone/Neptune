@@ -116,3 +116,88 @@ Client example config, `clientId.json`:
 ```
 
 ---
+
+
+
+
+# NeptuneRunner
+NeptuneRunner is a special lil fella.
+
+
+Cross platform support of NeptuneRunner is untested. NeptuneRunner is written using .NET 6, which _is_ cross platform, but NR has not been tested anywhere but Windows. Additionally, NR is not necessarily needed since notifications work without issue on other platforms without NR.
+
+
+
+
+NeptuneRunner is born out of the need to have an application that can register itself to the Window's StartMenu and Registry.\
+This is required in order to properly process Windows Notifications. _See any notes on Windows notifications within Neptune to understand the need for this._
+
+
+Originally the idea was to have a separate application that handles just notifications, but this would create a _lot_ of overhead.\
+How would this notification application send data to Neptune? What if Neptune is not running? How do we know if Neptune is running? Why is there a console window popping up for a split second when I click on notifications?
+
+...
+
+That and when someone right clicks the main window in the taskbar, it says "Qode.js JavaScript Runtime for Qt". I can hear people asking: "What the hell is that?"\
+![Message displayed right-clicking the main window](https://user-images.githubusercontent.com/55852895/218279902-3e99126d-37c4-434a-825a-5642d0645f60.png)
+
+There's no ability to change this, to my understanding, within Node.JS itself. There _are_ Win32 API calls to do this (which is what NeptuneRunner does).
+
+
+So the thought came, why not combine these two needs into one application? And with that, NeptuneRunner is born.\
+Ultimately, NeptuneRunner allows us to "wrap" around `qode.exe` and tell Windows that this `qode.exe` instance is actually us (NeptuneRunner). NeptuneRunner also creates a IPC pipe NeptuneServer can use to create, edit, and remove notifications from Windows. Additionally, since NeptuneRunner creates the notifications, Windows activates NeptuneRunner and tells it to handle notification events.\
+Perfect! NeptuneRunner reskins/titles the main window (allowing users to pin the application) and handles notifications, wonderful.
+
+
+Here is a run down of what NeptuneRunner does:
+1) Setup the console window (remove the close button, enable ANSI codes, set the CTRL handler, and if NOT debugging hides the console).
+2) Search for `qode.exe` or `qode` (working its way up directories starting with NeptuneRunner's directory)
+3) Register the application (create StartMenu shortcut)
+4) Start Neptune, (redirect STDOUT, STDERR, STDIN, register close handles, create named pipe, start background thread to redirect inputs to Neptune)
+5) Wait for Neptune's main window, setup taskbar appid for window
+
+
+
+
+## NeptuneRunner IPC:
+NeptuneRunner creates a named pipe (stage 4). This named pipe is used for Neptune Server to send/receive notification data, fix window taskbar settings, etc.
+
+
+### Format
+JSON is supported, but ONLY in key value pairs. NeptuneRunner is only able to deserialize JSON into a `Dictionary<string, string>`. JSON is not used at the moment. JSON data would be sent as the stringified JSON.
+
+
+Normal data follows the follow style:\
+`<STX><KEY><US><VALUE><RS>....<ETX>`
+
+Data begins with the `STX` (start of text) character (`0x02`)\
+...\
+followed by a key (for example, `fixwin` or `ckey`) \
+separated using the `US` (unit separator) character (`0x31`)\
+followed by key's value\
+ended with the `RS` (record separator) character (`0x30`)\
+... and repeat as many commands as possible\
+and finally ended with the `ETX` character (`0x03`)
+
+The first key is the [command](#commands) and its value is empty.
+
+
+So, for example, the new window command is:
+`fixwinhwnd<handleAddress>` (you can imagine it as `fixwin:,hwnd:<data>,`)
+
+`` begins the data
+`fixwin` is the key (since it's the first key, this is the command)
+`` separates the key (empty)
+`` ends the key/value pair
+`hwnd` is the key
+`` separates the key (hwnd) and value
+`<handleAddress>` is the value (`<handleAddress>` is a placeholder)
+`` ends the key/value pair
+`` ends the data block
+
+
+
+### Commands
+fixwin: tells NeptuneRunner a new window has been opened and to set the proper window handle settings (sets the AppUserModelID for them)
+Parameters:
+`hwnd <IntPtr>`: the window handle (int)

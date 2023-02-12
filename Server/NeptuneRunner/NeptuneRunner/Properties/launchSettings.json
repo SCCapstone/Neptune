@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "NeptuneRunner": {
+      "commandName": "Project",
+      "commandLineArgs": "-neploc \"./src/index.js\""
+    }
+  }
+}
