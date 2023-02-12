@@ -134,6 +134,11 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 		return this.#widgets[name];
 	}
 
+	addToWidgetList(name) {
+		this.#widgets[name] = name;
+		this.#widgets["rootLayout"].addWidget(this.#widgets[name]);
+		return this.#widgets[name];
+	}
 	// Getters
 	/**
 	 * 

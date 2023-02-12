@@ -32,15 +32,18 @@ class mainWindow extends NeptuneWindow {
 		const aboutButton = this.createButton("toAbout", "About Page");
 		aboutButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
 
-		const deviceListLabel = this.createLabel("deviceList", "List of Devices Connected: ");
-		deviceListLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
-		
-
-		const connectButton = this.createButton("toConnect", "Connect Page");
+		const connectButton = this.createButton("toConnect", "Connect New Device");
 		connectButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
+
+		const deviceListLabel = this.createLabel("deviceList", "List of Devices Connected: ");
+		deviceListLabel.setInlineStyle("font-size: 20px; font-weight: light; margin-left: 135px; padding: 5px; margin-bottom: 5px;");
 		
+		let deviceOneName = "No Device Connected";
+		const deviceOneLabel = this.createLabel("deviceOneLabel", deviceOneName);
+		deviceOneLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter;");
+
 		const detailButton = this.createButton("toDetail", "Connection Details");
-		detailButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
+		detailButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px; margin-bottom: 10px;");
 
 		const notificationButton = this.createButton("toDetail", "Test notifications");
 		notificationButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");

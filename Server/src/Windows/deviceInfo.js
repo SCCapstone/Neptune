@@ -26,6 +26,7 @@ class deviceInfo extends NeptuneWindow {
 				#rootLayout {
 					background-color: #EEEEEE;
 				}
+                #flex: 1;
 			`
 		);
 
@@ -37,11 +38,27 @@ class deviceInfo extends NeptuneWindow {
         nameLabel.setInlineStyle("font-size: 30px; font-weight: light; qproperty-alignment: AlignCenter; margin: 2px;");
 
         const sendFileButton = this.createButton("sendFileButton", "Send File");
-
-        const sendClipboardButton = this.createButton("sendClipboardButton", " Send Clipboard");
-
-        const receiveClipboardButton = this.createButton("receiveClipboardButton", "Receive Clipboard");
+        sendFileButton.setInlineStyle("font-size: 18px; font-weight: light; alignment: AlignCenter; padding: 5px; min-width: 300px; max-width: 300px; margin-left: 122.5px;");
         
+        const clipBoardRow = new NodeGUI.QWidget();
+        const clipboardRowLayout = new NodeGUI.FlexLayout();
+        clipBoardRow.setLayout(clipboardRowLayout);
+        clipBoardRow.setObjectName("clipboardRow");
+
+        const sendClipboardButton = new NodeGUI.QPushButton();
+        sendClipboardButton.setText("Send Clipboard");
+        sendClipboardButton.setObjectName("sendClipboardButton");
+
+        const receiveClipboardButton = new NodeGUI.QPushButton();
+        receiveClipboardButton.setText("Receive Clipboard");
+        receiveClipboardButton.setObjectName("receiveClipboardButton");
+
+        clipboardRowLayout.addWidget(sendClipboardButton);
+        clipboardRowLayout.addWidget(receiveClipboardButton);
+        this.addToWidgetList(clipBoardRow);
+
+        clipBoardRow.setStyleSheet("#clipboardRow {flex-direction: row;} #clipboardRow {margin-left: 245px;} #sendClipboardButton {font-size: 18px; min-width: 150px; max-width: 150px; padding: 5px;} #receiveClipboardButton {font-size: 18px; padding: 5px; min-width: 150px; max-width: 150px;}");
+
         const syncLable = this.createLabel("syncLabel","Sync Settings");
         syncLable.setInlineStyle("font-size: 20px; font-weight: light; padding: 2px; min-width: 225px; max-width: 225px; magin-left: 3px;");
         
@@ -66,11 +83,23 @@ class deviceInfo extends NeptuneWindow {
         const notifyReceive = this.createCheckBox("notifOnReceive", "Notify on receive");
         notifyReceive.setInlineStyle("font-size: 18px; font-weight: light; margin-left: 30px;");
 
-        const browsePath = this.createInput("browsePath");
-        browsePath.setInlineStyle("font-size: 18px; font-weight: light;");
+        const fileBrowseRow = new NodeGUI.QWidget();
+        const fileBrowseRowLayout = new NodeGUI.FlexLayout();
+        fileBrowseRow.setLayout(fileBrowseRowLayout);
+        fileBrowseRow.setObjectName("fileBrowseRow");
 
-        const browseButton = this.createButton("browseButton", "Browse");
-        browseButton.setInlineStyle("font-size: 18px; font-weight: light;");
+        const browsePath = new NodeGUI.QLineEdit();
+        browsePath.setObjectName("browsePath");
+
+        const browesButton = new NodeGUI.QPushButton();
+        browesButton.setText("Browse");
+        browesButton.setObjectName("browseButton");
+
+        fileBrowseRowLayout.addWidget(browsePath);
+        fileBrowseRowLayout.addWidget(browesButton);
+        this.addToWidgetList(fileBrowseRow);
+
+        fileBrowseRow.setStyleSheet("#fileBrowseRow {flex-direction: row;} #browsePath {font-size: 18px; font-weight: light; min-width: 450px; max-width: 450px;} #browseButton {font-size: 18px; font-weight: light;}");
 
         const ConnectSettingsLabel = this.createLabel("connectSettingsLabel", "Connection Settings");
         ConnectSettingsLabel.setInlineStyle("font-size: 20px; font-weight: light; padding: 2px; min-width: 225px; max-width: 225px; magin-left: 3px;");
@@ -84,20 +113,46 @@ class deviceInfo extends NeptuneWindow {
         const ipLabel = this.createLabel("ipLabel", "IP Address: ");
         ipLabel.setInlineStyle("font-size: 18px; font-weight: light; margin-left: 15px;");
 
-        const testConnectionButton = this.createButton("testConnectionButton", "Test Connection");
-        testConnectionButton.setInlineStyle("font-size: 18px; font-weight: light;");
+        const connectionRow = new NodeGUI.QWidget();
+        const connectionRowLayout = new NodeGUI.FlexLayout();
+        connectionRow.setLayout(connectionRowLayout);
+        connectionRow.setObjectName("connectionRow");
 
-        const viewConnectionButton = this.createButton("viewConnectionButton", "View Connection Details");
-        viewConnectionButton.setInlineStyle("font-size: 18px; font-weight: light;");
+        const testConnectionButton = new NodeGUI.QPushButton();
+        testConnectionButton.setText("Test Connection");
+        testConnectionButton.setObjectName("testConnectionButton");
 
-        const saveButton = this.createButton("saveButton", "Save");
-        saveButton.setInlineStyle("font-size: 18px; font-weight: light;");
+        const viewConnectionButton = new NodeGUI.QPushButton();
+        viewConnectionButton.setText("View Connection");
+        viewConnectionButton.setObjectName("viewConnectionButton");
 
-        const deleteButton = this.createButton("deleteButton", "Delete");
-        deleteButton.setInlineStyle("font-size: 18px; font-weight: light;");
+        connectionRowLayout.addWidget(testConnectionButton);
+        connectionRowLayout.addWidget(viewConnectionButton);
+        this.addToWidgetList(connectionRow);
+
+        connectionRow.setStyleSheet("#connectionRow {flex-direction: row;} #connectionRow {margin-left: 245px;} #testConnectionButton {font-size: 18px; padding: 5px; min-width: 150px; max-width: 150px;} #viewConnectionButton {font-size: 18px; padding: 5px; min-width: 150px; max-width: 150px;}")
+
+        const saveDeleteRow = new NodeGUI.QWidget();
+        const saveDeleteRowLayout = new NodeGUI.FlexLayout();
+        saveDeleteRow.setLayout(saveDeleteRowLayout);
+        saveDeleteRow.setObjectName("saveDeleteRow");
+
+        const saveButton = new NodeGUI.QPushButton();
+        saveButton.setText("Save");
+        saveButton.setObjectName("saveButton");
+
+        const deleteButton = new NodeGUI.QPushButton();
+        deleteButton.setText("Delete");
+        deleteButton.setObjectName("deleteButton");
+
+        saveDeleteRowLayout.addWidget(saveButton);
+        saveDeleteRowLayout.addWidget(deleteButton);
+        this.addToWidgetList(saveDeleteRow);
+
+        saveDeleteRow.setStyleSheet("#saveDeleteRow {flex-direction: row;} #saveDeleteRow {margin-left: 245px;} #saveButton {font-size: 18px; padding: 5px; min-width: 150px; max-width: 150px; background-color: green;} #deleteButton {font-size: 18px; padding: 5px; min-width: 150px; max-width: 150px; background-color: red;}");
 
         const closeButton = this.createButton("closeButton", "Close Window");
-        closeButton.setInlineStyle("font-size: 18px; font-weight: light;");
+        closeButton.setInlineStyle("font-size: 18px; font-weight: light; alignment: AlignCenter; padding: 5px; min-width: 300px; max-width: 300px; margin-left: 122.5px;");
 
         // Functionallity for all buttons
 
@@ -108,7 +163,7 @@ class deviceInfo extends NeptuneWindow {
      * Hides the window
      */
         hideWindow() {
-            this.hide();
+            this.close();
         }
 
 }
