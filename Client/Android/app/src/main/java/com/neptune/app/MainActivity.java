@@ -216,7 +216,10 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         devName.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this, DeviceActivity.class));
+                Intent deviceActivity = new Intent(MainActivity.this, DeviceActivity.class);
+                String id = server.serverId.toString();
+                deviceActivity.putExtra("ID", id);
+                startActivity(deviceActivity);
             }
         });
 

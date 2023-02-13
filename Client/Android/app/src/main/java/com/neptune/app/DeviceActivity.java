@@ -31,10 +31,14 @@ public class DeviceActivity extends AppCompatActivity {
             aBar.setDisplayHomeAsUpEnabled(true);
         }
 
+        String serverId = getIntent().getStringExtra("ID");
+
         ImageView notifs = (ImageView) findViewById(R.id.notifSets);
         notifs.setOnClickListener(new View.OnClickListener(){
             public void onClick(View v) {
-                startActivity(new Intent(DeviceActivity.this, NotificationsActivity.class));
+                Intent notificationsActivity = new Intent(DeviceActivity.this, NotificationsActivity.class);
+                notificationsActivity.putExtra("ID2", serverId);
+                startActivity(notificationsActivity);
             }
         });
 
