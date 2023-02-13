@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+using System.IO;
+using System.Diagnostics;
 
 namespace NeptuneRunner {
     /* Source: https://stackoverflow.com/questions/48539789/pinning-to-the-taskbar-a-chained-process */
@@ -86,23 +88,23 @@ namespace NeptuneRunner {
         }
 
         internal static void SetupLauncher(IntPtr handle) {
-            string exePath = Path.Combine(System.Reflection.Assembly.GetExecutingAssembly().CodeBase);
+            string exePath = Process.GetCurrentProcess().MainModule.FileName;
             try {
                 IPropertyStore store = Store(handle);
                 SetValue(store, Key.AppId, ApplicationId);
                 SetValue(store, Key.RelaunchCommand, exePath);
-                SetValue(store, Key.DisplayName, "Neptune Server");
+                SetValue(store, Key.DisplayName, "Neptune");
             } catch (System.AccessViolationException) { }
             SetCurrentProcessExplicitAppUserModelID(ApplicationId);
         }
 
         internal static void SetupLaunchee(IntPtr handle) {
-            string exePath = Path.Combine(System.Reflection.Assembly.GetExecutingAssembly().CodeBase);
+            string exePath = Process.GetCurrentProcess().MainModule.FileName;
             try {
                 IPropertyStore store = Store(handle);
                 SetValue(store, Key.AppId, ApplicationId);
                 SetValue(store, Key.RelaunchCommand, exePath);
-                SetValue(store, Key.DisplayName, "Neptune Server");
+                SetValue(store, Key.DisplayName, "Neptune");
             } catch (System.AccessViolationException) { }
         }
 

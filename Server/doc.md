@@ -164,18 +164,15 @@ NeptuneRunner creates a named pipe (stage 4). This named pipe is used for Neptun
 
 
 ### Format
-JSON is supported, but ONLY in key value pairs. NeptuneRunner is only able to deserialize JSON into a `Dictionary<string, string>`. JSON is not used at the moment. JSON data would be sent as the stringified JSON.
-
-
 Normal data follows the follow style:\
 `<STX><KEY><US><VALUE><RS>....<ETX>`
 
 Data begins with the `STX` (start of text) character (`0x02`)\
 ...\
 followed by a key (for example, `fixwin` or `ckey`) \
-separated using the `US` (unit separator) character (`0x31`)\
+separated using the `US` (unit separator) character (`0x1f`)\
 followed by key's value\
-ended with the `RS` (record separator) character (`0x30`)\
+ended with the `RS` (record separator) character (`0x1e`)\
 ... and repeat as many commands as possible\
 and finally ended with the `ETX` character (`0x03`)
 

@@ -9,6 +9,8 @@
 
 const EventEmitter = require('node:events');
 const Notifier = require("node-notifier"); // does not work with windows action center!
+const Client = require('./Client.js');
+
 
 /**
  * For reason that would take way too long to explain, notifications do not work 100% on Windows
@@ -51,6 +53,13 @@ class Notification extends EventEmitter {
 
 
     /**
+     * Client this notification belongs to
+     * @type {Client}
+     */
+    #client;
+
+
+    /**
      * Notifier id, provided by node-notify. *Should* be the same as the id.
      * @type {number}
      */
@@ -80,8 +89,9 @@ class Notification extends EventEmitter {
      * Notification actions (cancel, mark as read, etc)
      * @typedef {object} NotificationAction
      * @property {string} id - 'Name' of the action
-     * @property {string} text - Text displayed on the button
-     * @property {string} type - Type of action (almost always button) 
+     * @property {string} text - Text displayed on the button or is inside the textbox
+     * @property {boolean} isTextbox - Type of action is a textbox
+     * @property {string} textboxHint - The hint for the textbox
      */
 
     /**
@@ -115,10 +125,14 @@ class Notification extends EventEmitter {
      */
 
     /**
+     * @param {Client} client - Client this notification came from
      * @param {NotificationData} data - The notification data provided by the client
      */
-	constructor(data) {
+	constructor(client, data) {
         super();
+
+
+        this.#client = client;
 
 
         // not testing if data is proper just yet, but hoping it follows the API doc
@@ -139,18 +153,31 @@ class Notification extends EventEmitter {
      */
     push() {
         if (process.platform === "win32") {
-            // Use NeptuneNotifier program (again, see notes at top)
-            // we'll need to generate our own Windows Toast XML: https://learn.microsoft.com/en-us/windows/apps/design/shell/tiles-and-notifications/adaptive-interactive-toasts?tabs=xml
-            // fun!
+            let data = {
+                clientId: this.#client.clientId,
+                clientName: this.#client.friendlyName,
+                id: this.data.notificationId,
+                action: this.data.action,
+                applicationName: this.data.applicationName,
+                //notificationIcon: this.data.notificationIcon,
+                title: this.data.title,
+                timestamp: this.data.timestamp,
+            }
+            if (this.data.type == "text") {
+                data.text = this.data.contents.text; // data.contents.subtext + "\n" +
+                data.attribution = this.data.contents.subtext;
+
+            }
+            process.Neptune.NeptuneRunnerIPC.sendData("notify-push", data)
 
         } else {
             let logger = this.#log;
             let maybeThis = this;
             // send the notification
             this.#notifierNotification = Notifier.notify({
-                title: data.title,
-                message: data.contents.text, // data.contents.subtext + "\n" +
-                id: data.notificationId,
+                title: this.data.title,
+                message: this.data.contents.text, // data.contents.subtext + "\n" +
+                id: this.data.notificationId,
             }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
                 if (err) {
                     logger.error(err);

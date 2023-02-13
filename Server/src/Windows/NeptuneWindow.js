@@ -45,7 +45,7 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 		if (process.platform == 'win32') {
 			// This allows NeptuneRunner to fix the window's taskbar data
 			this.addEventListener(NodeGUI.WidgetEventTypes.Show, () => {
-				Neptune.NeptuneRunnerPipe.write("fixwinhwnd" + this.winId() + "");
+				global.NeptuneRunnerIPC.pipe.write("fixwinhwnd" + this.winId() + "");
 			});
 		}
 	}

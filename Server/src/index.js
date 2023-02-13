@@ -233,41 +233,8 @@ Neptune.log("Running on \x1b[1m\x1b[34m" + process.platform);
 
 // If Win32, connect to the NeptuneRunner application pipe
 if (isWin) {
-	const net = require('net');
-
-	const PIPE_PATH = '\\\\.\\pipe\\';
-	const PIPE_NAME = 'NeptuneRunnerIPC';
-	const PIPE_SKEY = "BigweLQytERRx243O5otGgm8UsBhrdVE"; // Server's key
-	const PIPE_CKEY = "kBoWq2BtM2yqfCntSnLUe6I7lZVjwyEl"; // Our key
-	const PIPE_AUTHENTICATED = false;
-
-	let NeptuneRunnerLog = Neptune.logMan.getLogger("NR-Pipe");
-
-	Neptune.NeptuneRunnerPipe = net.createConnection(PIPE_PATH + PIPE_NAME, () => {
-		NeptuneRunnerLog.info("Connected to NeptuneRunner, sending CKey.");
-
-	  if (!PIPE_AUTHENTICATED) {
-		  Neptune.NeptuneRunnerPipe.write("ckey:"+PIPE_CKEY);
-	  }
-	});
-
-	Neptune.NeptuneRunnerPipe.on('data', (data) => {
-		if (!PIPE_AUTHENTICATED) {
-			if (data == "skey" + PIPE_SKEY) {
-				NeptuneRunnerLog.debug("Authenticated.");
-				PIPE_AUTHENTICATED = true
-			} else {
-				NeptuneRunnerLog.debug("Unable to authenticate pipe! Data: " + data.toString());
-			}
-		} else {
-			NeptuneRunnerLog.debug("Received: " + data.toString());
-			// Process pipe data
-		}
-	});
-
-	Neptune.NeptuneRunnerPipe.on('end', () => {
-		NeptuneRunnerLog.warn('Disconnected from NeptuneRunner.');
-	});
+	let NRIPC = require("./Classes/NeptuneRunner.js")
+	global.NeptuneRunnerIPC = new NRIPC.NeptuneRunnerIPC();
 }
 
 

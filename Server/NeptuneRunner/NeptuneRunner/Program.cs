@@ -1,14 +1,25 @@
-﻿using System;
+﻿using Microsoft.Toolkit.Uwp.Notifications;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Windows.UI.Notifications;
 
 namespace NeptuneRunner {
     internal class Program {
         // Whether we'll process notifications activates via COM
         public static bool AllowCOMActivation = true;
+        public static List<NeptuneNotification> Notifications = new List<NeptuneNotification>();
+
+        public static InterprocessCommunication IPC;
+
+        public static Queue<string> IPCDataQueue = new Queue<string>(0);
+
+        public static ToastNotifier ToastNotifier;
+
 
         #region Properties
         /// <summary>
@@ -66,12 +77,13 @@ namespace NeptuneRunner {
             // Capture term signals
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
                 ConsoleHelper.Setup();
+                TaskBar.SetupLauncher(ConsoleHelper.GetConsoleWindow());
             }
 
             Console.Title = "Neptune";
             Console.WriteLine("Neptune Server");
 
-            WorkingDirectory = Environment.CurrentDirectory;
+            WorkingDirectory = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName);
             //WorkingDirectory = @"C:\Storage\Neptune\Server\deploy\win32\build\NeptuneServer\";
 
 
@@ -178,9 +190,9 @@ namespace NeptuneRunner {
             NeptuneProcess.ErrorDataReceived += P_ErrorDataReceived;
 
             // Pipe
-            InterprocessCommunication ipc = new InterprocessCommunication("NeptuneRunnerIPC", "BigweLQytERRx243O5otGgm8UsBhrdVE", "kBoWq2BtM2yqfCntSnLUe6I7lZVjwyEl");
-            ipc.DataReceived += IPC_DataReceived;
-            ipc.CreateNamedPipe();
+            IPC = new InterprocessCommunication("NeptuneRunnerIPC", "BigweLQytERRx243O5otGgm8UsBhrdVE", "kBoWq2BtM2yqfCntSnLUe6I7lZVjwyEl");
+            IPC.DataReceived += IPC_DataReceived;
+            IPC.CreateNamedPipe();
 
             // Start
             NeptuneProcess.Start();
@@ -192,8 +204,12 @@ namespace NeptuneRunner {
             Console.TreatControlCAsInput = false;
             Console.CancelKeyPress += Console_CancelKeyPress;
 
-            IAsyncResult ipcAsyncResult = ipc.Listen();
+            IAsyncResult ipcAsyncResult = IPC.Listen();
 
+            Notifier.Notification.RegisterAppForNotificationSupport(true); // Setup notification support
+            ToastNotificationManagerCompat.OnActivated += ToastNotificationManagerCompat_OnActivated;
+            ToastNotifier = ToastNotificationManager.CreateToastNotifier("NeptuneRunner");
+            
 
             Task.Run(() => {
                 NeptuneProcess.StandardInput.AutoFlush = true;
@@ -206,19 +222,25 @@ namespace NeptuneRunner {
                 }
             });
 
+            Thread IPCQueueThread = new Thread(() => {
+                while (true) {
+                    if (IPCDataQueue.Count > 0) {
+                        if (IPC.WaitForClient()) {
+                            // Send data out
+                            Thread.BeginCriticalRegion();
+                            lock (IPC) {
+                                IPC.SendData(IPCDataQueue.Dequeue());
+                            }
+                            Thread.EndCriticalRegion();
+                        }
+                    }
 
-            Task.Run(() => {
-                while (NeptuneProcess.MainWindowHandle == IntPtr.Zero) {
-                    Thread.Sleep(250);
+                    Thread.Sleep(500);
                 }
-                TaskBar.SetupLaunchee(NeptuneProcess.MainWindowHandle);
             });
 
-            try {
-                Thread.Sleep(500);
-                // Change the TaskBar item for Neptune to associate with the runner (us)
-                TaskBar.SetupLauncher(ConsoleHelper.GetConsoleWindow());
 
+            try {
                 NeptuneProcess.WaitForExit();
             } catch (Exception) {
                 //Environment.Exit(0);
@@ -232,24 +254,82 @@ namespace NeptuneRunner {
             }
         }
 
-
-
-
         private static void IPC_DataReceived(object sender, PipeDataReceivedEventArgs e) {
             if (!ShuttingDown) {
                 Console.WriteLine("[Pipe: Server]: " + e.Data);
                 Dictionary<string, string> dataKeyValues = e.ToDictionary();
-                // "\x02newwin\x31\x03hwnd\x31" + this.winId + "\x30\x03"
+
                 if (dataKeyValues.ContainsKey("fixwin")) {
                     // new window command
                     dataKeyValues.TryGetValue("hwnd", out string value);
-                    IntPtr hwnd = IntPtr.Zero;
-                    IntPtr.TryParse(value, out hwnd);
+                    UInt32 hwndInt;
+                    UInt32.TryParse(value, out hwndInt);
+                    IntPtr hwnd = new IntPtr(hwndInt);
                     if (hwnd != IntPtr.Zero)
                         TaskBar.SetupLaunchee(hwnd);
+                } else if (dataKeyValues.ContainsKey("notify-push")) {
+                    if (dataKeyValues.ContainsKey("title") && dataKeyValues.ContainsKey("id") && dataKeyValues.ContainsKey("text")) {
+                        NeptuneNotification notification = new NeptuneNotification(dataKeyValues["id"], dataKeyValues["title"], dataKeyValues["text"]);
+                        if (dataKeyValues.ContainsKey("attribution"))
+                            notification.Attribution = dataKeyValues["attribution"];
+
+                        if (dataKeyValues.ContainsKey("clientId"))
+                            notification.ClientId = dataKeyValues["clientId"];
+                        if (dataKeyValues.ContainsKey("clientName"))
+                            notification.ClientName = dataKeyValues["clientName"];
+
+                        if (dataKeyValues.ContainsKey("applicationName"))
+                            notification.ApplicationName = dataKeyValues["applicationName"];
+                        if (dataKeyValues.ContainsKey("timestamp"))
+                            notification.TimeStamp = DateTime.Parse(dataKeyValues["timestamp"], null, System.Globalization.DateTimeStyles.RoundtripKind);
+
+                        notification.Activated += Notification_Activated;
+                        notification.Failed += Notification_Failed;
+                        notification.Dismissed += Notification_Dismissed;
+
+                        Notifications.Add(notification);
+                        notification.Push();
+                    }
                 }
             }
         }
+
+        private static void Notification_Dismissed(ToastNotification sender, ToastDismissedEventArgs args) {
+            if (args.Reason == ToastDismissalReason.UserCanceled) {
+                Dictionary<string, string> data = new Dictionary<string, string>(2) {
+                    { "id", sender.Tag.Split(":")[1] },
+                    { "clientId", sender.Tag.Split(":")[0] },
+                    { "reason", "user" }
+                };
+                IPCDataQueue.Enqueue(IPC.KeyValuePairsToDataString("notify-dismissed", data));
+            }
+        }
+
+        private static void Notification_Failed(ToastNotification sender, ToastFailedEventArgs args) {
+            throw new NotImplementedException();
+        }
+
+        private static void Notification_Activated(ToastNotification sender, object args) {
+            Dictionary<string, string> data = new Dictionary<string, string>(2) {
+                { "id", sender.Tag.Split(":")[1] },
+                { "clientId", sender.Tag.Split(":")[0] },
+            };
+            IPCDataQueue.Enqueue(IPC.KeyValuePairsToDataString("notify-activated", data));
+        }
+
+        private static void ToastNotificationManagerCompat_OnActivated(ToastNotificationActivatedEventArgsCompat e) {
+            ToastArguments args = ToastArguments.Parse(e.Argument);
+            Dictionary<string, string> data = new Dictionary<string, string>(args);
+            
+            foreach (string input in e.UserInput.Keys) {
+                data.Add("userInput:" + input, e.UserInput[input].ToString());
+            }
+
+            IPCDataQueue.Enqueue(IPC.KeyValuePairsToDataString("notify-activated", data));
+
+            Console.WriteLine("Toast activated. Args: " + e.Argument);
+        }
+
 
         private static void CurrentDomain_ProcessExit(object sender, EventArgs e) {
             if (!NeptuneProcess.HasExited)
