@@ -138,7 +138,7 @@ class Notification extends EventEmitter {
      * @return {void}
      */
     push() {
-        if (process.platform === "win32") {
+        if (process.platform === "win32" && false) { // blah blah good enough for now. In the works, see master-cn-NeptuneNotifier
             // Use NeptuneNotifier program (again, see notes at top)
             // we'll need to generate our own Windows Toast XML: https://learn.microsoft.com/en-us/windows/apps/design/shell/tiles-and-notifications/adaptive-interactive-toasts?tabs=xml
             // fun!

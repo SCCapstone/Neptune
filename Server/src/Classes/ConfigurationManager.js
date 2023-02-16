@@ -157,7 +157,7 @@ class ConfigurationManager {
 		if (this.#isDestroying || !this.#cachedItems.has(configItem.getFileName()))
 			return true;
 
-		this.#log.debug("Removing: " + configItem.getFileNath());
+		this.#log.debug("Removing: " + configItem.getFileName());
 		this.#cachedItems.delete(configItem.getFileName());
 		return true;
 	}

@@ -810,6 +810,7 @@ async function main() {
 
 	var cLog = Neptune.logMan.getLogger("Console");
 
+	let debugWindows = {};
 	function processCMD(command) {
 		cLog.info("Received user input: " + command.toString(), false);
 		try {
@@ -829,6 +830,47 @@ async function main() {
 				else if (command.startsWith("rekey")) {
 					let cmd = command.substr(6);
 					Neptune.configManager.rekey(cmd).then((didIt) => cLog.info("Successful: " + didIt)).catch(err => cLog.error("Failed: " + err));
+				}
+				else if (command.startsWith("showwin")) {
+					let windowName = command.substr(8).replace(/[^0-9a-zA-Z]/g, "");
+					if (!fs.existsSync("./Src/Windows/" + windowName + ".js")) {
+						console.warn("./Src/Windows/" + windowName + ".js does not exist!")
+						return;
+					}
+					console.log("showing window: " + windowName)
+					delete require.cache[require.resolve("./Windows/" + windowName + ".js")]
+					/** @type {import('./Windows/NeptuneWindow.js')} */
+					let uWindow = new (require("./Windows/" + windowName + ".js"))();
+					uWindow.show();
+				}
+				else if (command.startsWith("debugwin")) {
+					let windowName = command.substr(8).replace(/[^0-9a-zA-Z]/g, "");
+					if (!fs.existsSync("./Src/Windows/" + windowName + ".js")) {
+						console.warn("./Src/Windows/" + windowName + ".js does not exist!")
+						return;
+					}
+					console.log("debugging window: " + windowName)
+					let path = "./Windows/" + windowName + ".js";
+					let uWindow = new (require(path))();
+						uWindow.show();
+						uWindow.move(oPosition.x, oPosition.y);
+						debugWindows[windowName] = uWindow;
+					fs.watchFile("./Src/Windows/" + windowName + ".js", () => {
+						console.log("reloading window: " + windowName)
+
+						let oPosition = {x: 0, y: 0}
+						if (debugWindows[windowName] !== undefined) {
+							oPosition = debugWindows[windowName].pos();
+							debugWindows[windowName].close();
+						}
+						
+						delete require.cache[require.resolve(path)]
+						delete require.cache[require.resolve("./Windows/NeptuneWindow.js")];
+						let uWindow = new (require(path))();
+						uWindow.show();
+						uWindow.move(oPosition.x, oPosition.y);
+						debugWindows[windowName] = uWindow;
+					});
 				}
 				else if (command.startsWith("eval ")) {
 					let cmd = command.substr(5);
