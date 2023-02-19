@@ -24,7 +24,7 @@ public class DeviceActivity extends AppCompatActivity {
     //public Button temp;
     public ConnectionManager cm;
     private Button delete;
-    //private EditText ipAddress;
+    private EditText ipAddress;
 
 
     @Override
@@ -42,8 +42,8 @@ public class DeviceActivity extends AppCompatActivity {
         Server server = MainActivity.serverManager.getServer(UUID.fromString(serverId));
 
         //Sets the EditText containing the IP address of the server to the correct IP Address.
-        /*ipAddress = findViewById(R.id.editIPAddress);
-        ipAddress.setText(server.ipAddress.getIPAddress());*/
+        ipAddress = findViewById(R.id.editIPAddress);
+        ipAddress.setText(server.ipAddress.getIPAddress());
 
         ImageView notifs = (ImageView) findViewById(R.id.notifSets);
         notifs.setOnClickListener(new View.OnClickListener(){
