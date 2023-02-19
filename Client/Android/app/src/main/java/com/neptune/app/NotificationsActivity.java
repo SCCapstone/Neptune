@@ -1,6 +1,7 @@
 package com.neptune.app;
 
 import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
@@ -16,9 +17,12 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.ListView;
 
+import com.google.gson.JsonParseException;
+import com.neptune.app.Backend.ConnectionManager;
 import com.neptune.app.Backend.Server;
 import com.neptune.app.Backend.ServerManager;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -76,6 +80,7 @@ public class NotificationsActivity extends AppCompatActivity {
 
         /*I did it this way because List<String> blacklistedApps = new ArrayList<String>(Arrays.asList(apps)) didn't work. Neither did making the blacklist global.
         I don't know why, it was just being weird so I made the blacklist this way. Will try to fix if there's time but it works now.
+        This also grabs the server ID from the other activities so that we can call the correct server's blacklist here.
         * */
         String serverId = getIntent().getStringExtra("ID2");
         Server server = MainActivity.serverManager.getServer(UUID.fromString(serverId));
@@ -115,7 +120,26 @@ public class NotificationsActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 String selectedItem = (String) parent.getItemAtPosition(position);
                 blackListedAppsCheck(server.notificationBlacklistApps, selectedItem);
+                try {
+                    server.save();
+                } catch (JsonParseException e) {
+                    e.printStackTrace();
+                    if (server != null)
+                        server.delete();
+                    runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
 
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    if (server != null)
+                        server.delete();
+                    runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
+
+                }/* catch (ConnectionManager.FailedToPair e) {
+                    e.printStackTrace();
+                    if (server != null)
+                        server.delete();
+                    runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
+                }*/
                 /* Log to check if the apps are being stored correctly in the list. They do.
                 for (int j = 0; j<blacklistedApps.size(); j++) {
                     Log.i("App", blacklistedApps.get(j));
@@ -178,5 +202,16 @@ public class NotificationsActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
+    }
+
+    public void showErrorMessage(String title, String message) {
+        AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
+        alertBuilder.setTitle(title);
+        alertBuilder.setMessage(message);
+        alertBuilder.setPositiveButton("Ok", (dialog, which) -> {
+            // do stuff here?
+        });
+
+        alertBuilder.create().show();
     }
 }

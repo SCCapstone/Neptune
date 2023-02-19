@@ -6,6 +6,7 @@ import androidx.fragment.app.DialogFragment;
 
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.TextView;
@@ -13,12 +14,17 @@ import android.content.Intent;
 import android.view.View;
 
 import com.neptune.app.Backend.ConnectionManager;
+import com.neptune.app.Backend.Server;
+
+import java.util.UUID;
 
 
 public class DeviceActivity extends AppCompatActivity {
     //public Button connect;
     //public Button temp;
     public ConnectionManager cm;
+    private Button delete;
+    //private EditText ipAddress;
 
 
     @Override
@@ -31,7 +37,13 @@ public class DeviceActivity extends AppCompatActivity {
             aBar.setDisplayHomeAsUpEnabled(true);
         }
 
+        //Grabs the server ID passed on from MainActivity so that it can be used in DeviceActivity and passed on to other activities.
         String serverId = getIntent().getStringExtra("ID");
+        Server server = MainActivity.serverManager.getServer(UUID.fromString(serverId));
+
+        //Sets the EditText containing the IP address of the server to the correct IP Address.
+        /*ipAddress = findViewById(R.id.editIPAddress);
+        ipAddress.setText(server.ipAddress.getIPAddress());*/
 
         ImageView notifs = (ImageView) findViewById(R.id.notifSets);
         notifs.setOnClickListener(new View.OnClickListener(){
@@ -48,6 +60,19 @@ public class DeviceActivity extends AppCompatActivity {
                 startActivity(new Intent(DeviceActivity.this, FileActivity.class));
             }
         });
+
+        /*The delete button on the screen associated with DeviceActivity calls the delete button on the MainActivity screen so that the server is deleted.
+        * Need to determine if this works, and send the user back to the home screen.
+        */
+        /*delete = findViewById(R.id.deleteDeviceActivity);
+        ImageView del = findViewById(R.id.delete);
+        delete.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                delete.performClick();
+                onSupportNavigateUp(); //Maybe calling this will work, maybe need to force a back button press if this doesn't already do that.
+            }
+        });*/
 
         /*connect = (Button) findViewById(R.id.connec);
         connect.setOnClickListener(new View.OnClickListener() {
