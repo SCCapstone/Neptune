@@ -11,6 +11,7 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.neptune.app.MainActivity;
 
+import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -44,6 +45,10 @@ import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import org.java_websocket.client.WebSocketClient;
+
 import javax.crypto.KeyAgreement;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
@@ -63,6 +68,8 @@ public class ConnectionManager {
 
     private IPAddress IPAddress;
     private Server Server;
+
+    private WebSocketClient webSocketClient;
 
     /**
      * This is the connection initiation Id, used to identify the connection
@@ -414,6 +421,44 @@ public class ConnectionManager {
         return false;
     }
 
+
+    // Creates the web socket for the client
+    public void createWebSocketClient() {
+        URI uri;
+        try {
+            //  Connect to socket
+            uri = new URI("/api/v1/server/socket/{socketId}");
+        }
+        catch (URISyntaxException e) {
+            e.printStackTrace();
+            return;
+        }
+
+         webSocketClient = new WebSocketClient(uri) {
+            @Override
+            public void onOpen(ServerHandshake handshakedata) {
+
+            }
+
+            @Override
+            public void onMessage(String message) {
+
+            }
+
+            @Override
+            public void onClose(int code, String reason, boolean remote) {
+
+            }
+
+            @Override
+            public void onError(Exception ex) {
+                ex.printStackTrace();
+            }
+        };
+
+
+    }
+
     public void initiateConnection() {
         Thread thread = new Thread(() -> {
             try {
@@ -424,6 +469,9 @@ public class ConnectionManager {
         });
         thread.start();
         thread.setName(Server.serverId + " - Initiation runner");
+
+        webSocketClient.connect();
+        //webSocketClient.send();
     }
 
     public float ping() {

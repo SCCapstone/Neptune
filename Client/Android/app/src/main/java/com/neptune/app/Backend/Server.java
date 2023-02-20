@@ -57,6 +57,10 @@ public class Server extends ServerConfig {
             if (connectionManager == null)
                 return;
 
+            if (!this.syncNotifications) {
+                return;
+            }
+
             if (connectionManager.getHasNegotiated()) {
                 //if (!notificationBlacklistApps.contains(notification.appPackageName)) {
                     connectionManager.sendRequestAsync("/api/v1/server/sendNotification", JsonParser.parseString(notification.toString()).getAsJsonObject());
