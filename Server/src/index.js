@@ -149,6 +149,7 @@ async function Shutdown(shutdownTimeout) {
 	global.shuttingDown = true; // For when we kill the logger
 	Neptune.events.application.emit('shutdown', shutdownTimeout)
 }
+process.Shutdown = Shutdown;
 Neptune.events.application.on('shutdown', (shutdownTimeout) => {
 	Neptune.log.info("Shutdown signal received, shutting down in " + (shutdownTimeout/1000) + " seconds.");
 
@@ -364,6 +365,9 @@ async function main() {
 
 
 	qApp.setQuitOnLastWindowClosed(false); // required so that app doesn't close if we close all windows.
+	process.env["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+	process.env["QT_ENABLE_HIGHDPI_SCALING"] = "1"
+
 
 
 	// Tray icon

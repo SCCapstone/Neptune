@@ -118,6 +118,19 @@ class Client extends ClientConfig {
 			});
 			this.log.debug("Ping response time: " + Math.round(timestamp.getTime() - receivedAt.getTime()) + "ms");
 
+		} else if (command == "/api/v1/server/pong") {
+			let sentAt = new Date(data["receivedAt"]);
+			let receivedAt = new Date(data["timestamp"]);
+			let timeNow = new Date();
+			this.log.debug("Pong response time: " + Math.round(timestamp.getTime() - receivedAt.getTime()) + "ms");
+			this.#connectionManager.emit('pong', {
+				receivedAt: sentAt, // Time WE sent the ping request
+				timestamp: receivedAt, // Time CLIENT replied
+				timeNow: timeNow, // NOW
+				totalTime: Math.round(timestamp.getTime() - receivedAt.getTime()), // One-way time
+				RTT: Math.round(timeNow.getTime() - receivedAt.getTime()), // Round trip time
+			});
+
 		} else if (command == "/api/v1/server/unpair") {
 			this.log.debug("Unpair request from client, dropping");
 			this.pairId = "";
@@ -207,8 +220,14 @@ class Client extends ClientConfig {
 	processHTTPRequest(data, callback) { // ehh
 		this.#connectionManager.processHTTPRequest(data, callback);
 	}
+	/**
+	 * Send a request (or response) to the client. (connectionManager.sendRequest)
+	 * 
+	 * @param {string} command - The client endpoint to send to.
+	 * @param {object} data - Data to send (will be converted to Json).
+	 */
 	sendRequest(command, data) { // Refine later
-		this.#connectionManager.sendRequest(command, data);
+		return this.#connectionManager.sendRequest(command, data);
 	}
 
 
@@ -228,7 +247,13 @@ class Client extends ClientConfig {
 	 * @return {boolean}
 	 */
 	sendClipboard(object) {
-		throw new Error("Not implemented.");
+	}
+	/**
+	 * Get the client's clipboard
+	 * @return {object}
+	 */
+	getClipboard() {
+		return "";
 	}
 
 	/**
@@ -269,11 +294,55 @@ class Client extends ClientConfig {
 
 
 	/**
-	 * Test device connection
-	 * @return {boolean}
+	 * @typedef {object} PingData
+	 * @property {Date} pingSentAt - Time we sent ping request.
+	 * @property {Date} pongSentAt - Time client sent the pong response (questionable reliability).
+	 * @property {Date} pongReceivedAt - Time we received the pong response.
+	 * @property {number} pingTime - Time between sending the ping request and client receiving the ping in ms.
+	 * @property {number} RTT - Total time to ping and receive a response (use this) in ms.
+	 */
+
+	/**
+	 * Send ping packet, return delay
+	 * @return {Promise<PingData>} Delay in MS
 	 */
 	ping() {
-		this.#connectionManager.ping();
+		return new Promise((resolve, reject) => {
+			this.#connectionManager.once('pong', (data) => {
+				resolve({
+					pingSentAt: data["receivedAt"],
+					pongSentAt: data["timestamp"],
+					pongReceivedAt: data["timeNow"],
+					pingTime: data["totalTime"],
+					RTT: data["RTT"]
+				});
+			});
+
+			this.sendRequest('/api/v1/client/ping', {
+				timestamp: new Date().toISOString(),
+			});
+		});
+	}
+
+	/**
+	 * Send configuration settings to the client device. Sync the config.
+	 */
+	syncConfiguration() {
+		this.sendRequest("/api/v1/client/configuration/set", {
+			friendlyName: NeptuneConfig.friendlyName,
+			notificationSettings: {
+				enabled: this.notificationSettings.enabled
+			},
+			clipboardSettings: {
+				enabled: this.clipboardSettings.enabled,
+				autoSendToClient: this.clipboardSettings.autoSendToClient,
+			},
+			fileSharingSettings: {
+				enabled: this.fileSharingSettings.enabled,
+				autoReceiveFromClient: this.fileSharingSettings.autoReceiveFromClient,
+				serverBrowsable: this.fileSharingSettings.serverBrowsable,
+			}
+		});
 	}
 
 	/**

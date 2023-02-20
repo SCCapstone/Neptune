@@ -76,10 +76,10 @@ class ClientManager {
 
     /**
      * This will return all the Clients
-     * @returns {Client[]}
+     * @returns {Map<string, Client>}
      */
     getClients() {
-        return new Map(this.#clients);
+        return this.#clients;
     }
 
     /**

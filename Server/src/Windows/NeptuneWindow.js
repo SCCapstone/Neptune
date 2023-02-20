@@ -34,8 +34,8 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 		let centralWidget = new NodeGUI.QWidget();
 		let rootLayout = new NodeGUI.FlexLayout();
 		/** @type {NodeGUI.FlexLayout} */
-		this.rootLayout  = rootLayout;
-		this.setStyleSheet(fs.readFileSync("./style.css"));
+		this.rootLayout = rootLayout;
+		this.setStyleSheet("#rootLayout { background-color: #EEEEEE; }");
 
 		this.widgets["rootLayout"] = rootLayout
 		centralWidget.setObjectName("rootLayout");

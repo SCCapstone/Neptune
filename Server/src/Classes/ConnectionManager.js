@@ -148,14 +148,7 @@ class ConnectionManager extends EventEmitter {
 	initiateConnection() {
 		// good question
 	}
-	
-	/**
-	 * Send ping packet, return delay
-	 * @return {float} Delay in MS
-	 */
-	ping() {
 
-	}
 
 	pair() {
 
@@ -306,6 +299,7 @@ class ConnectionManager extends EventEmitter {
 		this.#webSocket.on('ping', (data) => {
 			this.#log.debug("Pong!");
 			this.#webSocket.pong();
+			this.emit('ping', data);
 		});
 
 		this.#log.info("Listening...");
