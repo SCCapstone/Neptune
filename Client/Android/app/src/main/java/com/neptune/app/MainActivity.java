@@ -61,6 +61,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     private LinearLayout addLine;
     //private Button notifListTest;
     private ImageView delete;
+    private TextView ip;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -165,7 +166,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             lblMyIP.setText("Device IP: " + ip);
         } catch (Exception err) {
             err.printStackTrace();
-            lblMyIP.setVisibility(View.INVISIBLE);
+            //lblMyIP.setVisibility(View.INVISIBLE);
         }
 
         TextView lblVersion = findViewById(R.id.lblVersion);
@@ -202,6 +203,10 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         addDialog = builder.create();
     }
 
+    /*This method adds an item to the list of servers and makes it appear on the screen for the user to interact with. It sets the name and ip based on user input.
+     *It also has the onClickListeners for one of the delete buttons for a server and the edit name button. If the device name is clicked, the user is sent to another
+     * activity filled with settings about the specific server.
+    */
     public void addNameLine(Server server) {
         if (server == null)
             return;
@@ -211,6 +216,9 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         devName = view.findViewById(R.id.name);
         editName = view.findViewById(R.id.editName);
         delete = view.findViewById(R.id.delete);
+        ip = findViewById(R.id.lblMyIP);
+        ip.setText(server.ipAddress.getIPAddress());
+        //ip.setVisibility(View.VISIBLE);
 
         devName.setText(server.friendlyName);
         devName.setOnClickListener(new View.OnClickListener() {
@@ -246,6 +254,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         addLine.addView(view);
     }
 
+    //Method to open the dialog box for renaming a server. May want to change name to openRenameDialog, or change the tag to a String variable with the name.
     public void openDialog(){
         RenameDialog de = new RenameDialog();
         de.show(getSupportFragmentManager(), "rename dialog");
