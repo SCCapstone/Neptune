@@ -125,12 +125,8 @@ class Notification extends EventEmitter {
 
         this.#log = Neptune.logMan.getLogger("Notification-" + data.notificationId);
         this.#log.debug("New notification created. Title: " + data.title + " .. type: " + data.type + " .. text: " + data.contents.text);
-        this.#log.silly(data);
 
-        this.data = data;
-
-
-        
+        this.data = data;    
     }
 
     /**
@@ -138,6 +134,14 @@ class Notification extends EventEmitter {
      * @return {void}
      */
     push() {
+        if (this.data === undefined)
+            return;
+        if (this.data.title === undefined || this.data.contents.text === undefined || this.data.notificationId === undefined)
+            return;
+
+        if (this.data.title === "" || this.data.contents.text === "")
+            return;
+
         if (process.platform === "win32" && false) { // blah blah good enough for now. In the works, see master-cn-NeptuneNotifier
             // Use NeptuneNotifier program (again, see notes at top)
             // we'll need to generate our own Windows Toast XML: https://learn.microsoft.com/en-us/windows/apps/design/shell/tiles-and-notifications/adaptive-interactive-toasts?tabs=xml
@@ -148,9 +152,9 @@ class Notification extends EventEmitter {
             let maybeThis = this;
             // send the notification
             this.#notifierNotification = Notifier.notify({
-                title: data.title,
-                message: data.contents.text, // data.contents.subtext + "\n" +
-                id: data.notificationId,
+                title: this.data.title,
+                message: this.data.contents.text, // data.contents.subtext + "\n" +
+                id: this.data.notificationId,
             }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
                 if (err) {
                     logger.error(err);

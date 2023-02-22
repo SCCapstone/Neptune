@@ -14,6 +14,7 @@ const ConnectionManager = require('./ConnectionManager.js');
 const NotificationManager = require('./NotificationManager.js');
 const IPAddress = require('./IPAddress.js');
 const Notification = require('./Notification.js');
+const crypto = require("node:crypto")
 
 
 /** @type {import('./NeptuneConfig.js')} */
@@ -22,6 +23,7 @@ var NeptuneConfig = global.Neptune.config;
 
 
 const ClientConfig = require('./ClientConfig.js');
+const { timeStamp } = require('node:console');
 
 
 /**
@@ -48,7 +50,7 @@ class Client extends ClientConfig {
 	batteryLevel;
 	/**
 	 * Battery temperature reported by the client in terms of degrees C
-	 * @type {float}
+	 * @type {number}
 	 */
 	batteryTemperature;
 	/**
@@ -56,6 +58,22 @@ class Client extends ClientConfig {
 	 * @type {string}
 	 */
 	batteryChargerType;
+
+	/**
+	 * Battery charge time remaining reported by the client in seconds.
+	 * @type {number}
+	 */
+	batteryTimeRemaining;
+
+	/**
+	 * Whether this client has connected and is connected.
+	 */
+	get isConnected() {
+		if (this.#connectionManager === undefined)
+			return false;
+		if (this.#connectionManager.hasNegotiated)
+			return true; // replace by a ping that is successful
+	}
 
 
 
@@ -92,8 +110,11 @@ class Client extends ClientConfig {
 	 */
 	setupConnectionManager(secret, miscData) {
 		this.#connectionManager = new ConnectionManager(this, secret, miscData);
+		this.#secret = crypto.createHash('sha256').update(secret).digest('hex');
 
 		this.log.debug("Connection manager setup successful, listening for commands.");
+
+		this.#connectionManager.hasNegotiated = true;
 
 		this.#connectionManager.on('command', (command, data) => {
 			this.#handleCommand(command, data);
@@ -116,7 +137,9 @@ class Client extends ClientConfig {
 				receivedAt: data["timestamp"],
 				timestamp: timestamp.toISOString()
 			});
-			this.log.debug("Ping response time: " + Math.round(timestamp.getTime() - receivedAt.getTime()) + "ms");
+			let a = Math.max(timestamp.getTime(), receivedAt.getTime());
+			let b = Math.min(timestamp.getTime(), receivedAt.getTime());
+			this.log.debug("Ping response time ~~: " + Math.round(a-b) + "ms");
 
 		} else if (command == "/api/v1/server/pong") {
 			let sentAt = new Date(data["receivedAt"]);
@@ -145,8 +168,11 @@ class Client extends ClientConfig {
 				this.batteryTemperature = data["temperature"]
 			if (data["chargerType"] !== undefined)
 				this.batteryChargerType = data["chargerType"]
+			if (data["batteryTimeRemaining"] !== undefined)
+				this.batteryTimeRemaining = data["batteryTimeRemaining"]
 
-			let chargeMessage = (this.batteryChargerType!="discharging")? "charging via " + this.batteryChargerType : "discharging";
+			let timeRemainingMsg = (this.batteryTimeRemaining !== undefined)? ", " + this.batteryTimeRemaining/60 + " minutes until full" : "";
+			let chargeMessage = (this.batteryChargerType!="discharging")? "charging via " + this.batteryChargerType + timeRemainingMsg : "discharging";
 			this.log.debug("Received battery data from client. Client is at " + this.batteryLevel + "% and is " + chargeMessage + ". Temperature: " + this.batteryTemperature);
 
 			this.#connectionManager.sendRequest("/api/v1/server/ack", {});
@@ -227,9 +253,21 @@ class Client extends ClientConfig {
 	 * @param {object} data - Data to send (will be converted to Json).
 	 */
 	sendRequest(command, data) { // Refine later
-		return this.#connectionManager.sendRequest(command, data);
+		if (this.#connectionManager !== undefined) {
+			if (this.#connectionManager.initiateConnection()) {
+				return this.#connectionManager.sendRequest(command, data);
+			}
+		}
 	}
 
+
+	/**
+	 * For connection manager
+	 * 
+	 */
+	getSecret() {
+		return this.#secret;
+	}
 
 
 	/**
@@ -289,6 +327,7 @@ class Client extends ClientConfig {
 			}]);
 		});
 		this.#notificationManager.newNotification(notification);
+		notification.push();
 	}
 
 

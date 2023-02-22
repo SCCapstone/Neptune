@@ -160,13 +160,13 @@
               <widget class="QLabel" name="lblClientBatteryLevel">
                <property name="minimumSize">
                 <size>
-                 <width>30</width>
+                 <width>125</width>
                  <height>0</height>
                 </size>
                </property>
                <property name="maximumSize">
                 <size>
-                 <width>40</width>
+                 <width>125</width>
                  <height>16777215</height>
                 </size>
                </property>
@@ -910,8 +910,10 @@
      <addaction name="actionView_connection_details"/>
     </widget>
     <addaction name="actionPair_client"/>
-    <addaction name="actionRefresh_client_info"/>
+    <addaction name="actionRefresh_device_list"/>
+    <addaction name="separator"/>
     <addaction name="menuClient_settings"/>
+    <addaction name="actionRefresh_client_info"/>
     <addaction name="separator"/>
     <addaction name="actionPreferences"/>
     <addaction name="separator"/>
@@ -925,6 +927,7 @@
      <string notr="true">Help</string>
     </property>
     <addaction name="actionView_GitHub_page"/>
+    <addaction name="actionTest_notification"/>
     <addaction name="separator"/>
     <addaction name="actionAbout_Neptune"/>
    </widget>
@@ -1075,6 +1078,22 @@
   <action name="actionRefresh_client_info">
    <property name="text">
     <string notr="true">Refresh client info</string>
+   </property>
+  </action>
+  <action name="actionRefresh_device_list">
+   <property name="text">
+    <string notr="true">Refresh device list</string>
+   </property>
+   <property name="toolTip">
+    <string notr="true">Refresh device list</string>
+   </property>
+  </action>
+  <action name="actionTest_notification">
+   <property name="text">
+    <string notr="true">Test notifications</string>
+   </property>
+   <property name="toolTip">
+    <string notr="true">Test notifications</string>
    </property>
   </action>
  </widget>

@@ -768,16 +768,16 @@ async function main() {
 		var sentResponse = false;
 		let conInitUUID = req.body.conInitUUID;
 
-		// if (conInitUUIDs[conInitUUID] !== undefined) {
-		// 	if (conInitUUIDs[conInitUUID].enabled !== true) {
-		// 		Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
-		// 		res.status(403).send('{ "error": "Invalid conInitUUID" }');
-		// 		return;
-		// 	}
-		// } else {
-		// 	res.status(401).send('{ "error": "Invalid conInitUUID" }');
-		// 	return;
-		// }
+		if (conInitUUIDs[conInitUUID] !== undefined) {
+			if (conInitUUIDs[conInitUUID].enabled !== true) {
+				Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
+				res.status(403).send('{ "error": "Invalid conInitUUID" }');
+				return;
+			}
+		} else {
+			res.status(401).send('{ "error": "Invalid conInitUUID" }');
+			return;
+		}
 
 		conInitUUIDs[conInitUUID].client.processHTTPRequest(JSON.stringify(req.body), (data) => {
 			conInitUUIDs[conInitUUID].log.silly(data);

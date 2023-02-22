@@ -36,7 +36,7 @@ class ConnectionManager extends EventEmitter {
 	 * Whether we have setup the communication pipe (socket)
 	 * @type {boolean}
 	 */
-	#hasNegotiated;
+	hasNegotiated;
 
 	/**
 	 * Last time we communicated with the client
@@ -147,6 +147,7 @@ class ConnectionManager extends EventEmitter {
 	 */
 	initiateConnection() {
 		// good question
+		return this.hasNegotiated;
 	}
 
 
