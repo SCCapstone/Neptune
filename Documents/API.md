@@ -375,14 +375,15 @@ Response data:
 {
     "level": 100, // Battery percentage
     "temperature": 36, // In Celsius.
-    "chargerType": "discharging" // discharging, AC, computer, whatever
+    "chargerType": "discharging" // discharging, AC, UBS, wireless, whatever
+    "batteryTimeRemaining": 24 // time in seconds until fully charged. Android P and higher.
 }
 ```
 
 
 
 ### Ping
-Used to measure the amount of delay between two devices.
+Used to measure the amount of delay between two devices. **NOTE:** the time on the machines can _and will_ differ. Do not use these times. Instead, you should ping then use calculate the difference from the time YOU sent to the time YOU received the pong reply. This way the time is not goofy.
 
 Server endpoint: `/api/v1/server/ping` -> `/api/v1/client/pong`\
 Client endpoint: `/api/v1/client/ping` -> `/api/v1/server/pong`
@@ -399,7 +400,7 @@ Reply:
 ```json5
 {
     "receivedAt": "2040-04-23T18:25:43.511Z", // Time we received the ping
-    "timestamp": "2040-04-23T18:25:43.511Z" // Time reply was sent.
+    "timestamp": "2040-04-23T18:25:43.711Z" // Time reply was sent.
 }
 ```
 

@@ -4,6 +4,7 @@
     package="com.neptune.app">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <application
         android:usesCleartextTraffic="true"
@@ -33,7 +34,6 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -43,6 +43,15 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+        <service android:name="com.neptune.app.Backend.NeptuneKeepAlive"
+            android:label="Neptune Connection Keep Alive"
+            android:permission="android.permission.INTERNET"
+            android:process=":remote"
+            android:exported="false">
+            <intent-filter>
+                <data android:scheme="package"/>
             </intent-filter>
         </service>
     </application>

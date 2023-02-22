@@ -41,9 +41,14 @@ import java.security.NoSuchProviderException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -474,8 +479,42 @@ public class ConnectionManager {
         //webSocketClient.send();
     }
 
-    public float ping() {
-        throw new NotImplementedError();
+    /**
+     * Pings the server, returns the RTT. -1 if failed/not connected.
+     * @return Round trip ping time, or -1 if failure.
+     */
+    public double ping() {
+        try {
+            if (this.hasNegotiated == false)
+                return -1;
+
+            JsonObject data = new JsonObject();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.UK);
+            String formattedDate = sdf.format(new Date());
+            data.addProperty("timestamp", formattedDate);
+            JsonObject response = this.sendRequest("/api/v1/server/ping", data);
+
+            if (response.has("command") && response.has("data")) {
+                if (!response.get("command").getAsString().equalsIgnoreCase("/api/v1/client/pong"))
+                    return -1;
+                JsonObject responseData = response.get("data").getAsJsonObject();
+                if (responseData.has("receivedAt")) {
+                    String timeStamp = responseData.get("receivedAt").getAsString();
+                    DateFormat df1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+                    Date serverTimestamp = df1.parse(timeStamp);
+                    long diffInMilliseconds = Math.abs(serverTimestamp.getTime() - new Date().getTime());
+                    //long diff = TimeUnit.DAYS.convert(diffInMilliseconds, TimeUnit.MILLISECONDS);
+                    Log.d("ConnectionManager-" + this.Server.serverId, "Server " + this.Server.friendlyName + " ping: " + diffInMilliseconds + "ms");
+                    this.Server.sendBatteryInfo();
+                    return diffInMilliseconds;
+                }
+            }
+        } catch (MalformedURLException | ParseException e) {
+            e.printStackTrace();
+            return -1;
+        }
+
+        return -1;
     }
 
     public void destroy(boolean force) {

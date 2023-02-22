@@ -19,6 +19,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.text.format.Formatter;
+import android.util.Log;
 import android.view.View;
 import android.view.textclassifier.ConversationActions;
 import android.widget.Button;
@@ -33,6 +34,7 @@ import com.neptune.app.Backend.ClientConfig;
 import com.neptune.app.Backend.ConfigurationManager;
 import com.neptune.app.Backend.ConnectionManager;
 import com.neptune.app.Backend.IPAddress;
+import com.neptune.app.Backend.NeptuneKeepAlive;
 import com.neptune.app.Backend.NotificationListenerService;
 import com.neptune.app.Backend.Server;
 import com.neptune.app.Backend.ServerManager;
@@ -172,6 +174,8 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         TextView lblVersion = findViewById(R.id.lblVersion);
         lblVersion.setText("Version: " + BuildConfig.VERSION_NAME);
 
+        startService(new Intent(this, NeptuneKeepAlive.class));
+
     }
 
     private void buildAddDialog() {
@@ -234,7 +238,15 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         editName.setOnClickListener(new ImageView.OnClickListener(){
             @Override
             public void onClick(View v) {
-                openDialog();
+                new Thread(() -> {
+                    try {
+                        Log.i("MainActivity", "Reconnecting to " + server.friendlyName);
+                        server.setupConnectionManager();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }).start();
+                //openDialog();
             }
         });
 
