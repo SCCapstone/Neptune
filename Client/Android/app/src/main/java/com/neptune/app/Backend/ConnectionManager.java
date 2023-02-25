@@ -432,7 +432,7 @@ public class ConnectionManager {
         URI uri;
         try {
             //  Connect to socket
-            uri = new URI("/api/v1/server/socket/{socketId}");
+            uri = new URI("/api/v1/server/socket/"+this.socketUUID);
         }
         catch (URISyntaxException e) {
             e.printStackTrace();
@@ -442,17 +442,17 @@ public class ConnectionManager {
          webSocketClient = new WebSocketClient(uri) {
             @Override
             public void onOpen(ServerHandshake handshakedata) {
-
+                System.out.println("Connected");
             }
 
             @Override
             public void onMessage(String message) {
-
+                System.out.println(message);
             }
 
             @Override
             public void onClose(int code, String reason, boolean remote) {
-
+                System.out.println("Disconnected");
             }
 
             @Override
@@ -462,6 +462,10 @@ public class ConnectionManager {
         };
 
 
+    }
+
+    public void sendWebSocketInfo (String apiURL, JsonObject requestData) throws MalformedURLException {
+        sendRequest(apiURL, requestData);
     }
 
     public void initiateConnection() {
@@ -475,8 +479,9 @@ public class ConnectionManager {
         thread.start();
         thread.setName(Server.serverId + " - Initiation runner");
 
+        createWebSocketClient();
         webSocketClient.connect();
-        //webSocketClient.send();
+
     }
 
     /**
