@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>598</width>
+    <width>660</width>
     <height>522</height>
    </rect>
   </property>
@@ -84,7 +84,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>420</width>
+           <width>482</width>
            <height>485</height>
           </rect>
          </property>
@@ -160,7 +160,7 @@
               <widget class="QLabel" name="lblClientBatteryLevel">
                <property name="minimumSize">
                 <size>
-                 <width>125</width>
+                 <width>138</width>
                  <height>0</height>
                 </size>
                </property>
@@ -171,7 +171,7 @@
                 </size>
                </property>
                <property name="text">
-                <string notr="true">69%</string>
+                <string notr="true">+100% (full in 99.99 hours)</string>
                </property>
                <property name="alignment">
                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -878,7 +878,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>598</width>
+     <width>660</width>
      <height>22</height>
     </rect>
    </property>
