@@ -20,7 +20,7 @@ class aboutWindow extends NeptuneWindow {
 
         try {
             this.setWindowTitle('Neptune | About');
-            this.setFixedSize(450, 200);
+            this.setFixedSize(450, 250);
             this.setWindowFlag(NodeGUI.WindowType.Dialog | NodeGUI.WindowType.MSWindowsFixedSizeDialogHint, true);
 
             let centralwidget = new NodeGUI.QWidget(this);

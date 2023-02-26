@@ -1,91 +1,89 @@
 /**
- *      _  _ 
- *     | \| |
- *     | .` |
- *     |_|\_|eptune
+ *	  _  _ 
+ *	 | \| |
+ *	 | .` |
+ *	 |_|\_|eptune
  *
- *     Capstone Project 2022
+ *	 Capstone Project 2022
  * 
- *     About Window
+ *	 Main Window
  */
 
-const NeptuneWindow = require("./NeptuneWindow");
-const NodeGUI = require("@nodegui/nodegui");
-const ResourceManager = new (require("../ResourceManager"))();
-const Client = require("../Classes/Client.js");
-const IPAddress = require("../Classes/IPAddress");
-
-class connectWindow extends NeptuneWindow {
+ const NodeGUI = require("@nodegui/nodegui");
+ const { connect }= require("http2");
+ const ResourceManager = new (require("../ResourceManager"))();
+ const NeptuneWindow = require("./NeptuneWindow");
+ 
+ const Client = require("../Classes/Client");
+ 
+ class connectWindow extends NeptuneWindow {
 
     constructor(arg) {
-        super(arg);
+        super(arg)
+        try {
+            this.log = global.Neptune.logMan.getLogger("ConnectWindow");
 
-        this.setWindowTitle('Connection Window');
-        this.resize(800, 600);
+            this.setWindowTitle('Neptune | Connect Window');
+            this.setMaximumSize(450,250);
+            this.setWindowFlag(NodeGUI.WindowType.Dialog | NodeGUI.WindowType.MSWindowsFixedSizeDialogHint, true);
         
-        this.setStyleSheet( 
-            `
-                #rootLayout {
-                    background-color: #EEEEEE;
-                }
-            `
+            let centralwidget = new NodeGUI.QWidget(this);
+            centralwidget.setObjectName("centralwidget");
 
-        );
+            let deviceName = new NodeGUI.QLabel(centralwidget);
+            deviceName.setObjectName("deviceName");
+            deviceName.setGeometry(10, 30, 140, 28);
+            let font = new NodeGUI.QFont();
+            font.setPointSize(12);
+            //font.setBold(true);
+            font.setWeight(75);
+            deviceName.setFont(font);
+            deviceName.setText("Device Name:");
 
-        let tLabel = this.createLabel("title", "Connect Your Device Here");
-        tLabel.setInlineStyle("font-size: 24px; font-weight: light; qproperty-alignment: AlignCenter; margin: 10px;");
+            let connectLabel = new NodeGUI.QLabel(centralwidget);
+            connectLabel.setObjectName("connectLabel");
+            connectLabel.setGeometry(10, 90, 150, 28);
+            connectLabel.setFont(font);
+            connectLabel.setText("Connection IP:");
 
-        let qLabel = this.createLabel("question", "Input Connection IP");
-        qLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter;");
+            let connectButton = new NodeGUI.QPushButton(centralwidget);
+            connectButton.setObjectName("connectButton");
+            connectButton.setGeometry(80, 150, 291, 28);
+            let font1 = new NodeGUI.QFont();
+            font1.setPointSize(12);
+            //font1.setBold(true);
+            font1.setWeight(75);
+            connectButton.setFont(font1);
+            connectButton.setText("Connect Device");
 
-        let connectInput = this.createInput("input");
-        connectInput.setInlineStyle("font-size: 18px; font-weight: light; min-width: 250px; max-width: 250px; qproperty-alignment: AlignCenter; padding: 3px; margin-left: 137px;");
+            let closeWindowButton = new NodeGUI.QPushButton(centralwidget);
+            closeWindowButton.setObjectName("setWindowButton");
+            closeWindowButton.setGeometry(80, 180, 291, 28);
+            closeWindowButton.setFont(font1);
+            closeWindowButton.setText("Close Window");
+            
+            let nameInput = new NodeGUI.QLineEdit(centralwidget);
+            nameInput.setObjectName("nameInput");
+            nameInput.setGeometry(170, 30, 251, 34);
+            nameInput.setFont(font);
 
-        let nameLabel = this.createLabel("nameQ", "Input Device Name");
-        nameLabel.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter;");
+            let ipInput = new NodeGUI.QLineEdit(centralwidget);
+            ipInput.setObjectName("ipInput");
+            ipInput.setGeometry(170, 90, 251, 34);
+            ipInput.setFont(font);
 
-        let nameInput = this.createInput("name");
-        nameInput.setInlineStyle("font-size: 18px; font-weight: light; min-width: 250px; max-width: 250px; qproperty-alignment: AlignCenter; padding: 3px; margin-left: 137px;");
+            this.setCentralWidget(centralwidget);
+            let statusBar = new NodeGUI.QStatusBar(this);
+            statusBar.setObjectName("statusBar");
+            this.setStatusBar(statusBar);
 
-        let connectButton = this.createButton("connectButton", "Connect");
-        connectButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 100px; max-width: 100px; margin-left: 170px;");
 
-        let closeButton = this.createButton("closeButton", "Close Connection Window");
-        closeButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
-
-        connectButton.addEventListener('clicked', (checked) => {
-            const ipAdress = connectInput.text();
-            const name = nameInput.text();
-            const dateAdded = new Date();
-            console.log(ipAdress);
-            console.log(name);
-            module.exports.data = {
-                clientAddress: ipAdress,
-                clientName: name,
-                added: dateAdded,
-                id: "001"
-            };
-            const realIpAddress = new IPAddress(ipAdress, "25560");
-            const newClient = {
-                "IPAddress": realIpAddress,
-                "clientId": "001",
-                "friendlyName": name,
-                "dateAdded": dateAdded
-            }
-            console.log(newClient);
-            global.Neptune.client = new Client(newClient, false);
-        });
-        
-        closeButton.addEventListener('clicked', (checked) => this.hideWindow());
-
+        }
+        catch (e) {
+            console.log(e);
+            this.close();
+        }
     }
+ }
 
-    /**
-     * Hides the window
-     */
-    hideWindow() {
-        this.hide();
-    }
-}
-
-module.exports = connectWindow;
+ module.exports = connectWindow;

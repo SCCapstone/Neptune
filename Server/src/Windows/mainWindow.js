@@ -396,8 +396,8 @@ class thisTest extends NeptuneWindow {
 			this.actionPair_client.setObjectName("actionPair_client");
 			this.actionPair_client.setText("Pair client");
 			this.actionPair_client.addEventListener('triggered', () => {
-				let connectWindow = this.newChildWindow('connectWindow');
-				connectWindow.show();
+				let tempConnectWindow = this.newChildWindow('tempConnectWindow');
+				tempConnectWindow.show();
 			});
 
 			this.actionRefresh_client_info = new NodeGUI.QAction(this.MainWindow);
@@ -711,8 +711,8 @@ class thisTest extends NeptuneWindow {
 				btnPair.setToolTip("Show instructions to connect a new device.");
 			btnPair.setText("Pair");
 			btnPair.addEventListener('clicked', () => {
-				let connectWindow = this.newChildWindow('connectWindow');
-				connectWindow.show();
+				let tempConnectWindow = this.newChildWindow('tempConnectWindow');
+				tempConnectWindow.show();
 			});
 
 			leftHandContainer.addWidget(btnPair, 1, 0, 1, 1);
