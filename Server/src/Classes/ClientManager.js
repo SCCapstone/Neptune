@@ -7,6 +7,7 @@
  *      Capstone Project 2022
  */
 
+const EventEmitter = require('node:events');
 const Client = require('./Client');
 
 /** @type {import('./NeptuneConfig.js')} */
@@ -15,7 +16,7 @@ var NeptuneConfig = global.Neptune.config;
 /**
  * Management class for clients
  */
-class ClientManager {
+class ClientManager extends EventEmitter {
     /** @typedef {import('./Client')} Client */
 
 
@@ -32,6 +33,7 @@ class ClientManager {
      * This is the constructor
      */
     constructor(configurationManager) {
+        super();
         this.#log = global.Neptune.logMan.getLogger("ClientManager");
         NeptuneConfig = global.Neptune.config;
         this.#configManager = configurationManager;
@@ -70,16 +72,17 @@ class ClientManager {
             //let config = this.#configManager.loadConfig(global.Neptune.config.clientDirectory + clientId);
             client = new Client(this.#configManager, clientId);
             this.#clients.set(clientId, client);
+            this.emit('added', client);
         }
         return client;
     }
 
     /**
      * This will return all the Clients
-     * @returns {Client[]}
+     * @returns {Map<string, Client>}
      */
     getClients() {
-        return new Map(this.#clients);
+        return this.#clients;
     }
 
     /**
@@ -100,8 +103,13 @@ class ClientManager {
         });
     }
 
+    /**
+     * Removes a client from the client manager. Dropped from the cache and removed from the list of tracked clients in the NeptuneConfig.
+     * @param {Client} client - Client to drop
+     */
     dropClient(client) {
         this.#clients.delete(client?.clientId);
+        this.emit("removed", client);
         this.updateSavedClientsInNeptuneConfig();
     }
 
@@ -149,7 +157,8 @@ class ClientManager {
                         // client.delete();
                     }
                 } else {
-                    client.delete(); // Remove the config file.
+                    this.#log.info("Removing " + client.friendlyName + " from config, (not paired).")
+                    client.delete(); // Remove the config file (not paired).
                 }
             } catch (e) {}
         });

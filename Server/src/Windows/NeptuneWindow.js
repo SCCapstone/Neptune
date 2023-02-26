@@ -10,6 +10,7 @@
  */
 
 const NodeGUI = require("@nodegui/nodegui");
+const fs = require("node:fs")
 
 // https://docs.nodegui.org/docs/api/generated/classes/qmainwindow
 
@@ -23,7 +24,7 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 	/**
 	 * @type {object} A container of widgets added to this window (think labels, buttons). (widget name: the widget)
 	 */
-	#widgets = {}
+	widgets = {}
 
 	constructor(arg) {
 		super(arg);
@@ -32,12 +33,15 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 
 		let centralWidget = new NodeGUI.QWidget();
 		let rootLayout = new NodeGUI.FlexLayout();
+		/** @type {NodeGUI.FlexLayout} */
+		this.rootLayout = rootLayout;
+		this.setStyleSheet("#rootLayout { background-color: #EEEEEE; }");
 
-		this.#widgets["rootLayout"] = rootLayout
+		this.widgets["rootLayout"] = rootLayout
 		centralWidget.setObjectName("rootLayout");
-		centralWidget.setLayout(this.#widgets["rootLayout"]);
-		this.#widgets["centralWidget"] = centralWidget;
-		this.setCentralWidget(this.#widgets["centralWidget"]);
+		centralWidget.setLayout(this.widgets["rootLayout"]);
+		this.widgets["centralWidget"] = centralWidget;
+		this.setCentralWidget(this.widgets["centralWidget"]);
 
 		this.setWindowTitle('Neptune');
 		this.resize(800, 600);
@@ -59,9 +63,12 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 	 */
 	newChildWindow(windowName, args) {
 		windowName.replace(/[^0-9a-zA-Z]/g, ""); // Remove anything not a digit or a character! This will be thrown at the filesystem!
+		if (this.widgets[windowName] !== undefined)
+			return this.widgets[windowName];
+
 		let newWindow = new (require("./" + windowName + ".js"))(args);
 
-		this.#widgets[windowName] = newWindow;
+		this.widgets[windowName] = newWindow;
 
 		// newWindow.setParent(this); // puts the new window inside us...not what I was thinking?
 		return newWindow;
@@ -86,10 +93,10 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 		let label = new NodeGUI.QLabel();
 		label.setText(text);
 
-		this.#widgets[name] = label;
-		this.#widgets["rootLayout"].addWidget(this.#widgets[name]);
+		this.widgets[name] = label;
+		this.widgets["rootLayout"].addWidget(this.widgets[name]);
 
-		return this.#widgets[name];
+		return this.widgets[name];
 	}
 
 	/**
@@ -103,27 +110,49 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 		button.setText(text);
 		button.setObjectName(name);
 
-		this.#widgets[name] = button;
-		this.#widgets["rootLayout"].addWidget(this.#widgets[name]);
+		this.widgets[name] = button;
+		this.widgets["rootLayout"].addWidget(this.widgets[name]);
 
-		return this.#widgets[name];
+		return this.widgets[name];
 	}
 
 	/**
 	 * 
-	 * @param {string} name 
-	 * @returns {NodeGUI.QLineEdit}
+	 * @param {string} name Widget name of the input
+	 * @returns {NodeGUI.QLineEdit} 
 	 */
 	createInput(name) {
 		let input = new NodeGUI.QLineEdit();
 		input.setObjectName(name);
 
-		this.#widgets[name] = input;
-		this.#widgets["rootLayout"].addWidget(this.#widgets[name]);
+		this.widgets[name] = input;
+		this.widgets["rootLayout"].addWidget(this.widgets[name]);
 
-		return this.#widgets[name];
+		return this.widgets[name];
 	}
 
+	/**
+	 * 
+	 * @param {string} checkBoxName Widget name of the check box (used internally)
+	 * @param {string} text The text after the check box
+	 * @returns 
+	 */
+	createCheckBox(name, text) {
+		const checkBox = new NodeGUI.QCheckBox();
+		checkBox.setObjectName(name);
+		checkBox.setText(text);
+
+		this.widgets[name] = checkBox;
+		this.widgets["rootLayout"].addWidget(this.widgets[name]);
+
+		return this.widgets[name];
+	}
+
+	addToWidgetList(name) {
+		this.widgets[name] = name;
+		this.widgets["rootLayout"].addWidget(this.widgets[name]);
+		return this.widgets[name];
+	}
 	// Getters
 	/**
 	 * 
@@ -133,7 +162,7 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 		if (typeof name !== "string")
 			throw new TypeError("name expected string got " + (typeof name).toString());
 
-		return this.#widgets[name];
+		return this.widgets[name];
 	}
 }
 

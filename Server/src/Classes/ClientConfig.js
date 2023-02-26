@@ -176,9 +176,11 @@ class ClientConfig extends ConfigItem {
 	/**
 	 * @typedef {object} FileSharingSettings
 	 * @property {boolean} [enabled=false] - Clipboard data sent/received synced between the two
+	 * @property {boolean} [notifyOnReceive=true] - Notify the user when a file is automatically received
 	 * @property {boolean} [autoReceiveFromClient=false] - Auto receive and download files sent from the client (them)
 	 * @property {boolean} [clientBrowsable=false] - Remote client device is browsable
 	 * @property {boolean} [serverBrowsable=false] - Allow the client device to remotely browse our files
+	 * @property {string} receivedFilesDirectory - Where received files are saved (default is ./data/receivedFiles/)
 	 */
 	/**
 	 * File sharing settings settings, synced between the two devices (you have to call client.syncSettings())

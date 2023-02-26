@@ -18,33 +18,92 @@ class aboutWindow extends NeptuneWindow {
 	constructor(arg) {
 		super(arg);
 
-		this.setWindowTitle('Neptune | About');
-		this.resize(800, 600);
+        try {
+            this.setWindowTitle('Neptune | About');
+            this.setFixedSize(450, 250);
+            this.setWindowFlag(NodeGUI.WindowType.Dialog | NodeGUI.WindowType.MSWindowsFixedSizeDialogHint, true);
 
-		this.setStyleSheet(
-			`
-				#rootLayout {
-					background-color: #EEEEEE;
-				}
-			`
-		);
+            let centralwidget = new NodeGUI.QWidget(this);
+            centralwidget.setObjectName("centralwidget");
+            let verticalLayout = new NodeGUI.QBoxLayout(NodeGUI.Direction.TopToBottom, centralwidget);
+            verticalLayout.setObjectName("verticalLayout");
+            let lblTitle = new NodeGUI.QLabel(centralwidget);
+            lblTitle.setObjectName("lblTitle");
+            let font = new NodeGUI.QFont();
+            font.setPointSize(14);
+            font.setBold(true);
+            font.setWeight(75);
+            lblTitle.setFont(font);
+            lblTitle.setAlignment(NodeGUI.AlignmentFlag.AlignCenter);
+            lblTitle.setText("Neptune");
 
-		let mainLabel = this.createLabel("lblTitle","Project Neptune");
-		mainLabel.setInlineStyle("font-size: 18px; qproperty-alignment: AlignCenter;");
+            verticalLayout.addWidget(lblTitle);
 
-		let lblVersion = this.createLabel("lblVersion", "Version " + global.Neptune.version.toString());
-		lblVersion.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter;");
+            let lblVersion = new NodeGUI.QLabel(centralwidget);
+            lblVersion.setObjectName("lblVersion");
+            lblVersion.setAlignment(NodeGUI.AlignmentFlag.AlignCenter);
+            lblVersion.setText("Version 0.0.0#Design");
 
-		// add button here :)
+            verticalLayout.addWidget(lblVersion);
+
+            let hlayGitButton = new NodeGUI.QBoxLayout(NodeGUI.Direction.LeftToRight);
+            hlayGitButton.setObjectName("hlayGitButton");
+            let btnViewOnGit = new NodeGUI.QPushButton(centralwidget);
+            btnViewOnGit.setObjectName("btnViewOnGit");
+            btnViewOnGit.setMinimumSize(100, 0);
+            btnViewOnGit.setMaximumSize(100, 16777215);
+            btnViewOnGit.setFlat(true);
+            btnViewOnGit.setText("View on GitHub");
+            btnViewOnGit.addEventListener('clicked', (checked) => {
+                // Open in browser
+                var start = (process.platform == 'darwin'? 'open': process.platform == 'win32'? 'start': 'xdg-open');
+                require('node:child_process').exec(start + ' https://github.com/SCCapstone/Neptune');
+            });
+            btnViewOnGit.setCursor(NodeGUI.CursorShape.PointingHandCursor);
+
+            hlayGitButton.addWidget(btnViewOnGit);
 
 
-		let lblAuthors = this.createLabel("lblAuthors", "UofSC Capstone Project by:\nMatthew Sprinkle\nCody Newberry\nWill Amos\nRidge Johnson");
-		lblAuthors.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter;");
+            verticalLayout.addLayout(hlayGitButton);
 
-		let closeWindowButton = this.createButton("closeWindowButton", "Close About Window");
-		closeWindowButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
-		
-		closeWindowButton.addEventListener('clicked', (checked) => this.close());
+            let lblProjectBy = new NodeGUI.QLabel(centralwidget);
+            lblProjectBy.setObjectName("lblProjectBy");
+            lblProjectBy.setAlignment(NodeGUI.AlignmentFlag.AlignBottom | NodeGUI.AlignmentFlag.AlignHCenter);
+            lblProjectBy.setText("U(of)SC Capstone Project by:");
+
+            verticalLayout.addWidget(lblProjectBy);
+
+            let lblNames = new NodeGUI.QLabel(centralwidget);
+            lblNames.setObjectName("lblNames");
+            lblNames.setMinimumSize(0, 75);
+            lblNames.setAlignment(NodeGUI.AlignmentFlag.AlignHCenter | NodeGUI.AlignmentFlag.AlignTop);
+            lblNames.setText("Matthew Sprinkle\nWill Amos\nRidge Johnson\nCody Newberry");
+
+            verticalLayout.addWidget(lblNames);
+
+            let hlayCloseButton = new NodeGUI.QBoxLayout(NodeGUI.Direction.LeftToRight);
+            hlayCloseButton.setObjectName("hlayCloseButton");
+            let btnClose = new NodeGUI.QPushButton(centralwidget);
+            btnClose.setObjectName("btnClose");
+            btnClose.setMinimumSize(150, 0);
+            btnClose.setMaximumSize(150, 16777215);
+            btnClose.setAutoDefault(true);
+            btnClose.setText("Close");
+            btnClose.addEventListener('clicked', (checked) => this.close());
+            btnClose.setCursor(NodeGUI.CursorShape.PointingHandCursor);
+
+
+            hlayCloseButton.addWidget(btnClose);
+            verticalLayout.addLayout(hlayCloseButton);
+            this.setCentralWidget(centralwidget);
+
+
+            btnViewOnGit.setDefault(false);
+            btnClose.setDefault(true);
+        } catch (e) {
+            console.log(e);
+            this.close();
+        }
 	}
 }
 

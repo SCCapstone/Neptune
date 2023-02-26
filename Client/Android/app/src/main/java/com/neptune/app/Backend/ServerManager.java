@@ -147,6 +147,13 @@ public class ServerManager {
         }
     }
 
+
+    public void processNotification(NeptuneNotification notification, Server.SendNotificationAction action) {
+        for (Server server : servers.values()) {
+            server.sendNotification(notification, action);
+        }
+    }
+
     public void processNotification(NeptuneNotification notification) {
         for (Server server : servers.values()) {
             server.sendNotification(notification);

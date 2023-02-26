@@ -195,5 +195,8 @@ public class Server extends ServerConfig {
         connectionManager.pair();
     }
 
+    enum SendNotificationAction {
+
+    }
 
 }
