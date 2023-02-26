@@ -18,7 +18,7 @@ const Notifier = require("node-notifier"); // does not work with windows action 
 
 class mainWindow extends NeptuneWindow {
 
-	#logger = Neptune.logMan.getLogger("MainWindow");;
+	#logger = Neptune.logMan.getLogger("MainWindow");
 
 	constructor(arg) {
 		super(arg);
@@ -42,19 +42,39 @@ class mainWindow extends NeptuneWindow {
 		notificationButton.setInlineStyle("font-size: 18px; font-weight: light; qproperty-alignment: AlignCenter; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 140px;");
 		notificationButton.addEventListener('clicked', () => {
 			let logger = this.#logger;
-			Notifier.notify({
-	            title: "Testing notifications on server",
-	            message: "This is just a test.", // data.contents.subtext + "\n" +
-	            id: 12345,
-	        }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
-	            if (err) {
-	                logger.error(err);
-	            } else {
-	                logger.debug("Action received: " + response);
-	                logger.silly("action metadata: ");
-	                logger.silly(metadata);
-	            }
-	        });
+			if (process.platform === "win32") {
+				try {
+		            let data = {
+		                clientId: "1234",
+		                clientName: "MyDevice",
+		                id: "1234",
+		                applicationName: "NeptuneServer",
+		                //notificationIcon: this.data.notificationIcon,
+		                title: "Testing notification",
+		                text: "This is a simple test notification for Windows!",
+		                attribution: "NeptuneServer-MainWindow",
+		            }
+
+		            global.NeptuneRunnerIPC.sendData("notify-push", data);
+				} catch (e) {
+					logger.warn(e);
+				}
+	        } else {
+				Notifier.notify({
+		            title: "Testing notifications on server",
+		            message: "This is just a test.", // data.contents.subtext + "\n" +
+		            id: 12345,
+		        }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
+		            if (err) {
+		                logger.error(err);
+		            } else {
+		                logger.debug("Action received: " + response);
+		                logger.silly("action metadata: ");
+		                logger.silly(metadata);
+		            }
+		        });
+	        }
+
 		});
 
 		aboutButton.addEventListener('clicked', () => this.openAbout());

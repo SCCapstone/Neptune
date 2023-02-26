@@ -230,6 +230,18 @@ else
 Neptune.log("Running on \x1b[1m\x1b[34m" + process.platform);
 
 
+
+// If Win32, connect to the NeptuneRunner application pipe
+if (isWin) {
+	let NRIPC = require("./Classes/NeptuneRunner.js")
+	global.NeptuneRunnerIPC = new NRIPC.NeptuneRunnerIPC();
+}
+
+
+
+
+
+
 if (!fs.existsSync("./data/"))
 	fs.mkdirSync("./data/")
 if (!fs.existsSync("./data/clients/"))
@@ -364,7 +376,6 @@ async function main() {
 
 
 	qApp.setQuitOnLastWindowClosed(false); // required so that app doesn't close if we close all windows.
-
 
 	// Tray icon
 	// https://docs.nodegui.org/docs/api/generated/classes/qsystemtrayicon/ | https://github.com/nodegui/examples/blob/master/nodegui/systray/src/index.ts
@@ -764,16 +775,16 @@ async function main() {
 		var sentResponse = false;
 		let conInitUUID = req.body.conInitUUID;
 
-		// if (conInitUUIDs[conInitUUID] !== undefined) {
-		// 	if (conInitUUIDs[conInitUUID].enabled !== true) {
-		// 		Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
-		// 		res.status(403).send('{ "error": "Invalid conInitUUID" }');
-		// 		return;
-		// 	}
-		// } else {
-		// 	res.status(401).send('{ "error": "Invalid conInitUUID" }');
-		// 	return;
-		// }
+		if (conInitUUIDs[conInitUUID] !== undefined) {
+			if (conInitUUIDs[conInitUUID].enabled !== true) {
+				Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
+				res.status(403).send('{ "error": "Invalid conInitUUID" }');
+				return;
+			}
+		} else {
+			res.status(401).send('{ "error": "Invalid conInitUUID" }');
+			return;
+		}
 
 		conInitUUIDs[conInitUUID].client.processHTTPRequest(JSON.stringify(req.body), (data) => {
 			conInitUUIDs[conInitUUID].log.silly(data);
@@ -829,6 +840,8 @@ async function main() {
 				else if (command.startsWith("rekey")) {
 					let cmd = command.substr(6);
 					Neptune.configManager.rekey(cmd).then((didIt) => cLog.info("Successful: " + didIt)).catch(err => cLog.error("Failed: " + err));
+				} else if (command.startsWith("pipe send ")) {
+					Neptune.NeptuneRunnerPipe.write(command.substr(10));
 				}
 				else if (command.startsWith("eval ")) {
 					let cmd = command.substr(5);

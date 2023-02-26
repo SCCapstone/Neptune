@@ -145,11 +145,11 @@ class Client extends ClientConfig {
 
 			if (Array.isArray(data)) {
 				for (var i = 0; i<data.length; i++) {
-					this.receiveNotification(new Notification(data[i]));
+					this.receiveNotification(new Notification(this, data[i]));
 				}
 			} else {
 				// invalid data.. should be an array but whatever
-				this.receiveNotification(new Notification(data));
+				this.receiveNotification(new Notification(this, data));
 			}
 			this.#connectionManager.sendRequest("/api/v1/server/ack", {});
 
@@ -264,6 +264,7 @@ class Client extends ClientConfig {
 			}]);
 		});
 		this.#notificationManager.newNotification(notification);
+		notification.push();
 	}
 
 
