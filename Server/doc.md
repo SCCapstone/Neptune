@@ -241,3 +241,7 @@ notify-activated: Toast notification activated (clicked)\
 `id`: notification id\
 `clientId`: client id that sent this notification\
 `userInput`: string containing the user's input (if any)
+
+
+showconsolewindow: Unhides the NeptuneRunner console window\
+hideconsolewindow: Hides the NeptuneRunner console window

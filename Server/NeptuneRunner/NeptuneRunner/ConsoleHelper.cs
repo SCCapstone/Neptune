@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -92,6 +93,43 @@ namespace NeptuneRunner {
             return false;
         }
 
+        [DllImport("user32.dll")]
+        public static extern bool ShowWindowAsync(HandleRef hWnd, int nCmdShow);
+        public const int SW_RESTORE = 9;
+
+        [DllImport("user32.dll")]
+        static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        // SetFocus will just focus the keyboard on your application, but not bring your process to front.
+        // You don't need it here, SetForegroundWindow does the same.
+        // Just for documentation.
+        [DllImport("user32.dll")]
+        static extern IntPtr SetFocus(HandleRef hWnd);
+
+        public static void SwitchToCurrent() {
+            IntPtr hWnd = IntPtr.Zero;
+            Process process = Process.GetCurrentProcess();
+            Process[] processes = Process.GetProcessesByName("qode");
+            foreach (Process _process in processes) {
+                if (_process.Id != process.Id &&
+                  _process.MainWindowHandle != IntPtr.Zero) {
+                    hWnd = _process.MainWindowHandle;
+
+                    ShowWindowAsync(new HandleRef(null, hWnd), SW_RESTORE);
+                    ShowWindowAsync(new HandleRef(null, hWnd), SW_SHOW);
+                    SetForegroundWindow(hWnd);
+                    SetFocus(new HandleRef(null, hWnd));
+                    break;
+                }
+            }
+        }
+
+        public static void HideConsole() {
+            ShowWindow(GetConsoleWindow(), SW_HIDE);
+        }
+        public static void ShowConsole() {
+            ShowWindow(GetConsoleWindow(), SW_SHOW);
+        }
 
         public static void Setup() {
             // Capture term signals
@@ -99,7 +137,7 @@ namespace NeptuneRunner {
                 //DeleteMenu(GetSystemMenu(GetConsoleWindow(), false), SC_CLOSE, MF_BYCOMMAND); // Remove close button
                 TryEnableAnsiCodesForHandle();
 #if !DEBUG
-            ShowWindow(GetConsoleWindow(), SW_HIDE); // Hide console window
+                HideConsole();
 #endif
 
                 _handler += new EventHandler(CloseHandler);

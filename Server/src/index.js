@@ -20,11 +20,11 @@ const isWin = process.platform === "win32"; // Can change notification handling 
 
 
 // Global behavioral changes (static stuff)
-const debug = process.env;
+const debug = process.env.debug === false;
 const displaySilly = false; // output the silly log level to console (it goes  every other level > silly, silly is the lowest priority, literal spam)
 Error.stackTraceLimit = (debug)? 8 : 4;
 
-Neptune.version = new Version(0, 0, 2, ((debug)?"debug":"release"), "Testing1");
+Neptune.version = new Version(0, 4, 9, ((debug)?"debug":"release"), "BetaRelease");
 
 global.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune. Allows us to get around providing `Neptune` to everything
 
@@ -312,9 +312,8 @@ async function main() {
 		Neptune.log.verbose("First run! Generated default config file.");
 	
 		Neptune.config = new NeptuneConfig(Neptune.configManager, "./data/NeptuneConfig.json");
-		Neptune.config.save();
-		Neptune.config.close();
-		Neptune.config = Neptune.configManager.loadConfig("./data/NeptuneConfig.json", true, NeptuneConfig);
+		Neptune.config.encryption.enabled = !debug;
+		Neptune.config.saveSync();
 
 		if (!keyFound && Neptune.config.encryption.enabled) {
 			// Set a new key
@@ -324,6 +323,7 @@ async function main() {
 			keytar.setPassword("Neptune","ConfigKey",encryptionKey);
 			Neptune.configManager.setEncryptionKey(encryptionKey);
 			Neptune.log.verbose("Encryption key loaded");
+			Neptune.config.saveSync();
 		} else if (keyFound && Neptune.config.encryption.enabled) {
 			Neptune.log.verbose("Encryption key loaded from OS keychain");
 		}
@@ -335,17 +335,16 @@ async function main() {
 	}
 
 
-	if (Neptune.config.encryption.enabled && (encryptionKey !== undefined || encryptionKey !== ""))
+	if (Neptune.config.encryption.enabled && (encryptionKey !== undefined && encryptionKey !== ""))
 		Neptune.log("File encryption \x1b[1m\x1b[32mACTIVE" + endTerminalCode + ", file security enabled");
-	else
+	else {
 		Neptune.log("File encryption \x1b[1m\x1b[33mDEACTIVE" + endTerminalCode + ", file security disabled.");
+		Neptune.log.debug("Neptune config:");
+		utilLog(Neptune.config);
+	}
 
 
-
-	Neptune.log.debug("Neptune config:");
-	utilLog(Neptune.config);
-
-	Neptune.log.debug("Encryption KEY: " + encryptionKey);
+	//Neptune.log.debug("Encryption KEY: " + encryptionKey); // ?!?! why ???
 	if (encryptionKey !== undefined) {
 		encryptionKey = NeptuneCrypto.randomString(encryptionKey.length); // Don't need that, configuration manager has it now
 		//delete encryptionKey
@@ -866,6 +865,14 @@ async function main() {
 		}
 	}
 
+
+	try {
+		if (global.NeptuneRunnerIPC !== undefined) {
+    	    global.NeptuneRunnerIPC.once('authenticated', () => {
+        	    global.NeptuneRunnerIPC.sendData("hideconsolewindow", {});
+	        });
+    	}
+	} catch (e) {}
 
 	// Operator input
 	prompt();

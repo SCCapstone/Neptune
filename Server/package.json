@@ -20,7 +20,7 @@
   "main": "index.js",
   "scripts": {
     "setup": "\"tools\\setup.bat\"",
-    "build": "webpack --env production && tools\\fixBrokenBuildNames.bat && npx nodegui-packer --pack dist && call tools\\postBuild.bat",
+    "build": "call webpack --env production && call tools\\fixBrokenBuildNames.bat && call npx nodegui-packer --pack dist && call tools\\postBuild.bat",
     "start": "webpack && tools\\fixBrokenBuildNames.bat && qode ./dist/index.js",
     "debug": "webpack && tools\\fixBrokenBuildNames.bat && qode --inspect ./dist/index.js",
     "test": "jest && echo Now running GUI tests && npm run test-gui",

@@ -127,8 +127,7 @@ namespace NeptuneRunner {
             if (!createdNew) {
                 // Already running!
                 Console.WriteLine("Application is already running!");
-                Console.Write(args);
-                Console.ReadKey();
+                ConsoleHelper.SwitchToCurrent();
                 return;
             }
 
@@ -138,6 +137,10 @@ namespace NeptuneRunner {
 
             WorkingDirectory = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName);
             //WorkingDirectory = @"C:\Storage\Neptune\Server\deploy\win32\build\NeptuneServer\";
+
+            if (Directory.Exists(Path.Combine(WorkingDirectory, "Neptune"))) {
+                WorkingDirectory = Path.Combine(WorkingDirectory, "Neptune");
+            }
 
 
             // Process args
@@ -342,6 +345,12 @@ namespace NeptuneRunner {
                         IntPtr hwnd = new IntPtr(hwndInt);
                         if (hwnd != IntPtr.Zero)
                             TaskBar.SetupLaunchee(hwnd);
+                    } else if (dataKeyValues.ContainsKey("hideconsolewindow")) {
+                        ConsoleHelper.HideConsole();
+
+                    } else if (dataKeyValues.ContainsKey("showconsolewindow")) {
+                        ConsoleHelper.ShowConsole();
+
                     } else if (dataKeyValues.ContainsKey("notify-push")) {
                         if (dataKeyValues.ContainsKey("title") && dataKeyValues.ContainsKey("id") && dataKeyValues.ContainsKey("text")) {
                             bool updateOnly = false;

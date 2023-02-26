@@ -40,6 +40,8 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>
+    </DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -69,10 +71,7 @@
     <Compile Include="InterprocessCommunication.cs" />
     <Compile Include="NeptuneNotification.cs" />
     <Compile Include="Notifications\Notification.cs" />
-    <Compile Include="Notifications\Notification.cs" />
     <Compile Include="Notifications\Propvariant.cs" />
-    <Compile Include="Notifications\Propvariant.cs" />
-    <Compile Include="Notifications\ShellHelpers.cs" />
     <Compile Include="Notifications\ShellHelpers.cs" />
     <Compile Include="Notifications\ShellPropertyKeys.cs" />
     <Compile Include="Program.cs" />
@@ -99,9 +98,20 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Costura.Fody">
+      <Version>5.7.0</Version>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications">
       <Version>7.1.3</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>mkdir "$(SolutionDir)build\"
+copy "$(TargetDir)*" "$(SolutionDir)build\"
+del "$(SolutionDir)build\*.pdb"
+del "$(SolutionDir)build\*.config"</PostBuildEvent>
+  </PropertyGroup>
 </Project>
