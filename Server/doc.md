@@ -133,10 +133,6 @@ Client example config, `clientId.json`:
 NeptuneRunner is a special lil fella.
 
 
-Cross platform support of NeptuneRunner is untested. NeptuneRunner is written using .NET 6, which _is_ cross platform, but NR has not been tested anywhere but Windows. Additionally, NR is not necessarily needed since notifications work without issue on other platforms without NR.
-
-
-
 
 NeptuneRunner is born out of the need to have an application that can register itself to the Window's StartMenu and Registry.\
 This is required in order to properly process Windows Notifications. _See any notes on Windows notifications within Neptune to understand the need for this._
