@@ -236,7 +236,9 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             public void onClick(View view) {
                 Intent deviceActivity = new Intent(MainActivity.this, DeviceActivity.class);
                 String id = server.serverId.toString();
+                String friendlyName = server.friendlyName;
                 deviceActivity.putExtra("ID", id);
+                deviceActivity.putExtra("FRIENDLY_NAME", friendlyName);
                 startActivityForResult(deviceActivity, R.integer.LAUNCH_DEVICE_ACTIVITY);
                 //Will update above method, this was easier to understand/use for the time being.
                 //startActivity(deviceActivity);

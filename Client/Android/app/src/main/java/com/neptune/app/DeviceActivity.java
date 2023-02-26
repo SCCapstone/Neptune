@@ -26,7 +26,9 @@ public class DeviceActivity extends AppCompatActivity {
     public ConnectionManager cm;
     private Button delete;
     private EditText ipAddress;
-
+    private TextView notificationsTextView;
+    private TextView clipboardTextView;
+    private TextView fileTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +43,17 @@ public class DeviceActivity extends AppCompatActivity {
         //Grabs the server ID passed on from MainActivity so that it can be used in DeviceActivity and passed on to other activities.
         String serverId = getIntent().getStringExtra("ID");
         Server server = MainActivity.serverManager.getServer(UUID.fromString(serverId));
+
+        //Setting various TextViews based on the friendly name of the device connected.
+        String serverFriendlyName = getIntent().getStringExtra("FRIENDLY_NAME");
+        notificationsTextView = findViewById(R.id.notificationsTextView);
+        notificationsTextView.setText("Send notifications to " + serverFriendlyName + ".");
+
+        clipboardTextView = findViewById(R.id.clipboardTextView);
+        clipboardTextView.setText("Allow " + serverFriendlyName + " to read and write clipboard data.");
+
+        fileTextView = findViewById(R.id.fileTextView);
+        fileTextView.setText("Allow " + serverFriendlyName + " to send files.");
 
         //Sets the EditText containing the IP address of the server to the correct IP Address.
         ipAddress = findViewById(R.id.editIPAddress);

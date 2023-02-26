@@ -64,7 +64,7 @@
         app:layout_constraintBottom_toTopOf="@+id/textView7"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView6"
+        app:layout_constraintTop_toBottomOf="@+id/fileTextView"
         app:layout_constraintVertical_bias="1.0" />
 
     <CheckBox
@@ -79,11 +79,11 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
-        android:id="@+id/textView3"
+        android:id="@+id/notificationsTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="Send notifications to Desktop-24Sf4"
+        android:text=""
         app:layout_constraintBottom_toTopOf="@+id/checkBox2"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.279"
@@ -102,10 +102,10 @@
         app:layout_constraintVertical_bias="0.291" />
 
     <TextView
-        android:id="@+id/textView5"
+        android:id="@+id/clipboardTextView"
         android:layout_width="254dp"
         android:layout_height="43dp"
-        android:text="Allow Desktop-24Sf4 to read and write clipboard data"
+        android:text=""
         app:layout_constraintBottom_toTopOf="@+id/checkBox3"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.331"
@@ -137,10 +137,10 @@
         tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
 
     <TextView
-        android:id="@+id/textView6"
+        android:id="@+id/fileTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Allow Desktop-24Sf4 to send files"
+        android:text=""
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.26"
         app:layout_constraintStart_toStartOf="parent"
