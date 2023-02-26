@@ -124,7 +124,7 @@ public class Server extends ServerConfig {
         }
     }
 
-    public void sendNotification(NeptuneNotification notification) {
+    public void sendNotification(NeptuneNotification notification, SendNotificationAction action) {
         try {
             if (connectionManager == null) {
                 try {
@@ -146,9 +146,21 @@ public class Server extends ServerConfig {
             }
 
             if (connectionManager.getHasNegotiated()) {
-                //if (!notificationBlacklistApps.contains(notification.appPackageName)) {
-                    connectionManager.sendRequestAsync("/api/v1/server/sendNotification", JsonParser.parseString(notification.toString()).getAsJsonObject());
-                //}
+                if (!notificationBlacklistApps.contains(notification.appPackageName)) {
+                    JsonObject notificationData = notification.toJson();
+                    if (notificationData.has("action") && action != SendNotificationAction.CREATE) {
+                        notificationData.remove("action");
+                        if (action == SendNotificationAction.DELETE) {
+                            notificationData.addProperty("action", "delete");
+                        } else if (action == SendNotificationAction.UPDATE) {
+                            notificationData.addProperty("action", "update");
+                        } else {
+                            notificationData.addProperty("action", "create"); // okay?
+                        }
+                    }
+
+                    connectionManager.sendRequestAsync("/api/v1/server/sendNotification", notificationData);
+                }
             }
 
         } catch (JsonParseException e) {
@@ -156,13 +168,15 @@ public class Server extends ServerConfig {
         }
     }
 
-    public boolean sendClipboard(Object object ) {
+    public void sendNotification(NeptuneNotification notification) {
+        this.sendNotification(notification, SendNotificationAction.CREATE);
+    }
 
+    public boolean sendClipboard(String dataToSend) {
         return false;
     }
 
-    public boolean sendFile(String file) {
-
+    public boolean sendFile(String filePath) {
         return false;
     }
 
@@ -196,7 +210,9 @@ public class Server extends ServerConfig {
     }
 
     enum SendNotificationAction {
-
+        CREATE,
+        DELETE,
+        UPDATE,
     }
 
 }
