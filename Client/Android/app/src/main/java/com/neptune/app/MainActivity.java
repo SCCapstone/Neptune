@@ -11,7 +11,6 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.fragment.app.DialogFragment;
 
 import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.net.wifi.WifiManager;
@@ -36,6 +35,7 @@ import com.neptune.app.Backend.ConnectionManager;
 import com.neptune.app.Backend.IPAddress;
 import com.neptune.app.Backend.NeptuneKeepAlive;
 import com.neptune.app.Backend.NotificationListenerService;
+import com.neptune.app.Backend.NotificationManager;
 import com.neptune.app.Backend.Server;
 import com.neptune.app.Backend.ServerManager;
 
@@ -48,6 +48,7 @@ import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements RenameDialog.RenameDialogListener{
     public static ServerManager serverManager;
+    public static com.neptune.app.Backend.NotificationManager notificationManager;
     private ConfigurationManager configurationManager;
 
     public static ClientConfig ClientConfig;
@@ -85,6 +86,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         try {
             ClientConfig = new ClientConfig("clientConfiguration.json", configurationManager);
             ClientConfig.save();
+            notificationManager = new NotificationManager();
             serverManager = new ServerManager(ClientConfig, configurationManager);
             Server[] servers = serverManager.getServers();
             for (int i = 0; i<servers.length; i++) {

@@ -1,31 +1,68 @@
 package com.neptune.app.Backend;
 
 import android.app.Notification;
+
+import com.neptune.app.MainActivity;
+
+import java.util.HashMap;
 import java.util.Map;
 
 
 public class NotificationManager {
 
-    private Map<String, Notification> notifications;
-    private ServerManager serverManager;
+    private HashMap<Integer, NeptuneNotification> notifications = new HashMap<Integer, NeptuneNotification>();
 
-    public NotificationManager notificationManager(Map<String, Notification> notifications, ServerManager serverManager) {
-        this.serverManager = serverManager;
-        this.notifications = notifications;
-        return null;
+    public NotificationManager() {}
+
+    /**
+     * Adds a notification into the notification manager or updates an existing notification.
+     *
+     * After the notification is added/updated, we push the notification using <see>pushNotification()</see>
+     * @param notification Notification to add and push out.
+     */
+    public void setNotification(NeptuneNotification notification) {
+        if (notifications.containsKey(notification.id)) {
+            notifications.remove(notification.id);
+        }
+        notifications.put(notification.id, notification);
+        this.pushNotification(notification.id);
     }
 
-    public void newNotification(Notification notification) {
-
+    /**
+     * Pushes a notification to all servers.
+     * @param id Id of the notification to push to servers.
+     */
+    public void pushNotification(int id) {
+        if (notifications.containsKey(id)) {
+            MainActivity.serverManager.processNotification(notifications.get(id));
+        }
     }
 
-    public void updateNotification(Notification notification) {
-
+    /**
+     * Activates the notification on this device (simulates a click).
+     * @param id Id of the notification to activate.
+     */
+    public void activateNotification(int id) {
+        if (notifications.containsKey(id))
+            notifications.get(id).activate();
     }
 
-    public void notificationDismissed(Notification notification) {
-        //notificationManager.cancelNotification(notificationId);
+    /**
+     * Dismisses or deletes a notification on this device (simulates a swipe on the notification).
+     * @param id Id of the notification to dismiss.
+     */
+    public void dismissNotification(int id) {
+        if (notifications.containsKey(id))
+            notifications.get(id).dismiss();
     }
 
 
+    /**
+     * Tells the server to delete a notification.
+     * @param id Id of the notification to delete.
+     */
+    public void deleteNotification(int id) {
+        if (notifications.containsKey(id))
+            MainActivity.serverManager.processNotification(notifications.get(id), Server.SendNotificationAction.DELETE);
+    }
 }
