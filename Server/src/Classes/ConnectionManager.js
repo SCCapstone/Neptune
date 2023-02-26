@@ -114,6 +114,7 @@ class ConnectionManager extends EventEmitter {
 	 */
 	sendRequest(apiURL, requestData) {
 		this.#log.debug("Sending request to client: " + apiURL);
+		this.#log.silly(requestData);
 
 		if (typeof requestData !== "string" && typeof requestData !== "object")
 			throw new TypeError("requestData expected type string or object got " + (typeof requestData).toString());

@@ -96,7 +96,7 @@ namespace NeptuneRunner {
         public static void Setup() {
             // Capture term signals
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                DeleteMenu(GetSystemMenu(GetConsoleWindow(), false), SC_CLOSE, MF_BYCOMMAND); // Remove close button
+                //DeleteMenu(GetSystemMenu(GetConsoleWindow(), false), SC_CLOSE, MF_BYCOMMAND); // Remove close button
                 TryEnableAnsiCodesForHandle();
 #if !DEBUG
             ShowWindow(GetConsoleWindow(), SW_HIDE); // Hide console window

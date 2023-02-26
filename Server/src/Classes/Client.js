@@ -264,6 +264,7 @@ class Client extends ClientConfig {
 			}]);
 		});
 		this.#notificationManager.newNotification(notification);
+		notification.push();
 	}
 
 

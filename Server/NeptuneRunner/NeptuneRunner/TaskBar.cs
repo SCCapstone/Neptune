@@ -50,6 +50,7 @@ namespace NeptuneRunner {
 
     internal static class TaskBar {
         public static readonly string ApplicationId = "Neptune.Server.v1";
+        public static readonly string ApplicationName = "Neptune";
 
         [DllImport("shell32.dll")]
         public static extern int SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string AppID);
@@ -93,7 +94,7 @@ namespace NeptuneRunner {
                 IPropertyStore store = Store(handle);
                 SetValue(store, Key.AppId, ApplicationId);
                 SetValue(store, Key.RelaunchCommand, exePath);
-                SetValue(store, Key.DisplayName, "Neptune");
+                SetValue(store, Key.DisplayName, ApplicationName);
             } catch (System.AccessViolationException) { }
             SetCurrentProcessExplicitAppUserModelID(ApplicationId);
         }
@@ -104,7 +105,7 @@ namespace NeptuneRunner {
                 IPropertyStore store = Store(handle);
                 SetValue(store, Key.AppId, ApplicationId);
                 SetValue(store, Key.RelaunchCommand, exePath);
-                SetValue(store, Key.DisplayName, "Neptune");
+                SetValue(store, Key.DisplayName, ApplicationName);
             } catch (System.AccessViolationException) { }
         }
 

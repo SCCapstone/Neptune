@@ -5,18 +5,19 @@ using System.Text;
 using System.Threading.Tasks;
 
 using Microsoft.Toolkit.Uwp.Notifications;
+using NeptuneRunner.Notifications;
 using Windows.Data.Xml.Dom;
 using Windows.Foundation;
 using Windows.UI.Notifications;
 
 namespace NeptuneRunner {
     public class NeptuneNotification {
-        public string Id;
+        public string Id; // Toast tag
 
-        public NotificationAction Action;
+        public bool Silent; // Notification pushed to action center
 
-        public string ClientId;
-        public string ClientName;
+        public string ClientId; // Toast group
+        public string ClientName; // Collection name
         public string ApplicationName;
         public string ApplicationPackageName;
 
@@ -104,7 +105,9 @@ namespace NeptuneRunner {
             }
 
             if (Attribution != "")
-                builder.AddAttributionText(Attribution);
+                builder.AddAttributionText(ClientName + ": " + ApplicationName + " - " + Attribution);
+            else
+                builder.AddAttributionText(ClientName + ": " + ApplicationName);
             //builder.AddCustomTimeStamp(TimeStamp);
 
             return builder.GetXml();
@@ -118,37 +121,80 @@ namespace NeptuneRunner {
             toast.Activated += (ToastNotification sender, object args) => {
                 Activated.Invoke(sender, args);
             };
+            
             toast.Dismissed += (ToastNotification sender, ToastDismissedEventArgs args) => {
                 Dismissed.Invoke(sender, args);
             };
+
             toast.Failed += (ToastNotification sender, ToastFailedEventArgs args) => {
                 Failed.Invoke(sender, args);
             };
 
-            toast.Tag = Id;
+            toast.Tag = Id != ""? Id : ClientId;
             toast.Group = ClientId;
+            toast.SuppressPopup = Silent;
 
             toast.ExpiresOnReboot = true;
             return toast;
         }
 
-        public void Push() {
-            Program.ToastNotifier.Show(GetToastNotification());
+        public async void CreateCollection() {
+            try {
+                if (ClientName != null && ClientName != "") {
+                    System.Uri icon = new System.Uri("ms-appx:///Assets/KingNeptune.ico");
+
+
+                    ToastCollection toastCollection;
+                    toastCollection = new ToastCollection(ClientId, "Neptune - " + ClientName, ClientId, icon);
+                    ToastNotificationManagerForUser toastNotificationManager = ToastNotificationManager.GetDefault();
+                    if (toastNotificationManager != null) {
+                        ToastCollectionManager collectionManager = toastNotificationManager.GetToastCollectionManager();
+                        await collectionManager.SaveToastCollectionAsync(toastCollection);
+                    }
+                }
+            } catch (Exception) { }
+        }
+
+        public async static void DeleteCollection(string name) {
+            var collectionManager = ToastNotificationManager.GetDefault().GetToastCollectionManager();
+            await collectionManager.RemoveToastCollectionAsync("Name");
+        }
+
+        public async void Push() {
+            try {
+                ToastNotification toast = GetToastNotification();
+                var notifier = Program.ToastNotifier;
+                if (ClientName != null && ClientName != "") {
+                    try {
+                        var collection = await ToastNotificationManager.GetDefault().GetToastNotifierForToastCollectionIdAsync(ClientName);
+                        if (collection != null)
+                            collection.Show(toast);
+                        else {
+                            CreateCollection();
+                            collection = await ToastNotificationManager.GetDefault().GetToastNotifierForToastCollectionIdAsync(ClientName);
+                            if (collection != null)
+                                collection.Show(toast);
+                            else
+                                notifier.Show(toast);
+                        }
+                    } catch (Exception) {
+                        Program.ToastNotifier.Show(toast);
+                    }
+                } else
+                    Program.ToastNotifier.Show(toast);
+            } catch (Exception) { }
         }
 
         public void Update() {
-            //ToastNotificationManager.CreateToastNotifier().Update(GetToastNotification(), Id);
+            try {
+                Program.ToastNotifier.Update(GetToastNotification().Data, Id, ClientId);
+            } catch (Exception) { }
         }
 
         public void Delete() {
-            ToastNotificationManager.GetDefault().History.Remove(Id);
+            try {
+                ToastNotificationManager.GetDefault().History.Remove(Id, ClientId, TaskBar.ApplicationId);
+            } catch (Exception) { }
         }
-    }
-
-    public enum NotificationAction {
-        None = 0,
-        Create = 1,
-        Update = 2,
-        Delete = 3,
     }
 }

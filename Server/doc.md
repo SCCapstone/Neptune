@@ -115,10 +115,19 @@ Client example config, `clientId.json`:
 }
 ```
 
+
 ---
 
 
+## ClientManager
+### Events:
+`added`: when a new client is loaded/added into cache (`client` is the only passed parameter. This is the client added in).\
+`removed`: when a client is removed from the cache (`client` is the only passed parameter. This is the client removed).
 
+
+
+
+---
 
 # NeptuneRunner
 NeptuneRunner is a special lil fella.
@@ -195,6 +204,44 @@ So, for example, the new window command is:
 
 
 ### Commands
-fixwin: tells NeptuneRunner a new window has been opened and to set the proper window handle settings (sets the AppUserModelID for them)
-Parameters:
+fixwin: tells NeptuneRunner a new window has been opened and to set the proper window handle settings (sets the AppUserModelID for them)\
+Parameters:\
 `hwnd <IntPtr>`: the window handle (int)
+
+
+
+notify-push: Tells NeptuneRunner to create (or update) a toast notification\
+`title`: required string, toast title\
+`id`: required string, toast id\
+`text`: required string, toast contents (text)\
+`attribution`: toast attribution text, use this for the application name\
+`clientId`: client id that sent the notification, used to differentiate notifications and clients\
+`clientName`: client's friendly name, not used\
+`applicationName`: application name provided by the client of the notification (the application that sent this notification on the phone)\
+`timestamp`: the notification's timestamp as provided by the client\
+`createNew`: if true, we DO NOT update the notification! If NeptuneRunner finds 
+
+
+notify-delete: Tells NeptuneRunner to delete a toast notification\
+`id`: notification id to delete\
+`clientId`: client id that pushed the notification
+
+
+
+notify-dismissed: Toast notification was dismissed by the user\
+`id`: notification id\
+`clientId`: client id that sent this notification\
+`reason`: always "user"
+
+
+notify-failed: Toast notification failed to be displayed\
+`id`: notification id\
+`clientId`: client id that sent this notification\
+`failureReason`: reason the notification failed to send (DisabledForApplication, DisabledForUser, DisabledByGroupPolicy, DisabledByManifest)\
+`failureMoreDetails`: explains the reason (DisabledForApplication, DisabledForUser, DisabledByGroupPolicy)
+
+
+notify-activated: Toast notification activated (clicked)\
+`id`: notification id\
+`clientId`: client id that sent this notification\
+`userInput`: string containing the user's input (if any)

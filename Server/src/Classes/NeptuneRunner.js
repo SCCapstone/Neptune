@@ -20,6 +20,13 @@ const { platform } = require('node:os');
 class PipeDataReceivedEventArgs {
     /** @type {string} */
     Data;
+
+    /**
+     * Command, what this data is for
+     * @type {string}
+     */
+    Command;
+
     /** @param {string} data */
     constructor(data) {
         if (typeof data !== "string")
@@ -28,15 +35,27 @@ class PipeDataReceivedEventArgs {
             data = data.substring(1);
         if (data.startsWith('\x03'))
             data = data.substring(0, data.length-1);
+
         this.Data = data;
+
+        // grab command
+        let dataSplit = this.Data.split('\x1e');
+        if (dataSplit.length >= 1) {
+            let keyValue = dataSplit[0].split('\x1f');
+            if (keyValue.length >= 1) {
+                this.Command = keyValue[0];
+            }
+        }
+
+
     }
     /** @return {object} */
     toDictionary() {
-        result = {}
-        dataSplit = this.Data.split('\x1e');
+        let result = {}
+        let dataSplit = this.Data.split('\x1e');
         for (var i = 0; i<dataSplit.length; i++) {
-            keyValue = dataSplit[i].split('\x1f');
-            if (keyValue.length) {
+            let keyValue = dataSplit[i].split('\x1f');
+            if (keyValue.length >= 2) {
                 result[keyValue[0]] = keyValue[1];
             }
         }
@@ -58,6 +77,9 @@ class NeptuneRunnerIPC extends EventEmitter {
     #pipeServerKey = "BigweLQytERRx243O5otGgm8UsBhrdVE"; // Server's key
     #pipeClientKey = "kBoWq2BtM2yqfCntSnLUe6I7lZVjwyEl"; // Our key
     #pipeAuthenticated = false;
+    get pipeAuthenticated() {
+        return this.#pipeAuthenticated;
+    }
 
     log;
 
@@ -97,13 +119,23 @@ class NeptuneRunnerIPC extends EventEmitter {
                 }
             } else {
                 this.log.debug("Received: " + data.toString());
+                let dataProcessed = new PipeDataReceivedEventArgs(data.toString());
 
-                /**
-                 * Received data from NeptuneRunner
-                 * @event NeptuneRunnerIPC#data
-                 * @type {PipeDataReceivedEventArgs}
-                 */
-                this.emit('data', new PipeDataReceivedEventArgs(data))
+                if (dataProcessed.Command == "notify-dismissed" || dataProcessed.Command == "notify-failed" || dataProcessed.Command == "notify-activated") {
+                    let dataParameters = dataProcessed.toDictionary();
+                    let eventString = 'notify-id_' + dataParameters.id;
+                    if (dataParameters.clientId !== undefined && dataParameters.id !== undefined) {
+                        eventString = 'notify-client_' + dataParameters.clientId + ":" + dataParameters.id
+                    }
+                    this.emit(eventString, dataProcessed);
+                } else {
+                    /**
+                     * Received data from NeptuneRunner
+                     * @event NeptuneRunnerIPC#data
+                     * @type {PipeDataReceivedEventArgs}
+                     */
+                    this.emit('data', dataProcessed);
+                }
             }
         });
 
@@ -130,19 +162,18 @@ class NeptuneRunnerIPC extends EventEmitter {
             for (var i = 0; i<keys.length; i++) {
                 dataString += keys[i];
                 dataString += '\x1f';
-                if (typeof data[keys[i]] === "string") {
+                if (data[keys[i]] !== undefined) {
                     dataString += data[keys[i]];
                 }
                 dataString += '\x1e';
             }
             dataString += '\x03'
+            this.log.silly(dataString);
             this.pipe.write(dataString);
         } else {
             throw new TypeError("data expected string or object (key value pair) got " + (typeof data).toString());
         }
     }
-
-
 }
 
 

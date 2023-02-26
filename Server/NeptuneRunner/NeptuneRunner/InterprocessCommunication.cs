@@ -5,7 +5,6 @@ using System.IO.Pipes;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace NeptuneRunner {
@@ -19,7 +18,7 @@ namespace NeptuneRunner {
             Data = data;
         }
         public PipeDataReceivedEventArgs(byte[] data) {
-            Data = Encoding.ASCII.GetString(data);
+            Data = Encoding.UTF8.GetString(data);
             if (Data.StartsWith("\x02"))
                 Data = Data.Substring(1);
             if (Data.EndsWith("\x03"))
@@ -28,33 +27,14 @@ namespace NeptuneRunner {
 
         public Dictionary<string, string> ToDictionary() {
             Dictionary<string, string> result = new Dictionary<string, string>();
-            string[] dataSplit = Data.Split("\x1e");
+            string[] dataSplit = Data.Split('\x1e');
             foreach (string s in dataSplit) {
-                string[] keyValue = s.Split("\x1f");
-                if (keyValue.Length == 2)
+                string[] keyValue = s.Split('\x1f');
+                if (keyValue.Length == 2 && !result.ContainsKey(keyValue[0]))
                     result.Add(keyValue[0], keyValue[1]);
             }
 
             return result;
-        }
-
-        /// <summary>
-        /// Checks if the data received is JSON data
-        /// </summary>
-        /// <returns>Data received is likely JSON data.</returns>
-        public bool IsJson() {
-            return (Data.StartsWith("{") && Data.EndsWith("}")) || (Data.StartsWith("[") && Data.EndsWith("]"));
-        }
-        /// <summary>
-        /// Returns the data in a key pair
-        /// </summary>
-        /// <returns></returns>
-        public Dictionary<string, string> FromJson() {
-            try {
-                return JsonSerializer.Deserialize<Dictionary<string, string>>(Data);
-            } catch (JsonException) {
-                return new Dictionary<string, string>();
-            }
         }
     }
 
@@ -67,10 +47,11 @@ namespace NeptuneRunner {
 
 
         private bool clientAuthenticated = false;
+        public bool ClientAuthenticated { get { return clientAuthenticated; } }
 
 
         public void CreateNamedPipe() {
-            PipeServerStream = new NamedPipeServerStream(Name, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Message);
+            PipeServerStream = new NamedPipeServerStream(Name, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
         }
 
         public IAsyncResult Listen() {
@@ -84,7 +65,7 @@ namespace NeptuneRunner {
                 return;
             }
 
-            Console.WriteLine("[Pipe] Neptune Server connected");
+            Console.WriteLine("[Pipe-Server] Neptune Server connected");
             while (PipeServerStream.CanRead) {
                 byte[] PipeDataBuffer = new byte[16];
                 MemoryStream MessageStream = new MemoryStream();
@@ -101,7 +82,7 @@ namespace NeptuneRunner {
                     continue;
 
                 if (!clientAuthenticated) {
-                    string dataString = Encoding.ASCII.GetString(data);
+                    string dataString = Encoding.UTF8.GetString(data);
                     if (dataString == "\x02" + "ckey\x1f" + ClientKey + "\x1e\x03") { //dataString.StartsWith("ckey:") && dataString.EndsWith(ClientKey)) {
                         clientAuthenticated = true;
                         SendData("\x02skey\x1f" + Key + "\x1e\x03");
@@ -137,6 +118,8 @@ namespace NeptuneRunner {
             if (PipeServerStream == null)
                 return false;
             try {
+                if (PipeServerStream.CanWrite)
+                    return true;
                 PipeServerStream.WaitForConnection();
                 return true;
             } catch (Exception) {
@@ -150,14 +133,15 @@ namespace NeptuneRunner {
                     return;
                 if (PipeServerStream.IsConnected && PipeServerStream.CanWrite) {
                     lock (PipeServerStream) {
-                        PipeServerStream.Write(Encoding.UTF8.GetBytes(data));
+                        byte[] bytes = Encoding.UTF8.GetBytes(data);
+                        PipeServerStream.Write(bytes, 0, bytes.Length);
                         PipeServerStream.Flush();
                         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                             PipeServerStream.WaitForPipeDrain();
                     }
                 }
             } catch (System.IO.IOException e) {
-                Console.Error.WriteLine("[Pipe] Error sending data: " + e.Message);
+                Console.Error.WriteLine("[Pipe-Server] Error sending data: " + e.Message);
             }
         }
 
