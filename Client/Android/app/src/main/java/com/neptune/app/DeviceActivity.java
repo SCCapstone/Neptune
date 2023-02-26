@@ -1,12 +1,14 @@
 package com.neptune.app;//comment
 
 import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.DialogFragment;
 
 import android.app.Activity;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RadioButton;
@@ -14,9 +16,11 @@ import android.widget.TextView;
 import android.content.Intent;
 import android.view.View;
 
+import com.google.gson.JsonParseException;
 import com.neptune.app.Backend.ConnectionManager;
 import com.neptune.app.Backend.Server;
 
+import java.io.IOException;
 import java.util.UUID;
 
 
@@ -29,6 +33,7 @@ public class DeviceActivity extends AppCompatActivity {
     private TextView notificationsTextView;
     private TextView clipboardTextView;
     private TextView fileTextView;
+    private CheckBox notificationsCheckbox;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +59,43 @@ public class DeviceActivity extends AppCompatActivity {
 
         fileTextView = findViewById(R.id.fileTextView);
         fileTextView.setText("Allow " + serverFriendlyName + " to send files.");
+
+        notificationsCheckbox = findViewById(R.id.notificationsCheckbox);
+        if(server.syncNotifications) {
+            notificationsCheckbox.setChecked(true);
+        }
+        notificationsCheckbox.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(server.syncNotifications) {
+                    server.syncNotifications = false;
+                }
+                else {
+                    server.syncNotifications = true;
+                }
+
+                try {
+                    server.save();
+                } catch (JsonParseException e) {
+                    e.printStackTrace();
+                    if (server != null)
+                        server.delete();
+                    runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    if (server != null)
+                        server.delete();
+                    runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
+
+                }/* catch (ConnectionManager.FailedToPair e) {
+                    e.printStackTrace();
+                    if (server != null)
+                        server.delete();
+                    runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
+                }*/
+            }
+        });
 
         //Sets the EditText containing the IP address of the server to the correct IP Address.
         ipAddress = findViewById(R.id.editIPAddress);
@@ -164,4 +206,14 @@ public class DeviceActivity extends AppCompatActivity {
         return true;
     }
 
+    public void showErrorMessage(String title, String message) {
+        AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
+        alertBuilder.setTitle(title);
+        alertBuilder.setMessage(message);
+        alertBuilder.setPositiveButton("Ok", (dialog, which) -> {
+            // do stuff here?
+        });
+
+        alertBuilder.create().show();
+    }
 }
