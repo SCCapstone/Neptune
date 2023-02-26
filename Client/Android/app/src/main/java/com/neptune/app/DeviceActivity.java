@@ -4,6 +4,7 @@ import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.DialogFragment;
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
@@ -64,15 +65,16 @@ public class DeviceActivity extends AppCompatActivity {
         /*The delete button on the screen associated with DeviceActivity calls the delete button on the MainActivity screen so that the server is deleted.
         * Need to determine if this works, and send the user back to the home screen.
         */
-        /*delete = findViewById(R.id.deleteDeviceActivity);
-        ImageView del = findViewById(R.id.delete);
+        delete = findViewById(R.id.deleteDeviceActivity);
         delete.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                delete.performClick();
-                onSupportNavigateUp(); //Maybe calling this will work, maybe need to force a back button press if this doesn't already do that.
+                Intent intent = new Intent();
+                intent.putExtra("DELETE_ID", serverId);
+                setResult(Activity.RESULT_OK, intent);
+                finish();
             }
-        });*/
+        });
 
         /*connect = (Button) findViewById(R.id.connec);
         connect.setOnClickListener(new View.OnClickListener() {
@@ -148,4 +150,5 @@ public class DeviceActivity extends AppCompatActivity {
         onBackPressed();
         return true;
     }
+
 }

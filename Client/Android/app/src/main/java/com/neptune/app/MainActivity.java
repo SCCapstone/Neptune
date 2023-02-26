@@ -10,6 +10,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.fragment.app.DialogFragment;
 
+import android.app.Activity;
 import android.app.NotificationChannel;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -44,6 +45,7 @@ import org.json.JSONException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements RenameDialog.RenameDialogListener{
@@ -65,6 +67,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     //private Button notifListTest;
     private ImageView delete;
     private TextView ip;
+    private HashMap<Server, View> serversShown = new HashMap<Server, View>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -180,6 +183,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
     }
 
+    //This method builds the add dialog so that when a user wants to add a server, it is able to be used.
     private void buildAddDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View view = getLayoutInflater().inflate(R.layout.add_dialog, null);
@@ -233,7 +237,9 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
                 Intent deviceActivity = new Intent(MainActivity.this, DeviceActivity.class);
                 String id = server.serverId.toString();
                 deviceActivity.putExtra("ID", id);
-                startActivity(deviceActivity);
+                startActivityForResult(deviceActivity, R.integer.LAUNCH_DEVICE_ACTIVITY);
+                //Will update above method, this was easier to understand/use for the time being.
+                //startActivity(deviceActivity);
             }
         });
 
@@ -252,12 +258,12 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             }
         });
 
+        //Deletes the selected server upon clicking the related ImageView.
         delete.setOnClickListener(new ImageView.OnClickListener() {
             @Override
             public void onClick(View v) {
                 try{
-                    serverManager.removeServer(server);
-                    addLine.removeView(view);
+                    removeServer(server, view);
                 } catch (Exception e) {
                     e.printStackTrace();
                     showErrorMessage("Failed to unpair server", e.getMessage());
@@ -266,6 +272,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         });
 
         addLine.addView(view);
+        serversShown.put(server, view);
     }
 
     //Method to open the dialog box for renaming a server. May want to change name to openRenameDialog, or change the tag to a String variable with the name.
@@ -321,6 +328,29 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         super.onStop();
     }
 
+    /*When a different activity returns to MainActivity, with something for it, whether that be an action or information, this method will handle it, depending
+    * on what activity is sending the information. It'll handle the information in a certain way depending on what information is returned.
+    */
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        /*A switch case here is used to check the differences between what the requestCode was. Different activities, or the same ones, can be launched for different
+        * reasons, or no reason at all. Each case will handle a different reason for opening the activity. Within each case, if the reasons can't be initially
+        * differentiated, there is additional expressions to ensure the correct response code is ran.
+        */
+        switch(requestCode) {
+            case(R.integer.LAUNCH_DEVICE_ACTIVITY) : {
+                if(resultCode == Activity.RESULT_OK) {
+                    Server s = serverManager.getServer(UUID.fromString(data.getStringExtra("DELETE_ID")));
+                    s.unpair();
+                    removeServer(s, serversShown.get(s));
+                }
+                break;
+            }
+        }
+    }
+
 
     public void showErrorMessage(String title, String message) {
         AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
@@ -366,5 +396,12 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
                 server.delete();
             runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
         }
+    }
+
+    //Removes the selected server from the ListView of servers on the MainActivity screen and from the list of all servers.
+    public void removeServer(Server s, View v) {
+        serverManager.removeServer(s);
+        addLine.removeView(serversShown.get(s));
+        serversShown.remove(s);
     }
 }
