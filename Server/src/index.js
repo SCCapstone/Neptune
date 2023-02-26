@@ -20,7 +20,7 @@ const isWin = process.platform === "win32"; // Can change notification handling 
 
 
 // Global behavioral changes (static stuff)
-const debug = process.env.debug === false;
+const debug = true; // change this later idk
 const displaySilly = false; // output the silly log level to console (it goes  every other level > silly, silly is the lowest priority, literal spam)
 Error.stackTraceLimit = (debug)? 8 : 4;
 
@@ -867,7 +867,7 @@ async function main() {
 
 
 	try {
-		if (global.NeptuneRunnerIPC !== undefined) {
+		if (global.NeptuneRunnerIPC !== undefined && debug === true) {
     	    global.NeptuneRunnerIPC.once('authenticated', () => {
         	    global.NeptuneRunnerIPC.sendData("hideconsolewindow", {});
 	        });
