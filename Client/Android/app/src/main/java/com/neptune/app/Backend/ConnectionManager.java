@@ -11,6 +11,7 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.neptune.app.MainActivity;
 
+import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -40,9 +41,18 @@ import java.security.NoSuchProviderException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import org.java_websocket.client.WebSocketClient;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.NoSuchPaddingException;
@@ -63,6 +73,8 @@ public class ConnectionManager {
 
     private IPAddress IPAddress;
     private Server Server;
+
+    private WebSocketClient webSocketClient;
 
     /**
      * This is the connection initiation Id, used to identify the connection
@@ -414,6 +426,48 @@ public class ConnectionManager {
         return false;
     }
 
+
+    // Creates the web socket for the client
+    public void createWebSocketClient() {
+        URI uri;
+        try {
+            //  Connect to socket
+            uri = new URI("/api/v1/server/socket/"+this.socketUUID);
+        }
+        catch (URISyntaxException e) {
+            e.printStackTrace();
+            return;
+        }
+
+         webSocketClient = new WebSocketClient(uri) {
+            @Override
+            public void onOpen(ServerHandshake handshakedata) {
+                System.out.println("Connected");
+            }
+
+            @Override
+            public void onMessage(String message) {
+                System.out.println(message);
+            }
+
+            @Override
+            public void onClose(int code, String reason, boolean remote) {
+                System.out.println("Disconnected");
+            }
+
+            @Override
+            public void onError(Exception ex) {
+                ex.printStackTrace();
+            }
+        };
+
+
+    }
+
+    public void sendWebSocketInfo (String apiURL, JsonObject requestData) throws MalformedURLException {
+        sendRequest(apiURL, requestData);
+    }
+
     public void initiateConnection() {
         Thread thread = new Thread(() -> {
             try {
@@ -424,10 +478,48 @@ public class ConnectionManager {
         });
         thread.start();
         thread.setName(Server.serverId + " - Initiation runner");
+
+        createWebSocketClient();
+        webSocketClient.connect();
+
     }
 
-    public float ping() {
-        throw new NotImplementedError();
+    /**
+     * Pings the server, returns the RTT. -1 if failed/not connected.
+     * @return Round trip ping time, or -1 if failure.
+     */
+    public double ping() {
+        try {
+            if (this.hasNegotiated == false)
+                return -1;
+
+            JsonObject data = new JsonObject();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.UK);
+            String formattedDate = sdf.format(new Date());
+            data.addProperty("timestamp", formattedDate);
+            JsonObject response = this.sendRequest("/api/v1/server/ping", data);
+
+            if (response.has("command") && response.has("data")) {
+                if (!response.get("command").getAsString().equalsIgnoreCase("/api/v1/client/pong"))
+                    return -1;
+                JsonObject responseData = response.get("data").getAsJsonObject();
+                if (responseData.has("receivedAt")) {
+                    String timeStamp = responseData.get("receivedAt").getAsString();
+                    DateFormat df1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+                    Date serverTimestamp = df1.parse(timeStamp);
+                    long diffInMilliseconds = Math.abs(serverTimestamp.getTime() - new Date().getTime());
+                    //long diff = TimeUnit.DAYS.convert(diffInMilliseconds, TimeUnit.MILLISECONDS);
+                    Log.d("ConnectionManager-" + this.Server.serverId, "Server " + this.Server.friendlyName + " ping: " + diffInMilliseconds + "ms");
+                    this.Server.sendBatteryInfo();
+                    return diffInMilliseconds;
+                }
+            }
+        } catch (MalformedURLException | ParseException e) {
+            e.printStackTrace();
+            return -1;
+        }
+
+        return -1;
     }
 
     public void destroy(boolean force) {

@@ -115,4 +115,129 @@ Client example config, `clientId.json`:
 }
 ```
 
+
 ---
+
+
+## ClientManager
+### Events:
+`added`: when a new client is loaded/added into cache (`client` is the only passed parameter. This is the client added in).\
+`removed`: when a client is removed from the cache (`client` is the only passed parameter. This is the client removed).
+
+
+
+
+---
+
+# NeptuneRunner
+NeptuneRunner is a special lil fella.
+
+
+
+NeptuneRunner is born out of the need to have an application that can register itself to the Window's StartMenu and Registry.\
+This is required in order to properly process Windows Notifications. _See any notes on Windows notifications within Neptune to understand the need for this._
+
+
+Originally the idea was to have a separate application that handles just notifications, but this would create a _lot_ of overhead.\
+How would this notification application send data to Neptune? What if Neptune is not running? How do we know if Neptune is running? Why is there a console window popping up for a split second when I click on notifications?
+
+...
+
+That and when someone right clicks the main window in the taskbar, it says "Qode.js JavaScript Runtime for Qt". I can hear people asking: "What the hell is that?"\
+![Message displayed right-clicking the main window](https://user-images.githubusercontent.com/55852895/218279902-3e99126d-37c4-434a-825a-5642d0645f60.png)
+
+There's no ability to change this, to my understanding, within Node.JS itself. There _are_ Win32 API calls to do this (which is what NeptuneRunner does).
+
+
+So the thought came, why not combine these two needs into one application? And with that, NeptuneRunner is born.\
+Ultimately, NeptuneRunner allows us to "wrap" around `qode.exe` and tell Windows that this `qode.exe` instance is actually us (NeptuneRunner). NeptuneRunner also creates a IPC pipe NeptuneServer can use to create, edit, and remove notifications from Windows. Additionally, since NeptuneRunner creates the notifications, Windows activates NeptuneRunner and tells it to handle notification events.\
+Perfect! NeptuneRunner reskins/titles the main window (allowing users to pin the application) and handles notifications, wonderful.
+
+
+Here is a run down of what NeptuneRunner does:
+1) Setup the console window (remove the close button, enable ANSI codes, set the CTRL handler, and if NOT debugging hides the console).
+2) Search for `qode.exe` or `qode` (working its way up directories starting with NeptuneRunner's directory)
+3) Register the application (create StartMenu shortcut)
+4) Start Neptune, (redirect STDOUT, STDERR, STDIN, register close handles, create named pipe, start background thread to redirect inputs to Neptune)
+5) Wait for Neptune's main window, setup taskbar appid for window
+
+
+
+
+## NeptuneRunner IPC:
+NeptuneRunner creates a named pipe (stage 4). This named pipe is used for Neptune Server to send/receive notification data, fix window taskbar settings, etc.
+
+
+### Format
+Normal data follows the follow style:\
+`<STX><KEY><US><VALUE><RS>....<ETX>`
+
+Data begins with the `STX` (start of text) character (`0x02`)\
+...\
+followed by a key (for example, `fixwin` or `ckey`) \
+separated using the `US` (unit separator) character (`0x1f`)\
+followed by key's value\
+ended with the `RS` (record separator) character (`0x1e`)\
+... and repeat as many commands as possible\
+and finally ended with the `ETX` character (`0x03`)
+
+The first key is the [command](#commands) and its value is empty.
+
+
+So, for example, the new window command is:
+`fixwinhwnd<handleAddress>` (you can imagine it as `fixwin:,hwnd:<data>,`)
+
+`` begins the data
+`fixwin` is the key (since it's the first key, this is the command)
+`` separates the key (empty)
+`` ends the key/value pair
+`hwnd` is the key
+`` separates the key (hwnd) and value
+`<handleAddress>` is the value (`<handleAddress>` is a placeholder)
+`` ends the key/value pair
+`` ends the data block
+
+
+
+### Commands
+fixwin: tells NeptuneRunner a new window has been opened and to set the proper window handle settings (sets the AppUserModelID for them)\
+Parameters:\
+`hwnd <IntPtr>`: the window handle (int)
+
+
+
+notify-push: Tells NeptuneRunner to create (or update) a toast notification\
+`title`: required string, toast title\
+`id`: required string, toast id\
+`text`: required string, toast contents (text)\
+`attribution`: toast attribution text, use this for the application name\
+`clientId`: client id that sent the notification, used to differentiate notifications and clients\
+`clientName`: client's friendly name, not used\
+`applicationName`: application name provided by the client of the notification (the application that sent this notification on the phone)\
+`timestamp`: the notification's timestamp as provided by the client\
+`createNew`: if true, we DO NOT update the notification! If NeptuneRunner finds 
+
+
+notify-delete: Tells NeptuneRunner to delete a toast notification\
+`id`: notification id to delete\
+`clientId`: client id that pushed the notification
+
+
+
+notify-dismissed: Toast notification was dismissed by the user\
+`id`: notification id\
+`clientId`: client id that sent this notification\
+`reason`: always "user"
+
+
+notify-failed: Toast notification failed to be displayed\
+`id`: notification id\
+`clientId`: client id that sent this notification\
+`failureReason`: reason the notification failed to send (DisabledForApplication, DisabledForUser, DisabledByGroupPolicy, DisabledByManifest)\
+`failureMoreDetails`: explains the reason (DisabledForApplication, DisabledForUser, DisabledByGroupPolicy)
+
+
+notify-activated: Toast notification activated (clicked)\
+`id`: notification id\
+`clientId`: client id that sent this notification\
+`userInput`: string containing the user's input (if any)

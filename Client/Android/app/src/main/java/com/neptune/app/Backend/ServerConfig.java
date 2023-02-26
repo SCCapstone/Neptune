@@ -115,7 +115,7 @@ public class ServerConfig extends ConfigItem {
             this.notificationBlacklistApps = new ArrayList<String>(notificationBlacklistApps.size());
             for (int i = 0; i < notificationBlacklistApps.size(); i++) {
                 //this.notificationBlacklistApps[i] = notificationBlacklistApps.get(i).getAsString();
-                this.notificationBlacklistApps.set(i,notificationBlacklistApps.get(i).getAsString());
+                this.notificationBlacklistApps.add(i,notificationBlacklistApps.get(i).getAsString());
             }
         } else {
             //this.notificationBlacklistApps = new String[0];

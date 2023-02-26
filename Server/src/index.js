@@ -231,6 +231,18 @@ else
 Neptune.log("Running on \x1b[1m\x1b[34m" + process.platform);
 
 
+
+// If Win32, connect to the NeptuneRunner application pipe
+if (isWin) {
+	let NRIPC = require("./Classes/NeptuneRunner.js")
+	global.NeptuneRunnerIPC = new NRIPC.NeptuneRunnerIPC();
+}
+
+
+
+
+
+
 if (!fs.existsSync("./data/"))
 	fs.mkdirSync("./data/")
 if (!fs.existsSync("./data/clients/"))
@@ -367,7 +379,6 @@ async function main() {
 	qApp.setQuitOnLastWindowClosed(false); // required so that app doesn't close if we close all windows.
 	process.env["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 	process.env["QT_ENABLE_HIGHDPI_SCALING"] = "1"
-
 
 
 	// Tray icon
@@ -834,6 +845,8 @@ async function main() {
 				else if (command.startsWith("rekey")) {
 					let cmd = command.substr(6);
 					Neptune.configManager.rekey(cmd).then((didIt) => cLog.info("Successful: " + didIt)).catch(err => cLog.error("Failed: " + err));
+				} else if (command.startsWith("pipe send ")) {
+					Neptune.NeptuneRunnerPipe.write(command.substr(10));
 				}
 				else if (command.startsWith("showwin")) {
 					let windowName = command.substr(8).replace(/[^0-9a-zA-Z]/g, "");

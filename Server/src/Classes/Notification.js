@@ -9,6 +9,8 @@
 
 const EventEmitter = require('node:events');
 const Notifier = require("node-notifier"); // does not work with windows action center!
+const Client = require('./Client.js');
+
 
 /**
  * For reason that would take way too long to explain, notifications do not work 100% on Windows
@@ -49,6 +51,21 @@ class Notification extends EventEmitter {
         return this.#id;
     }
 
+    /**
+     * Client id that own this notification
+     * @type {number}
+     */
+    get clientId() {
+        return this.#client.clientId;
+    }
+
+
+    /**
+     * Client this notification belongs to
+     * @type {Client}
+     */
+    #client;
+
 
     /**
      * Notifier id, provided by node-notify. *Should* be the same as the id.
@@ -80,8 +97,9 @@ class Notification extends EventEmitter {
      * Notification actions (cancel, mark as read, etc)
      * @typedef {object} NotificationAction
      * @property {string} id - 'Name' of the action
-     * @property {string} text - Text displayed on the button
-     * @property {string} type - Type of action (almost always button) 
+     * @property {string} text - Text displayed on the button or is inside the textbox
+     * @property {boolean} isTextbox - Type of action is a textbox
+     * @property {string} textboxHint - The hint for the textbox
      */
 
     /**
@@ -108,6 +126,7 @@ class Notification extends EventEmitter {
      * @property {boolean} persistent - Notification is persistent
      * @property {number} color - Color of the notification
      * @property {boolean} onlyAlertOnce - Only let the sound, vibration and ticker to be played if the notification is not already showing.
+     * @property {string} category - Category of notification, https://developer.android.com/reference/android/app/Notification#category
      * @property {number} priority - Android #setImportance
      * @property {string} timestamp - ISO date time stamp
      * @property {number} timeoutAfter - Duration in milliseconds after which this notification should be canceled, if it is not already canceled
@@ -115,10 +134,14 @@ class Notification extends EventEmitter {
      */
 
     /**
+     * @param {Client} client - Client this notification came from
      * @param {NotificationData} data - The notification data provided by the client
      */
-	constructor(data) {
+	constructor(client, data) {
         super();
+
+
+        this.#client = client;
 
 
         // not testing if data is proper just yet, but hoping it follows the API doc
@@ -126,7 +149,8 @@ class Notification extends EventEmitter {
         this.#log = Neptune.logMan.getLogger("Notification-" + data.notificationId);
         this.#log.debug("New notification created. Title: " + data.title + " .. type: " + data.type + " .. text: " + data.contents.text);
 
-        this.data = data;    
+        this.data = data;
+        this.#id = data.notificationId;        
     }
 
     /**
@@ -134,44 +158,82 @@ class Notification extends EventEmitter {
      * @return {void}
      */
     push() {
-        if (this.data === undefined)
-            return;
-        if (this.data.title === undefined || this.data.contents.text === undefined || this.data.notificationId === undefined)
-            return;
+        let logger = this.#log;
+        let maybeThis = this;
+        let pushNotification = function() {
+            try {
+                // send the notification
+                maybeThis.#notifierNotification = Notifier.notify({
+                    title: maybeThis.data.title,
+                    message: maybeThis.data.contents.text, // data.contents.subtext + "\n" +
+                    id: maybeThis.data.notificationId,
+                }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
+                    if (err) {
+                        logger.error(err);
+                    } else {
+                        logger.debug("Action received: " + response);
+                        logger.silly("action metadata: ");
+                        logger.silly(metadata);
+                        maybeThis.emit(response, metadata);
+                    }
+                });
+            } catch (e) {
+                logger.error("Unable to push notification to system! Error: " + e.message);
+                logger.debug(e);
 
-        if (this.data.title === "" || this.data.contents.text === "")
-            return;
+                // maybe use QT to push balloon notification ..?
+            }
+        }
 
-        if (process.platform === "win32" && false) { // blah blah good enough for now. In the works, see master-cn-NeptuneNotifier
-            // Use NeptuneNotifier program (again, see notes at top)
-            // we'll need to generate our own Windows Toast XML: https://learn.microsoft.com/en-us/windows/apps/design/shell/tiles-and-notifications/adaptive-interactive-toasts?tabs=xml
-            // fun!
+        if (process.platform === "win32" && global.NeptuneRunnerIPC !== undefined) {
+            if (!global.NeptuneRunnerIPC.pipeAuthenticated) {
+                pushNotification();
+                return;
+            }
 
-        } else {
-            let logger = this.#log;
-            let maybeThis = this;
-            // send the notification
-            this.#notifierNotification = Notifier.notify({
-                title: this.data.title,
-                message: this.data.contents.text, // data.contents.subtext + "\n" +
-                id: this.data.notificationId,
-            }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
-                if (err) {
-                    logger.error(err);
-                } else {
-                    logger.debug("Action received: " + response);
-                    logger.silly("action metadata: ");
-                    logger.silly(metadata);
-                    maybeThis.emit(response, metadata);
+            try {
+                let data = {
+                    clientId: this.#client.clientId,
+                    clientName: this.#client.friendlyName,
+                    id: this.data.notificationId,
+                    action: this.data.action,
+                    applicationName: this.data.applicationName,
+                    //notificationIcon: this.data.notificationIcon,
+                    title: this.data.title,
+                    timestamp: this.data.timestamp,
+                    silent: this.data.isActive,
                 }
-            });
+                if (this.data.type == "text") {
+                    data.text = this.data.contents.text; // data.contents.subtext + "\n" +
+                    data.attribution = this.data.contents.subtext;
+
+                }
+                this.#log.silly(data);
+                global.NeptuneRunnerIPC.sendData("notify-push", data);
+
+                let func = this.#IPCActivation;
+                let actuallyThis = this;
+                if (global.NeptuneRunnerIPC._events['notify-client_' + this.clientId + ":" + this.data.notificationId] === undefined) {
+                    global.NeptuneRunnerIPC.once('notify-client_' + this.clientId + ":" + this.data.notificationId, (data) => {
+                        func(actuallyThis, data);
+                    });
+                }
+            } catch (e) {
+                this.#log.error("Issue pushing notification via NeptuneRunner, error: " + e.message);
+                this.#log.debug(e);
+            }
+        } else {
+            pushNotification();
         }
     }
 
-    activate() {
-        // Simulate a click (activation)
-        // for now we just emit
-        this.emit("activate");
+    /**
+     * The notification was activated (clicked). Causes class to emit 'activate'
+     * @param {string} [data] - User input from the notification
+     */
+    activate(data) {
+        this.#log.info("Activated! Data: " + data);
+        this.emit("activate", data);
     }
 
     dismiss() {
@@ -181,6 +243,39 @@ class Notification extends EventEmitter {
 
     delete() {
         //?
+        this.emit('dismissed');
+        if (process.platform === "win32") {
+            global.NeptuneRunnerIPC.sendData('notify-delete', {
+                clientId: this.#client.clientId,
+                id: this.data.notificationId,
+            })
+        } else {
+            Notifier.notifiy(Object.assign(this.#notifierNotification, {
+                remove: this.#id
+            })); // ????
+        }
+    }
+
+    #IPCActivation(notification, ipcData) {
+        /** @type {import('./NeptuneRunner.js').PipeDataReceivedEventArgs} */
+        let data = ipcData;
+        if (data.Command == "notify-activated") {
+            notification.activate();
+        } else if (data.Command == "notify-dismissed") {
+            notification.dismiss();
+        }
+    }
+
+    /**
+     * Updates the notification data and the toast notification on the OS side.
+     * @param {NotificationData} data - The notification data provided by the client
+     */
+    update(data) {
+        this.#log.debug("Updating notification..");
+        this.#log.silly(data);
+        this.data = data;
+        this.#id = data.notificationId;
+        this.push();
     }
 }
 

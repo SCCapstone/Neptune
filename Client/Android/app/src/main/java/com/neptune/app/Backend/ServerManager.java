@@ -45,7 +45,7 @@ public class ServerManager {
         servers.get(server).unpair();
     }
 
-    public Server getServer(String serverId) {
+    public Server getServer(UUID serverId) {
         return servers.get(serverId);
     }
 
