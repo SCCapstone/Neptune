@@ -185,10 +185,12 @@ namespace NeptuneRunner {
             } catch (Exception) { }
         }
 
-        public void Update() {
+        public NotificationUpdateResult Update() {
             try {
-                Program.ToastNotifier.Update(GetToastNotification().Data, Id, ClientId);
-            } catch (Exception) { }
+                return Program.ToastNotifier.Update(GetToastNotification().Data, Id, ClientId);
+            } catch (Exception) {
+                return NotificationUpdateResult.Failed;
+            }
         }
 
         public void Delete() {

@@ -18,9 +18,6 @@ import com.neptune.app.MainActivity;
 import java.io.ByteArrayOutputStream;
 
 public class NotificationListenerService extends android.service.notification.NotificationListenerService {
-
-    private NotificationManager notificationManager;
-
     Context context;
 
     @Override
@@ -29,7 +26,6 @@ public class NotificationListenerService extends android.service.notification.No
         context = getApplicationContext();
 
         Log.d("NotificationListener", "Created.");
-
     }
 
     public void cancelNotification (Notification[] notification) {
@@ -59,64 +55,23 @@ public class NotificationListenerService extends android.service.notification.No
     }
 
     public void onNotificationPosted(StatusBarNotification notification) {
-        // Note, only do global filtering here. Things like THIS app get filtered..
-        // The Server class will filter out whatever it doesn't want
-
-        //Different Approach to see if this would be better/works (May need help with figuring this out)
-        String pack = notification.getPackageName();
-        String ticker = "";
-
-        if (notification.getNotification().tickerText != null) {
-            ticker = notification.getNotification().tickerText.toString();
-        }
-
-
-        Bundle extras = notification.getNotification().extras;
-
         Log.d("NotificationListener", "Notification from package: " + notification.getPackageName());
+        Bundle extras = notification.getNotification().extras;
         if (extras.getCharSequence("android.title") == null) { //Some notifications are not handled correctly, so we'll just skip em
             return;
         }
 
-        String title = extras.getCharSequence("android.title").toString();
-        String text = "";
-        if (extras.getCharSequence("android.text") != null) {
-            text = extras.getCharSequence("android.text").toString();
-        }
-        int id1 = extras.getInt(Notification.EXTRA_SMALL_ICON);
-        Bitmap id = notification.getNotification().largeIcon;
-
-        Log.i("Ticker", ticker);
-        Log.i("Title", title);
-        Log.i("Text", text);
-
-        Intent message = new Intent("Msg");
-        message.putExtra("package", pack);
-        message.putExtra("ticker", ticker);
-        message.putExtra("title", title);
-        message.putExtra("text", text);
-
-        if (id != null) {
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            byte[] byteArray = stream.toByteArray();
-            message.putExtra("icon", byteArray);
-        }
-
-        NeptuneNotification notify = null;
         try {
-            notify = new NeptuneNotification(notification, getApplicationContext());
-            MainActivity.serverManager.processNotification(notify);
+            NeptuneNotification notify = new NeptuneNotification(notification, getApplicationContext());
+            MainActivity.notificationManager.setNotification(notify);
         } catch (Exception e) {
-            e.printStackTrace();
+            // yepirr
         }
-
-        LocalBroadcastManager.getInstance(context).sendBroadcast(message);
-
     }
 
     public void onNotificationRemoved(StatusBarNotification notification) {
         Log.i("Msg", "Notification Removed");
-
+        MainActivity.notificationManager.deleteNotification(notification.getId());
     }
 
     public void onSilentStatusBariconsVisibilityChanged(boolean status) {

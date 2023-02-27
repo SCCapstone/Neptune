@@ -89,17 +89,6 @@ class ConfigurationManager {
 
 
 	/**
-	 * Close all config files
-	 */
-	destroy() {
-		this.#log.debug("Destroying...");
-		this.#isDestroying = true;
-		this.#cachedItems.forEach((config) => {
-			config.close(true);
-		});
-	}
-
-	/**
 	 * Sets the internal encryption key. If you set the key to something that is not the key, bad things may happen.\
 	 * This is not intended to be used to change the encryption key! Use `ConfigurationManager.rekey(newkey)` instead.
 	 * @param {string} newKey New (actual) encryption key

@@ -77,10 +77,13 @@ namespace NeptuneRunner {
 
 
         private static void CheckCanSendNotifications() {
+            if (ToastNotifier == null)
+               return;
+
             bool allowed = false;
             string reason = "";
             string resolution = "";
-            switch (Program.ToastNotifier.Setting) {
+            switch (ToastNotifier.Setting) {
                 case NotificationSetting.Enabled:
                     allowed = true;
                     break;
@@ -272,7 +275,19 @@ namespace NeptuneRunner {
 
                 ToastNotificationManagerCompat.OnActivated += ToastNotificationManagerCompat_OnActivated;
                 ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier();
-            } catch (Exception) { }
+            } catch (Exception a) {
+                try {
+                    ToastNotificationManagerCompat.Uninstall();
+                    NotificationRegisty.UninstallShortcut();
+
+                    NotificationRegisty.RegisterAppForNotificationSupport(true);
+                    ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier();
+                } catch (Exception e) {
+                    MessageBox.Show("Neptune was unable to register the ToastNotifier into Windows. Because of this, notifications quality will be degraded. "
+                        + Environment.NewLine + "Restarting Neptune may help, but do make sure notifications are enabled for your system in the Settings app."
+                        + Environment.NewLine + "Error: " + e.Message, "Error registering toast notifier!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
 
 
 
@@ -317,7 +332,7 @@ namespace NeptuneRunner {
 
             try {
                 Console.Title = "Neptune";
-                CheckCanSendNotifications();
+                try { CheckCanSendNotifications(); } catch (Exception) { }
                 NeptuneProcess.WaitForExit();
             } catch (Exception) {
                 //Environment.Exit(0);
@@ -403,7 +418,12 @@ namespace NeptuneRunner {
                             if (!updateOnly) {
                                 notification.Push();
                             } else {
-                                notification.Update();
+                                NotificationUpdateResult result = notification.Update();
+                                if (result == NotificationUpdateResult.Failed || result == NotificationUpdateResult.NotificationNotFound) {
+                                    notification.Delete();
+                                    notification.Silent = true;
+                                    notification.Push();
+                                }
                             }
                         }
                     } else if (dataKeyValues.ContainsKey("notify-delete")) {
@@ -418,6 +438,10 @@ namespace NeptuneRunner {
         }
 
         private static void Notification_Dismissed(ToastNotification sender, ToastDismissedEventArgs args) {
+            if (args.Reason != ToastDismissalReason.TimedOut) {
+                ActiveNotifications.Remove(sender.Tag + "_" + sender.Group);
+            }
+
             if (args.Reason == ToastDismissalReason.UserCanceled) {
                 Dictionary<string, string> data = new Dictionary<string, string>(3) {
                     { "id", sender.Tag },

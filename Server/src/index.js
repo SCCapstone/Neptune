@@ -1,6 +1,6 @@
 'use strict';
 /**
- *    _  _ 
+ *	_  _ 
  *   | \| |
  *   | .` |
  *   |_|\_|eptune
@@ -24,11 +24,11 @@ const debug = true; // change this later idk
 const displaySilly = false; // output the silly log level to console (it goes  every other level > silly, silly is the lowest priority, literal spam)
 Error.stackTraceLimit = (debug)? 8 : 4;
 
-Neptune.version = new Version(0, 4, 9, ((debug)?"debug":"release"), "BetaRelease");
+Neptune.version = new Version(0, 5, 0, ((debug)?"debug":"release"), "BetaRelease");
 
 global.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune. Allows us to get around providing `Neptune` to everything
 
-
+global.consoleVisible = true;
 
 
 
@@ -362,8 +362,8 @@ async function main() {
 
 	/**
 	 * _____________
-	 * |           |
-	 * |    GUI    |
+	 * |		   |
+	 * |	GUI	|
 	 * |___________|
 	 * 
 	 */
@@ -458,7 +458,7 @@ async function main() {
 
 	/**
 	 * _____________
-	 * |           |
+	 * |		   |
 	 * |  Express  |
 	 * |___________|
 	 * 
@@ -913,11 +913,12 @@ async function main() {
 
 
 	try {
-		if (global.NeptuneRunnerIPC !== undefined && debug === true) {
-    	    global.NeptuneRunnerIPC.once('authenticated', () => {
-        	    global.NeptuneRunnerIPC.sendData("hideconsolewindow", {});
-	        });
-    	}
+		if (global.NeptuneRunnerIPC !== undefined && debug !== true) {
+			global.NeptuneRunnerIPC.once('authenticated', () => {
+				global.NeptuneRunnerIPC.sendData("hideconsolewindow", {});
+				global.consoleVisible = false;
+			});
+		}
 	} catch (e) {}
 
 	// Operator input
@@ -972,37 +973,37 @@ ppid: ${process.ppid}\\
 versions:
 \`\`\`JSON
   {
-    "node": "${process.versions.node}",
-    "v8": "${process.versions.v8}",
-    "uv": "${process.versions.uv}",
-    "zlib": "${process.versions.zlib}",
-    "brotli": "${process.versions.brotli}",
-    "ares": "${process.versions.ares}",
-    "modules": "${process.versions.modules}",
-    "nghttp2": "${process.versions.nghttp2}",
-    "napi": "${process.versions.napi}",
-    "llhttp": "${process.versions.llhttp}",
-    "openssl": "${process.versions.openssl}",
-    "cldr": "${process.versions.cldr}",
-    "icu": "${process.versions.icu}",
-    "tz": "${process.versions.tz}",
-    "unicode": "${process.versions.unicode}",
-    "ngtcp2": "${process.versions.ngtcp2}",
-    "nghttp3": "${process.versions.nghttp3}"
+	"node": "${process.versions.node}",
+	"v8": "${process.versions.v8}",
+	"uv": "${process.versions.uv}",
+	"zlib": "${process.versions.zlib}",
+	"brotli": "${process.versions.brotli}",
+	"ares": "${process.versions.ares}",
+	"modules": "${process.versions.modules}",
+	"nghttp2": "${process.versions.nghttp2}",
+	"napi": "${process.versions.napi}",
+	"llhttp": "${process.versions.llhttp}",
+	"openssl": "${process.versions.openssl}",
+	"cldr": "${process.versions.cldr}",
+	"icu": "${process.versions.icu}",
+	"tz": "${process.versions.tz}",
+	"unicode": "${process.versions.unicode}",
+	"ngtcp2": "${process.versions.ngtcp2}",
+	"nghttp3": "${process.versions.nghttp3}"
   }
 \`\`\`
 
 process.features:
 \`\`\`JSON
   {
-    "inspector": ${process.features.inspector},
-    "debug": ${process.features.debug},
-    "uv": ${process.features.uv},
-    "ipv6": ${process.features.ipv6},
-    "tls_alpn": ${process.features.tls_alpn},
-    "tls_sni": ${process.features.tls_sni},
-    "tls_ocsp": ${process.features.tls_ocsp},
-    "tls": ${process.features.tls}
+	"inspector": ${process.features.inspector},
+	"debug": ${process.features.debug},
+	"uv": ${process.features.uv},
+	"ipv6": ${process.features.ipv6},
+	"tls_alpn": ${process.features.tls_alpn},
+	"tls_sni": ${process.features.tls_sni},
+	"tls_ocsp": ${process.features.tls_ocsp},
+	"tls": ${process.features.tls}
   }
 \`\`\``;
 

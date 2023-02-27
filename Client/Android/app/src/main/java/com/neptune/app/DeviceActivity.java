@@ -29,6 +29,7 @@ public class DeviceActivity extends AppCompatActivity {
     //public Button temp;
     public ConnectionManager cm;
     private Button delete;
+    private Button btnSave;
     private EditText ipAddress;
     private TextView notificationsTextView;
     private TextView clipboardTextView;
@@ -52,50 +53,21 @@ public class DeviceActivity extends AppCompatActivity {
         //Setting various TextViews based on the friendly name of the device connected.
         String serverFriendlyName = getIntent().getStringExtra("FRIENDLY_NAME");
         notificationsTextView = findViewById(R.id.notificationsTextView);
-        notificationsTextView.setText("Send notifications to " + serverFriendlyName + ".");
+        notificationsTextView.setText("Send notifications to " + server.friendlyName + ".");
 
         clipboardTextView = findViewById(R.id.clipboardTextView);
-        clipboardTextView.setText("Allow " + serverFriendlyName + " to read and write clipboard data.");
+        clipboardTextView.setText("Allow " + server.friendlyName + " to read and write clipboard data.");
 
         fileTextView = findViewById(R.id.fileTextView);
-        fileTextView.setText("Allow " + serverFriendlyName + " to send files.");
+        fileTextView.setText("Allow " + server.friendlyName + " to send files.");
 
         notificationsCheckbox = findViewById(R.id.notificationsCheckbox);
-        if(server.syncNotifications) {
-            notificationsCheckbox.setChecked(true);
-        }
+        notificationsCheckbox.setChecked(server.syncNotifications);
+
         notificationsCheckbox.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(server.syncNotifications) {
-                    notificationsCheckbox.setChecked(false);
-                    server.syncNotifications = false;
-                }
-                else {
-                    notificationsCheckbox.setChecked(true);
-                    server.syncNotifications = true;
-                }
-
-                try {
-                    server.save();
-                } catch (JsonParseException e) {
-                    e.printStackTrace();
-                    if (server != null)
-                        server.delete();
-                    runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    if (server != null)
-                        server.delete();
-                    runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
-
-                }/* catch (ConnectionManager.FailedToPair e) {
-                    e.printStackTrace();
-                    if (server != null)
-                        server.delete();
-                    runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
-                }*/
+                server.syncNotifications = notificationsCheckbox.isChecked();
             }
         });
 
@@ -133,6 +105,19 @@ public class DeviceActivity extends AppCompatActivity {
             }
         });
 
+
+        btnSave = findViewById(R.id.btnSave);
+        btnSave.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                try {
+                    server.save();
+                } catch (Exception e) {
+                    showErrorMessage("Failed to save settings.", "An error occurred while saving the settings: " + e.getMessage());
+                }
+            }
+        });
+
         /*connect = (Button) findViewById(R.id.connec);
         connect.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -166,21 +151,6 @@ public class DeviceActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-    }
-
-    public void onRadioButtonClicked(View view) {
-        boolean checked = ((RadioButton) view).isChecked();
-
-        switch(view.getId()) {
-            case R.id.radio_auto:
-                if(checked)
-                    //
-                break;
-            case R.id.radio_key:
-                if(checked)
-                    //
-                break;
-        }
     }
 
     @Override

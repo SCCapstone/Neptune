@@ -165,7 +165,7 @@ class ConnectionManager extends EventEmitter {
 	 * @return {void}
 	 */
 	destroy(force) {
-
+		this.removeAllListeners();
 	}
 		
 	

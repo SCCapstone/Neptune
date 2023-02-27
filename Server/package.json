@@ -21,7 +21,8 @@
   "scripts": {
     "setup": "\"tools\\setup.bat\"",
     "build": "call webpack --env production && call tools\\fixBrokenBuildNames.bat && call npx nodegui-packer --pack dist && call tools\\postBuild.bat",
-    "start": "webpack && tools\\fixBrokenBuildNames.bat && qode ./dist/index.js",
+    "start": "if exist NeptuneRunner\\build\\NeptuneRunner.exe ( start NeptuneRunner\\build\\NeptuneRunner.exe -neploc ./src/index.js ) else ( qode ./src/index.js )",
+    "start-qode": "qode ./src/index.js",
     "debug": "webpack && tools\\fixBrokenBuildNames.bat && qode --inspect ./dist/index.js",
     "test": "jest && echo Now running GUI tests && npm run test-gui",
     "test-code": "jest --config=jest.config.js",

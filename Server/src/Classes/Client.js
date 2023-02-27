@@ -179,7 +179,7 @@ class Client extends ClientConfig {
 
 
 		} else if (command == "/api/v1/server/sendNotification" || command == "/api/v1/server/updateNotification") {
-			if (this.notificationSettings.enabled === false)
+			if (this.notificationSettings.enabled !== true)
 				return;
 
 			if (Array.isArray(data)) {

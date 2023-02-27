@@ -158,7 +158,9 @@ class ClientConfig extends ConfigItem {
 	 * Notification settings, synced between the two devices (you have to call client.syncSettings())
 	 * @type {NotificationSettings}
 	 */
-	notificationSettings = {};
+	notificationSettings = {
+		enabled: true
+	};
 
 	/**
 	 * @typedef {object} ClipboardSettings

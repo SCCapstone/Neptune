@@ -25,13 +25,22 @@ import com.neptune.app.Backend.ServerManager;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class NotificationsActivity extends AppCompatActivity {
 
     Button showBut;
     ListView notifView;
+
+    Button btnUncheckAll;
+    Button btnCheckAll;
+
+    Server server;
+
+    public HashMap<String, String> applicationNamesToPackageNames = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,8 +52,11 @@ public class NotificationsActivity extends AppCompatActivity {
             aBar.setDisplayHomeAsUpEnabled(true);
         }
 
+        btnUncheckAll = findViewById(R.id.btnUncheckAll);
+        btnCheckAll = findViewById(R.id.btnCheckAlll);
+
         notifView = findViewById(R.id.listview);
-        showBut = findViewById(R.id.check);
+        showBut = findViewById(R.id.check); // ?????????
         showBut.setVisibility(View.INVISIBLE);
         showBut.performClick();
     }
@@ -55,24 +67,28 @@ public class NotificationsActivity extends AppCompatActivity {
 
         List<ResolveInfo> ril = getPackageManager().queryIntentActivities(mainIntent, 0);
         //List<String> componentList = new ArrayList<String>();
-        String name = null;
-        int i = 0;
-
-        String[] apps = new String[ril.size()];
+        String name;
+        List<String> appsList = new ArrayList<>();
         for (ResolveInfo ri : ril) {
-            if (ri.activityInfo != null) {
-                Resources res = getPackageManager().getResourcesForApplication(ri.activityInfo.applicationInfo);
-                if (ri.activityInfo.labelRes != 0) {
-                    name = res.getString(ri.activityInfo.labelRes);
-                } else {
-                    name = ri.activityInfo.applicationInfo.loadLabel(
-                            getPackageManager()).toString();
+            try {
+                if (ri.activityInfo != null) {
+                    Resources res = getPackageManager().getResourcesForApplication(ri.activityInfo.applicationInfo);
+                    if (ri.activityInfo.labelRes != 0) {
+                        name = res.getString(ri.activityInfo.labelRes);
+                    } else {
+                        name = ri.activityInfo.applicationInfo.loadLabel(
+                                getPackageManager()).toString();
+                    }
+                    appsList.add(name);
+                    applicationNamesToPackageNames.put(name, ri.activityInfo.applicationInfo.packageName);
                 }
-                apps[i] = name;
-                i++;
-            }
+            } catch (Exception r) {};
         }
 
+        String[] apps = new String[appsList.size()];
+        for (int i = 0; i<appsList.size(); i++) {
+            apps[i] = appsList.get(i);
+        }
         Arrays.sort(apps);
         //notifView.setAdapter(new ArrayAdapter<String>(NotificationsActivity.this, android.R.layout.simple_list_item_multiple_choice, apps));
         ArrayAdapter<String> allApps = new ArrayAdapter<String>(NotificationsActivity.this, android.R.layout.simple_list_item_multiple_choice, apps);
@@ -83,88 +99,77 @@ public class NotificationsActivity extends AppCompatActivity {
         This also grabs the server ID from the other activities so that we can call the correct server's blacklist here.
         * */
         String serverId = getIntent().getStringExtra("ID2");
-        Server server = MainActivity.serverManager.getServer(UUID.fromString(serverId));
-        List<String> blacklistedApps = new ArrayList<String>();
-        for(int j=0; j< apps.length; j++) {
-            blacklistedApps.add(apps[j]);
-        }
+        server = MainActivity.serverManager.getServer(UUID.fromString(serverId));
         /*  These lines of code check if there is a blacklist created for the server and adds all apps to it if there is not one.
             If there is one created, it checks the boxes of the apps not in the blacklist.
          */
 
-        int count = 0;
-        if(server.notificationBlacklistApps.size() == 0) {
-            server.notificationBlacklistApps = blacklistedApps;
-        }
-        else {
-            for(int k=0; k<apps.length; k++) {
-                for(int l=0; l<server.notificationBlacklistApps.size(); l++) {
-                    if(apps[k].equals(server.notificationBlacklistApps.get(l))) {
-                        break;
-                    }
-                    else {
-                        count++;
-                    }
+        if(server.notificationBlacklistApps == null) {
+            // No blacklist created, make one
+            server.notificationBlacklistApps = new ArrayList<String>();
+            for (String packageName : applicationNamesToPackageNames.values()) {
+                server.notificationBlacklistApps.add(packageName);
+            }
+        } else {
+            for (int a = 0; a<notifView.getCount(); a++) {
+                String appName = (String) notifView.getItemAtPosition(a);
+                String appPackage = applicationNamesToPackageNames.get(appName);
+                if (!server.notificationBlacklistApps.contains(appPackage)) {
+                    //Log.i("PACKAGE BLOCKED BY SERVER, CHECKING:", appPackage);
+                    notifView.setItemChecked(a, true);
                 }
-                //This can only save between activity switches, just not between app closes yet.
-                if(count == server.notificationBlacklistApps.size()) {
-                    //Check the checkbox
-                    notifView.setItemChecked(k, true);
-                }
-                count = 0;
             }
         }
 
         notifView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                String selectedItem = (String) parent.getItemAtPosition(position);
-                blackListedAppsCheck(server.notificationBlacklistApps, selectedItem);
-                try {
-                    server.save();
-                } catch (JsonParseException e) {
-                    e.printStackTrace();
-                    if (server != null)
-                        server.delete();
-                    runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    if (server != null)
-                        server.delete();
-                    runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
-
-                }/* catch (ConnectionManager.FailedToPair e) {
-                    e.printStackTrace();
-                    if (server != null)
-                        server.delete();
-                    runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
-                }*/
-                /* Log to check if the apps are being stored correctly in the list. They do.
-                for (int j = 0; j<blacklistedApps.size(); j++) {
-                    Log.i("App", blacklistedApps.get(j));
-                }*/
+                save();
             }
         });
 
+        btnCheckAll.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                for (int a = 0; a<notifView.getCount(); a++) {
+                    notifView.setItemChecked(a, true);
+                }
+                save();
+            }
+        });
+
+        btnUncheckAll.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                for (int a = 0; a<notifView.getCount(); a++) {
+                    notifView.setItemChecked(a, false);
+                }
+                save();
+            }
+        });
     }
 
-    /*This method keeps track of the apps that are checked off so only those app's notifications are sent. It adds and removes apps from the list as they are checked
-    off.*/
-    private List<String> blackListedAppsCheck(List<String> before, String app) {
-        if(before.size()==0) {
-            before.add(app);
-            return before;
-        }
-
-        for(int i=0; i<before.size(); i++) {
-            if(app.equals(before.get(i))) {
-                before.remove(i);
-                return before;
+    private void save() {
+        try {
+            for (int i = 0; i<notifView.getCount(); i++) {
+                String appName = (String) notifView.getItemAtPosition(i);
+                String appPackage = applicationNamesToPackageNames.get(appName);
+                if (notifView.isItemChecked(i)) {
+                    //Log.i("PACKAGE NOT ON LIST:", appPackage);
+                    if (server.notificationBlacklistApps.contains(appPackage))
+                        server.notificationBlacklistApps.remove(appPackage);
+                } else {
+                    //Log.i("PACKAGE ON LIST:", appPackage);
+                    if (!server.notificationBlacklistApps.contains(appPackage))
+                        server.notificationBlacklistApps.add(appPackage);
+                }
             }
+
+            server.save();
+        } catch (Exception e) {
+            e.printStackTrace();
+            showErrorMessage("Failed to update and save configuration!", e.getMessage());
         }
-        before.add(app);
-        return before;
     }
 
     @Override

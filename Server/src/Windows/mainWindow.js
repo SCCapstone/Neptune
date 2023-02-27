@@ -86,6 +86,8 @@ class thisTest extends NeptuneWindow {
 	/** @type {NodeGUI.QAction} */
 	actionPreferences;
 	/** @type {NodeGUI.QAction} */
+	actionToggleConsoleVisibility;
+	/** @type {NodeGUI.QAction} */
 	actionExit;
 	
 
@@ -215,7 +217,19 @@ class thisTest extends NeptuneWindow {
 		}
 
 		if (this.addedClients.has(clientName))
-			this.addedClients.delete(clientNam);
+			this.addedClients.delete(clientName);
+
+
+		// THIS IS TEMPORARY!!!
+		this.addedClients.clear();
+		this.clientListItems.clear();
+		this.deviceList.clear();
+
+		let clientManager = Neptune.clientManager;
+		let clients = clientManager.getClients();
+		clients.forEach((client, name) => {
+			this.AddClientToDeviceList(client);
+		});
 	}
 
 
@@ -357,8 +371,6 @@ class thisTest extends NeptuneWindow {
 			this.scrollArea.setEnabled(true);
 			this.actionRefresh_client_info.setEnabled(true);
 
-
-			console.log(this.chkSyncNotifications.isChecked());
 			client.notificationSettings.enabled = this.chkSyncNotifications.isChecked(); //(client.notificationSettings.enabled !== false);
 			// clipboard
 			client.clipboardSettings.enabled = this.chkSyncClipboard.isChecked(); //(client.clipboardSettings.enabled === true);
@@ -556,6 +568,24 @@ class thisTest extends NeptuneWindow {
 				console.log("Blah! No preference window... :(");
 			});
 
+			this.actionToggleConsoleVisibility = new NodeGUI.QAction(this.MainWindow);
+			this.actionToggleConsoleVisibility.setObjectName("actionToggleConsoleVisibility");
+			// actionPreferences.setMenuRole(QAction::PreferencesRole);
+			this.actionToggleConsoleVisibility.setText("Toggle console visibility");
+			this.actionToggleConsoleVisibility.addEventListener('triggered', () => {
+				if (global.NeptuneRunnerIPC !== undefined) {
+					if (global.consoleVisible) {
+						global.NeptuneRunnerIPC.sendData("hideconsolewindow", {});
+						this.actionToggleConsoleVisibility.setText("Show console");
+					} else {
+						global.NeptuneRunnerIPC.sendData("showconsolewindow", {});
+						this.actionToggleConsoleVisibility.setText("Hide console");
+					}
+					global.consoleVisible = !global.consoleVisible;
+				}
+			});
+
+
 			this.actionExit = new NodeGUI.QAction(this.MainWindow);
 			this.actionExit.setObjectName("actionExit");
 			// actionExit.setMenuRole(QAction::QuitRole);
@@ -580,6 +610,9 @@ class thisTest extends NeptuneWindow {
 			this.actionTest_notification.setText("Test notifications");
 			this.actionTest_notification.addEventListener('triggered', () => {
 				let notification = new Notification({
+					clientId: "Neptune",
+					friendlyName: "MainWindow",
+				}, {
 					action: 'create',
 					title: 'Neptune Test',
 					contents: { text: 'This is a test notification. If you are seeing this, notifications are working!' },
@@ -645,6 +678,7 @@ class thisTest extends NeptuneWindow {
 			this.menuFile.addAction(this.menuClient_settings_action);
 			this.menuFile.addSeparator();
 			this.menuFile.addAction(this.actionPreferences);
+			this.menuFile.addAction(this.actionToggleConsoleVisibility);
 			this.menuFile.addSeparator();
 			this.menuFile.addAction(this.actionExit);
 
@@ -826,7 +860,6 @@ class thisTest extends NeptuneWindow {
 			this.chkSyncNotifications.addEventListener('stateChanged', (state) => {
 				let client = this.GetSelectedClient();
 				if (client !== undefined) {
-					console.log(state);
 					client.notificationSettings.enabled = (state === 2);
 					this.actionSync_notifications.setChecked(state === 2);
 				}
@@ -1175,6 +1208,9 @@ class thisTest extends NeptuneWindow {
 
 			// add clients
 			try {
+				var removeFunction = this.RemoveClientFromDeviceList;
+				var addFunction = this.AddClientToDeviceList;
+
 				/** @type {import('./../Classes/ClientManager.js')} */
 				let clientManager = Neptune.clientManager;
 				let clients = clientManager.getClients();
@@ -1182,22 +1218,26 @@ class thisTest extends NeptuneWindow {
 					this.AddClientToDeviceList(client);
 				});
 
-				let addFunction = function(client) {
-					this.AddClientToDeviceList(client);
-				}
-				let removeFunction = function(client) {
-					this.RemoveClientFromDeviceList(client);
-				}
 
-				this.addEventListener(NodeGUI.WidgetEventTypes.Hide, () => {
-					clientManager.removeListener('added', addFunction);
-					clientManager.removeListener('removed', removeFunction);
-					this.removeEventListener(NodeGUI.WidgetEventTypes.Hide);
-				});
+				// this.addEventListener(NodeGUI.WidgetEventTypes.Hide, () => {
+				// 	clientManager.removeListener('added', (client) => {
+				// 		removeFunction(client);
+				// 	});
+				// 	clientManager.removeListener('removed', (client) => {
+				// 		addFunction(client);
+				// 	});
 
 
-				clientManager.on('added', addFunction);
-				clientManager.on('removed', removeFunction);
+				// 	this.removeEventListener(NodeGUI.WidgetEventTypes.Hide);
+				// });
+
+
+				// clientManager.addListener('added', (client) => {
+				// 	removeFunction(client);
+				// });
+				// clientManager.addListener('removed', (client) => {
+				// 	addFunction(client);
+				// });
 
 				this.updateClientData();
 			} catch (ee) {}

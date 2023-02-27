@@ -1,18 +1,9 @@
 package com.neptune.app.Backend;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.google.gson.JsonParser;
-import com.neptune.app.Backend.Adapters.ClientConfigEncryptionAdapter;
-import com.neptune.app.Backend.Structs.ClientConfigEncryption;
-
-import org.json.JSONException;
-
 import java.io.IOException;
-import java.sql.Array;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -88,8 +79,7 @@ public class ServerConfig extends ConfigItem {
         if (jsonObject.has("dateAdded")) {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 TemporalAccessor ta = DateTimeFormatter.ISO_INSTANT.parse(jsonObject.get("dateAdded").getAsString());
-                Instant i = null;
-                i = Instant.from(ta);
+                Instant i = Instant.from(ta);
                 Date date = Date.from(i);
                 this.dateAdded = date;
             } else {

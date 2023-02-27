@@ -138,9 +138,7 @@ public class ConnectionManager {
             public void run(){
                 try {
                     sendRequest(apiURL, requestData);
-                } catch (JsonParseException e) {
-                    e.printStackTrace();
-                } catch (MalformedURLException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -461,7 +459,7 @@ public class ConnectionManager {
             }
         };
 
-
+        //webSocketClient.connect();
     }
 
     public void sendWebSocketInfo (String apiURL, JsonObject requestData) throws MalformedURLException {

@@ -42,7 +42,7 @@ class aboutWindow extends NeptuneWindow {
             let lblVersion = new NodeGUI.QLabel(centralwidget);
             lblVersion.setObjectName("lblVersion");
             lblVersion.setAlignment(NodeGUI.AlignmentFlag.AlignCenter);
-            lblVersion.setText("Version 0.0.0#Design");
+            lblVersion.setText("Version 0.5.#BetaRelease");
 
             verticalLayout.addWidget(lblVersion);
 

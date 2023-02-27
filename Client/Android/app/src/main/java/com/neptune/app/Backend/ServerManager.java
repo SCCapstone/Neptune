@@ -8,8 +8,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 public class ServerManager {
@@ -36,13 +34,16 @@ public class ServerManager {
 
 
     public void pair(UUID serverId, IPAddress ipAddress) throws ConnectionManager.FailedToPair {
-        Server server = servers.get(serverId);
-        server.ipAddress = ipAddress;
-        server.pair();
+        if (servers.containsKey(serverId)) {
+            Server server = servers.get(serverId);
+            server.ipAddress = ipAddress;
+            server.pair();
+        }
     }
 
-    public void unpair(UUID server) {
-        servers.get(server).unpair();
+    public void unpair(UUID serverId) {
+        if (servers.containsKey(serverId))
+            servers.get(serverId).unpair();
     }
 
     public Server getServer(UUID serverId) {
