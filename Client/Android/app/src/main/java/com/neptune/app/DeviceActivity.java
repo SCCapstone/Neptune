@@ -68,9 +68,11 @@ public class DeviceActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if(server.syncNotifications) {
+                    notificationsCheckbox.setChecked(false);
                     server.syncNotifications = false;
                 }
                 else {
+                    notificationsCheckbox.setChecked(true);
                     server.syncNotifications = true;
                 }
 

@@ -53,7 +53,7 @@ public class ServerConfig extends ConfigItem {
 
     // Settings
     public boolean syncNotifications = true;
-    public boolean syncClipboard = true;
+    public boolean syncClipboard = false;
     // Allow server to push data to us (receive)
     public boolean fileSharingAllowPushing = false;
     // Allow server to pull data from us (request)
@@ -121,6 +121,10 @@ public class ServerConfig extends ConfigItem {
             //this.notificationBlacklistApps = new String[0];
             this.notificationBlacklistApps = new ArrayList<String>();
         }
+
+        if(jsonObject.has("syncNotifications")) {
+            this.syncNotifications = jsonObject.get("syncNotifications").getAsBoolean();
+        }
     }
 
     /**
@@ -154,6 +158,8 @@ public class ServerConfig extends ConfigItem {
             }
             jsonObject.add("notificationBlacklistApps", notificationBlacklistApps);
         }
+
+        jsonObject.addProperty("syncNotifications", this.syncNotifications);
 
         return jsonObject;
     }
