@@ -90,12 +90,12 @@ namespace NeptuneRunner {
 
                 case NotificationSetting.DisabledForApplication:
                     reason = "disabled for this application.";
-                    resolution = "Enable notifications for " + TaskBar.ApplicationName + " inside the Settings app -> System -> Notifications & actions -> Get notifications from these senders";
+                    resolution = "Enable notifications for " + TaskBar.ApplicationName + " inside the Settings app -> System -> Notifications & actions -> Get notifications from these senders -> Enable \"" + TaskBar.ApplicationName + ".\"";
                     break;
 
                 case NotificationSetting.DisabledForUser:
                     reason = "disabled for your Windows account.";
-                    resolution = "Enable them inside the Settings app -> System -> Notifications & actions -> Get notifications from apps and other senders.";
+                    resolution = "Enable them inside the Settings app -> System -> Notifications & actions -> Enable \"Get notifications from apps and other senders.\"";
                     break;
 
                 case NotificationSetting.DisabledByGroupPolicy:
@@ -110,9 +110,8 @@ namespace NeptuneRunner {
             }
 
             if (!allowed) {
-                MessageBox.Show("Notifications blocked!",
-                    "Neptune is not able to push notifications to your system, as notifications are " + reason + Environment.NewLine + resolution,
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Neptune is not able to push notifications to your system, as notifications are " + reason + Environment.NewLine + resolution,
+                    "Notifications blocked!", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -275,7 +274,7 @@ namespace NeptuneRunner {
 
                 ToastNotificationManagerCompat.OnActivated += ToastNotificationManagerCompat_OnActivated;
                 ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier();
-            } catch (Exception a) {
+            } catch (Exception) {
                 try {
                     ToastNotificationManagerCompat.Uninstall();
                     NotificationRegisty.UninstallShortcut();
@@ -463,12 +462,12 @@ namespace NeptuneRunner {
 
                 case NotificationSetting.DisabledForApplication:
                     reason = "DisabledForApplication";
-                    moreDetails = "Enable notifications for " + TaskBar.ApplicationName + " inside the Settings app -> System -> Notifications & actions -> Get notifications from these senders";
+                    moreDetails = "Enable notifications for " + TaskBar.ApplicationName + " inside the Settings app -> System -> Notifications & actions -> Get notifications from these senders -> Enable \"Neptune.\"";
                     break;
 
                 case NotificationSetting.DisabledForUser:
                     reason = "DisabledForUser";
-                    moreDetails = "Notifications are disabled system wide. Enable them inside the Settings app -> System -> Notifications & actions -> Get notifications from apps and other senders.";
+                    moreDetails = "Notifications are disabled for your user account. Enable them inside the Settings app -> System -> Notifications & actions -> Enable \"Get notifications from apps and other senders.\"";
                     break;
 
                 case NotificationSetting.DisabledByGroupPolicy:
