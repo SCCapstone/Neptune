@@ -198,8 +198,9 @@ class Client extends ClientConfig {
 			
 			// Set things we care to update
 			if (typeof data["notificationSettings"] === "object") {
-				
+				this.notificationSettings.enabled = (data["notificationSettings"].enabled === false)? false : true;
 			}
+			
 			if (typeof data["clipboardSettings"] === "object") {
 				if (data["clipboardSettings"].enabled === false) // Only allow client to disable it
 					this.clipboardSettings.enabled = false;

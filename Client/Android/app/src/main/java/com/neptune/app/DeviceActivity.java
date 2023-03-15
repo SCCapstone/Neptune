@@ -7,6 +7,7 @@ import androidx.fragment.app.DialogFragment;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -36,6 +37,9 @@ public class DeviceActivity extends AppCompatActivity {
     private TextView fileTextView;
     private CheckBox notificationsCheckbox;
 
+
+    private boolean currentlySyncing = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -64,12 +68,24 @@ public class DeviceActivity extends AppCompatActivity {
         notificationsCheckbox = findViewById(R.id.notificationsCheckbox);
         notificationsCheckbox.setChecked(server.syncNotifications);
 
-        notificationsCheckbox.setOnClickListener(new View.OnClickListener() {
+        //CheckBox chkSyncNotifications = findViewById(R.id.notificationsCheckbox);
+        CheckBox chkClipboardSharing = findViewById(R.id.chkClipboardSharingEnabled);
+        chkClipboardSharing.setChecked(server.clipboardSharingEnabled == true);
+        CheckBox chkFileSharingEnabled = findViewById(R.id.chkFileSharingEnabled);
+        chkFileSharingEnabled.setChecked(server.fileSharingEnabled == true);
+
+        View.OnClickListener checkBoxListener = new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 server.syncNotifications = notificationsCheckbox.isChecked();
+                server.clipboardSharingEnabled = chkClipboardSharing.isChecked();
+                server.fileSharingEnabled = chkFileSharingEnabled.isChecked();
             }
-        });
+        };
+
+        notificationsCheckbox.setOnClickListener(checkBoxListener);
+        chkClipboardSharing.setOnClickListener(checkBoxListener);
+        chkFileSharingEnabled.setOnClickListener(checkBoxListener);
 
         //Sets the EditText containing the IP address of the server to the correct IP Address.
         ipAddress = findViewById(R.id.editIPAddress);
@@ -112,6 +128,19 @@ public class DeviceActivity extends AppCompatActivity {
             public void onClick(View view) {
                 try {
                     server.save();
+                    if (!currentlySyncing) {
+                        currentlySyncing = true;
+                        new Thread(() -> {
+                            try {
+                                Log.i("DeviceActivity", "Syncing config " + server.friendlyName);
+                                server.syncConfiguration();
+                                currentlySyncing = false;
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }).start();
+                    }
+
                 } catch (Exception e) {
                     showErrorMessage("Failed to save settings.", "An error occurred while saving the settings: " + e.getMessage());
                 }

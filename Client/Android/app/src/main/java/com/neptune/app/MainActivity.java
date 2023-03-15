@@ -47,6 +47,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity implements RenameDialog.RenameDialogListener{
     public static ServerManager serverManager;
@@ -196,11 +197,16 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
                 .setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        String name = nameField.getText().toString();
-                        String ipAddress = ipAddressField.getText().toString();
-                        Thread thread = new Thread(() -> addServer(name, ipAddress));
-                        thread.setName("ServerAdder-" + name);
-                        thread.start();
+                        try {
+                            String name = nameField.getText().toString();
+                            String ipAddress = ipAddressField.getText().toString();
+                            Thread thread = new Thread(() -> addServer(name, ipAddress));
+                            thread.setName("ServerAdder-" + name);
+                            thread.start();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            showErrorMessage("Unable to add server", "Error encountered pairing with new server: " + e.getMessage());
+                        }
                     }
                 })
                 .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -252,6 +258,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
                     try {
                         Log.i("MainActivity", "Reconnecting to " + server.friendlyName);
                         server.setupConnectionManager();
+                        server.syncConfiguration();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

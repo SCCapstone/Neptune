@@ -86,14 +86,14 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:text=""
-        app:layout_constraintBottom_toTopOf="@+id/checkBox2"
+        app:layout_constraintBottom_toTopOf="@+id/chkClipboardSharingEnabled"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.279"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/notificationsCheckbox" />
 
     <CheckBox
-        android:id="@+id/checkBox2"
+        android:id="@+id/chkClipboardSharingEnabled"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -109,15 +109,15 @@
         android:layout_width="254dp"
         android:layout_height="43dp"
         android:text=""
-        app:layout_constraintBottom_toTopOf="@+id/checkBox3"
+        app:layout_constraintBottom_toTopOf="@+id/chkFileSharingEnabled"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.331"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/checkBox2"
+        app:layout_constraintTop_toBottomOf="@+id/chkClipboardSharingEnabled"
         app:layout_constraintVertical_bias="0.0" />
 
     <CheckBox
-        android:id="@+id/checkBox3"
+        android:id="@+id/chkFileSharingEnabled"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="28dp"
@@ -126,7 +126,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.052"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/checkBox2" />
+        app:layout_constraintTop_toBottomOf="@+id/chkClipboardSharingEnabled" />
 
     <ImageView
         android:id="@+id/fileSets"
@@ -148,7 +148,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.26"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/checkBox3" />
+        app:layout_constraintTop_toBottomOf="@+id/chkFileSharingEnabled" />
 
     <TextView
         android:id="@+id/textView7"

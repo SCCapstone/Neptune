@@ -168,6 +168,34 @@ public class Server extends ServerConfig {
         }
     }
 
+    /**
+     * Sends shared configuration information to the server.
+     * (Pushes some config items to the server)
+     */
+    public void syncConfiguration() throws MalformedURLException {
+        JsonObject data = new JsonObject();
+
+        JsonObject notificationSettings = new JsonObject();
+        notificationSettings.addProperty("enabled", this.syncNotifications);
+
+        JsonObject clipboardSettings = new JsonObject();
+        clipboardSettings.addProperty("enabled", this.clipboardSharingEnabled);
+        clipboardSettings.addProperty("autoSendToServer", this.clipboardAutoSendToServer);
+
+        JsonObject fileSharingSettings = new JsonObject();
+        fileSharingSettings.addProperty("enabled", this.fileSharingEnabled);
+        fileSharingSettings.addProperty("autoReceiveFromServer", this.fileSharingAutoReceiveFromServer);
+        fileSharingSettings.addProperty("clientBrowsable", this.fileSharingClientBrowsable);
+
+
+        data.add("notificationSettings", notificationSettings);
+        data.add("clipboardSettings", clipboardSettings);
+        data.add("fileSharingSettings", fileSharingSettings);
+
+
+        this.connectionManager.sendRequestAsync("/api/v1/server/configuration/set", data);
+    }
+
     public void sendNotification(NeptuneNotification notification) {
         this.sendNotification(notification, SendNotificationAction.CREATE);
     }

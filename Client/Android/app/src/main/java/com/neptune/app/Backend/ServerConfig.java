@@ -44,11 +44,16 @@ public class ServerConfig extends ConfigItem {
 
     // Settings
     public boolean syncNotifications = true;
-    public boolean syncClipboard = false;
-    // Allow server to push data to us (receive)
-    public boolean fileSharingAllowPushing = false;
+    // Allow the clipboard to be pushed/pulled
+    public boolean clipboardSharingEnabled = false;
+    // Automatically send clipboard data on update
+    public boolean clipboardAutoSendToServer = false;
+    // Allow files to be pushed/pulled (enable base file sharing)
+    public boolean fileSharingEnabled = false;
     // Allow server to pull data from us (request)
-    public boolean fileSharingAllowPulling = false;
+    public boolean fileSharingClientBrowsable = false;
+    // Allow automatic downloading of files sent by the server
+    public boolean fileSharingAutoReceiveFromServer = false;
 
 
     public ServerConfig(String serverId, ConfigurationManager parent) throws IOException, JsonParseException {
