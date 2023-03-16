@@ -3,6 +3,17 @@
 `/api/v1/client/` <- Hosted by the CLIENT, server sends these commands.\
 `/api/v1/server/` <- Received by the SERVER, client sends these.
 
+
+There are a few places hosted on the server's HTTP server (that is these are NOT normal 'API' endpoints/commands):\
+`/api/v1/server/socket/{{socketUUID}}/`: The socket connection for a client-server connection, any path _after_ this path is used for this client-server connection only, such as\
+`/api/v1/server/socket/{{socketUUID}}/http`: If the client wishes to send packet data as HTTP requests, this is where the server is listening for thse. This is an alternative to using a websocket.\
+`/api/v1/server/socket/{{socketUUID}}/filesharing/{{fileUUID}}`: If a file needs to be uploaded to the server, this is where the file is uploaded at.
+
+All other paths (commands) are not actually "real" persay, and only label what a packet is meant for ("where it should go") but these packets **must** be sent over the websocket or as a HTTP request.
+
+
+
+
 ## API "packet":
 "Packet" set between `Server<->client`
 ```json5
@@ -127,46 +138,192 @@ Response:
 
 
 
+---
 
-## Notifications
 
-### New image id
-Used to create a unique "imageId" so we can upload an image
 
-Server endpoint: `/api/v1/server/image/newImageId`:
+## File sharing
+File sharing is centered around the server. That is, the client downloads the files from the server and the client uploads the files to the client. The server does **not** download from the client and does **not** upload to the client.
+
+
+### Uploading (client -> server)
+Uploading a file to the server requires 2 steps:
+1) Client requests a new file upload id, that is a unique string used to determine the URL used to upload a file (also includes metadata).
+2) Client uploads raw file (regular web upload) to the special URL.
+
+Here's the steps broken further down:
+1) Client sends a request to the server with information about the file upload (file name, size, date, etc)
+2) Server replies with a UUID (fileUUID). This UUID is used only for _this_ upload.
+3) Client uploads (regular HTTP upload) to the unique URL (`/api/v1/server/socket/{{socketUUID}}/filesharing/{{fileUUID}}`)
+
+The filesharing upload can be used for other things than _just_ file sharing, such as large images from the clipboard, images from notifications, etc.\
+Set upload types:
+```c#
+enum UploadType {
+    FileSharing = 0, // This file is being uploaded as a part of file sharing. Save this file, treat as file sharing.
+    NotificationImage = 1, // If a notification is a "big image" (contains an image) then this is the image that notification contains. This is going to be used in a notification.
+    NotificationIcon = 2, // Notifications have icons, if the icon, for whatever reason, cannot be uploaded in base64 in the original notification data then this would be how it is uploaded.
+    ClipboardImage = 5, // This is an image is going to be a part of the clipboard. Do not treat this as file sharing, put in clipboard.
+}
+```
+
+The server will save all files uploaded, _then_ follow the auto receive/prompt user. All files are saved to the server under the UUID and without any file extensions until it is determined that the file is to be accepted by the user. This is to prevent any acidental executation of unallowed files.
+
+
+
+Step one is generating this UUID:
+
+#### Generating a file UUID:
+Server endpoint: `/api/v1/server/filesharing/upload`
 
 POST Data:
 ```json5
 {
-    "imageType": "notificationIcon" // NotificationIcon, notificationImage, personImage, misc
+    "filename": "myDocument.pdf", // Name of the file being uploaded. Raw name, extension and all
+    "extension": "pdf", // File type/extension
+    "uploadType": 0, // What this upload is for, why this is being uploaded (see: filesharing.uploadType)
+    "notificationId": 1234, // If upload type is NotificationImage (1) or NotificationIcon (2) then this is the notification this image belongs to
 }
 ```
-Server replies with:
+
+Response:
 ```json5
 {
-    "imageId": "" // Random string length 16
+    "fileUUID": "d5a11522-99b2-4a99-8e0c-1017f7e1efa2" // The file UUID, this is used to create the URL to upload the file.
 }
 ```
 
-Images are then uploaded to the file endpoint via HTTPS (POST) `/api/v1/server/image/{imageId}`.\
-After successful upload, then we can reference that imageId.\
-Client can request to delete an image with command a DELETE request to: `/api/v1/server/image/{imageId}`.
-Images can be pulled down via a GET request to: `/api/v1/server/image/{imageId}`
+#### Uploading file:
+Files are to uploaded, _not in a packet, over websocket or otherwise_, to `/api/v1/server/socket/{{socketUUID}}/filesharing/{{fileUUID}}` -> (response) `/api/v1/server/filesharing/uploadStatus`
 
+Data sent: the raw file.
+
+Response:
+```json5
+{
+    "status": "success" // Whether or not the file was successfully downloaded by the server or not (going to be likely if you're receiving this resposne at all)
+    "approved": true, // If filesharing, whether the file was approved or not.
+}
+```
+
+
+### Downloading (server -> client)
+The server is required to notify the client that a file needs to be downloaded, which follows:\
+1) Server notifies the client of a new file that needs to be downloaded\
+2) Client connects using the fileUUID and downloads said file
+
+
+#### Request client to download:
+If the server wants to send a file to the client, it has to tell it _what_ it is downloading:\
+Client endpoint: `/api/v1/client/filesharing/receive` -> (no respone)
+
+POST Data:
+```json5
+{
+    "fileUUID": "d5a11522-99b2-4a99-8e0c-1017f7e1efa2", // The file UUID the client needs to download
+    "authenticationCode": "1234", // Code used to authenticate the client
+
+    "filename": "myDocument.pdf", // Name of the file being uploaded. Raw name, extension and all
+    "extension": "pdf", // File type/extension
+}
+```
+
+Reponse: none
+
+#### Downloading from server:
+Server endpoint (raw, not over websocket): `/api/v1/server/socket/{{socketUUID}}/filesharing/{{fileUUID}}` -> _raw file data_
+
+POST Data:
+```json5
+{
+    "authenticationCode": "1234", // Code to authenticate the client
+}
+```
+
+Response data: _raw file data_
+
+
+
+---
+
+
+
+## Clipboard
+No special endpoints required, all data can be sent as normally as a packet.\
+At the time we are targeting raw text (no rich text) and images. Possibility to include rich text is possible, but any other type of arbitrary data may pose a risk.
+
+
+There are multiple types of data that can be stored inside the clipboard of each host OS. We **do not** support all types, but do support some of the more major ones.\
+For a list of types on Windows, see: https://learn.microsoft.com/en-us/windows/win32/dataxchg/standard-clipboard-formats \
+Data types:
+```c#
+{
+    enum ClipboardDataType {
+        Binary = 0, // Binary or raw data. Encoded as base64
+        Text = 1, // Text data, Unicode
+        RichText = 2, // Rich text data
+        HTML = 5, // HTML format
+        Image = 10, // Image data, treat as raw here
+        DIBv5 = 11, // DIBv5 image format
+        DIB = 12, // Standard windows DIB format
+        PNG = 13, // PNG data
+        JPG = 14, // JPG data
+    }
+}
+```
+
+HTML is used, some times in conjuction to rich text, to keep formatting data.
+
+
+### Sending clipboard
+Server endpoint: `/api/v1/server/clipboard/upload` -> `/api/v1/server/clipboard/uploadStatus`\
+Client endpoint: `/api/v1/client/clipboard/upload` -> `/api/v1/client/clipboard/uploadStatus`
+
+POST Data:
+```json5
+{
+    "data": "1234ABC my clipboard data!", // Clipboard contents
+    "dataType": 1, // Data type, text, image, richtext, binrary. (See: clipboard.dataType)
+    "encoding": "utf8", // How the data is encoded (almost always base64)
+}
+```
+
+Response:
+```json5
+{
+    "status": "success" // Whether or not the file was successfully downloaded by the server or not (going to be likely if you're receiving this resposne at all)
+    "approved": true, // If filesharing, whether the file was approved or not.
+}
+```
+
+
+### Requesting clipboard
+Server endpoint: `/api/v1/server/clipboard/request` -> `/api/v1/server/clipboard/data`\
+Client endpoint: `/api/v1/client/clipboard/request` -> `/api/v1/client/clipboard/data`
+
+POST Data: (no data necessary)
+```json5
+{}
+```
+
+Response:
+```json5
+{
+    "data": "1234ABC my clipboard data!", // Clipboard contents
+    "dataType": 1, // Data type, text, image, richtext, binrary. (See: clipboard.dataType)
+    "encoding": "utf8", // How the data is encoded (almost always base64)
+}
+```
+
+---
+
+
+
+## Notifications
+_NOTE: this is a work in progress, API subject to drastic change_
 
 ### Images
-Used to upload, delete or get an image using a provided image id
-
-HTTP ONLY!
-Server endpoint: `/api/v1/server/image/{imageId}`
-
-
-POST: image binary.\
-No response.
-
-GET: Returns the image binary.
-
-DELETE: Deletes the image.
+_See filesharing and uploading. Use upload type `Image`._
 
 
 
@@ -267,7 +424,7 @@ POST Data:
 No response
 
 
-
+---
 
 
 ## Configuration
@@ -338,6 +495,7 @@ Response:
 ```
 
 
+---
 
 
 ## Unpairing a device
@@ -435,6 +593,9 @@ POST data:
 ```
 
 No response (they've disconnected).
+
+
+
 
 ### Acknowledge
 Used by the server to tell the client request was received and there is no response generated. (So the client stops waiting for a resposne.)
