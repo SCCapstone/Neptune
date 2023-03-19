@@ -24,6 +24,7 @@ var NeptuneConfig = global.Neptune.config;
 
 const ClientConfig = require('./ClientConfig.js');
 const { timeStamp } = require('node:console');
+const Clipboard = require('./Clipboard.js');
 
 
 /**
@@ -200,7 +201,7 @@ class Client extends ClientConfig {
 			if (typeof data["notificationSettings"] === "object") {
 				this.notificationSettings.enabled = (data["notificationSettings"].enabled === false)? false : true;
 			}
-			
+
 			if (typeof data["clipboardSettings"] === "object") {
 				if (data["clipboardSettings"].enabled === false) // Only allow client to disable it
 					this.clipboardSettings.enabled = false;
@@ -222,7 +223,7 @@ class Client extends ClientConfig {
 
 			//this.fromJSON(data);
 		} else if (command == "/api/v1/server/configuration/get") {
-			this.#connectionManager.sendRequest("/api/v1/client/pong", {
+			this.#connectionManager.sendRequest("/api/v1/server/configuration/data", {
 				friendlyName: NeptuneConfig.friendlyName,
 				notificationSettings: {
 					enabled: this.notificationSettings.enabled
@@ -238,6 +239,44 @@ class Client extends ClientConfig {
 				}
 			});
 
+		} else if (command == "/api/v1/server/clipboard/upload") {
+			if (this.clipboardSettings.enabled) {
+				if (this.clipboardSettings.allowClientToSet) {
+					// convert data types if need-be
+
+				} else
+					this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", { status: "setBlocked" });
+			} else
+				this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", { status: "clipboardSharingOff" });
+
+		} else if (command == "/api/v1/server/clipboard/get") {
+			if (this.clipboardSettings.enabled) {
+				if (this.clipboardSettings.allowClientToGet) {
+					let clipboardDataPromise = Clipboard.getClipboardData();
+					clipboardDataPromise.then((clipboardData) => {
+						this.#connectionManager.sendRequest("/api/v1/server/data", {
+							data: data,
+							encoding: "base64",
+							status: "okay",
+						});
+					}).catch((err) => {
+						this.log.error("Error retrieving clipboard data using Clipboard class. Falling back to QT.")
+						this.log.debug(err);
+
+						let clipboard = NodeGUI.QApplication.clipboard();
+						this.#connectionManager.sendRequest("/api/v1/server/data", {
+							data: {
+								"Text": new Buffer(clipboard.text()).toString('base64'),
+							},
+							encoding: "base64",
+							status: "simple",
+							errorMessage: "Main clipboard retrieval failed, using fallback method (simple data mode)."
+						});
+					})
+				} else
+					this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", { status: "getBlocked" });
+			} else
+				this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", { status: "clipboardSharingOff" });
 		}
 	}
 

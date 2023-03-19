@@ -276,14 +276,21 @@ HTML is used, some times in conjuction to rich text, to keep formatting data.
 
 
 ### Sending clipboard
+There are settings to prevent the clipboard to be set by the other side. _In addition to having clipboard sharing enabled._\
+On server, the variable `client.clipboardSettings.allowClientToSet` must be true for the client to upload and set the clipboard.\
+On client, the variable `server.clipboardSettings.allowServerToSet` must be true for the server to set the clipboard.
+
+
 Server endpoint: `/api/v1/server/clipboard/upload` -> `/api/v1/server/clipboard/uploadStatus`\
 Client endpoint: `/api/v1/client/clipboard/upload` -> `/api/v1/client/clipboard/uploadStatus`
 
 POST Data:
 ```json5
 {
-    "data": "1234ABC my clipboard data!", // Clipboard contents
-    "dataType": 1, // Data type, text, image, richtext, binrary. (See: clipboard.dataType)
+    "data": { // Clipboard contents. Object key represents the data type, value represents .. the value.
+        "text": "123ABC my clipboard data!", // Text contents
+        "richtext": "{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil\fcharset0 Calibri;}}\uc1\pard\sa200\sl276\slmult1\f0\fs22\lang9 123ABC my clipboard data!}" // Rich text contents
+    },
     "encoding": "utf8", // How the data is encoded (almost always base64)
 }
 ```
@@ -291,13 +298,23 @@ POST Data:
 Response:
 ```json5
 {
-    "status": "success" // Whether or not the file was successfully downloaded by the server or not (going to be likely if you're receiving this resposne at all)
-    "approved": true, // If filesharing, whether the file was approved or not.
+    "status": "okay", // Whether or not the data was successfully used by the server or not (going to be likely if you're receiving this response at all)
+    "errorMessage": "", // Error message (if an error was encountered)
 }
 ```
+Status can be one of the following:\
+okay: Clipboard updated\
+clipboardSharingOff: Unable to set, clipboard sharing disabled.\
+setBlocked: Server/client does not allow the other device to set the clipboard contents.
+
+
 
 
 ### Requesting clipboard
+There are settings to prevent the other side from "stealing" clipboard data that must be enabled before requests are fulfilled. _In addition to having clipboard sharing enabled._\
+On server, to allow the _client_ to request and get the clipboard data `client.clipboardSettings.allowClientToGet` must be true, otherwise we ignore the request.\
+On client, to allow the _server_ to request and get the clipboard data `server.clipboardSettings.allowServerToGet` must be true, otherwise we ignore the request.
+
 Server endpoint: `/api/v1/server/clipboard/request` -> `/api/v1/server/clipboard/data`\
 Client endpoint: `/api/v1/client/clipboard/request` -> `/api/v1/client/clipboard/data`
 
@@ -309,11 +326,19 @@ POST Data: (no data necessary)
 Response:
 ```json5
 {
-    "data": "1234ABC my clipboard data!", // Clipboard contents
-    "dataType": 1, // Data type, text, image, richtext, binrary. (See: clipboard.dataType)
+    "data": { // Clipboard contents. Object key represents the data type, value represents .. the value.
+        "text": "123ABC my clipboard data!", // Text contents
+        "richtext": "{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil\fcharset0 Calibri;}}\uc1\pard\sa200\sl276\slmult1\f0\fs22\lang9 123ABC my clipboard data!}" // Rich text contents
+    },
     "encoding": "utf8", // How the data is encoded (almost always base64)
+
+    "status": "okay", // Status (okay, no permissions, etc)
+    "errorMessage": "", // Error message if an error was encountered
 }
 ```
+okay: Clipboard updated\
+clipboardSharingOff: Unable to get, clipboard sharing disabled.\
+getBlocked: Server/client does not allow the other device to get the clipboard contents.
 
 ---
 
@@ -464,8 +489,8 @@ No response
 ### Get configuration
 Used to retrieve current configuration data from the other side
 
-Sever endpoint: `/api/v1/server/configuration/get` -> `/api/v1/server/configuration`\
-Client endpoint: `/api/v1/client/configuration/get` -> `/api/v1/client/configuration`
+Sever endpoint: `/api/v1/server/configuration/get` -> `/api/v1/server/configuration/data`\
+Client endpoint: `/api/v1/client/configuration/get` -> `/api/v1/client/configuration/data`
 
 POST data:
 ```json5

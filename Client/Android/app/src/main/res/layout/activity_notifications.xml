@@ -18,19 +18,33 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.007" />
 
-    <ListView
-        android:id="@+id/listview"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginStart="8dp"
+    <ScrollView
+        android:id="@+id/mainScroller"
+        android:layout_width="410dp"
+        android:layout_height="631dp"
         android:layout_marginTop="16dp"
-        android:layout_marginEnd="8dp"
         android:layout_marginBottom="16dp"
-        android:choiceMode="multipleChoice"
-        app:layout_constraintBottom_toTopOf="@+id/btnCheckAlll"
+        android:scrollbars="none"
+        app:layout_constraintBottom_toTopOf="@id/btnCheckAlll"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/notifDesc" />
+        app:layout_constraintTop_toBottomOf="@id/notifDesc"
+        tools:ignore="SpeakableTextPresentCheck">
+
+        <LinearLayout
+            android:id="@+id/appList"
+            android:layout_width="414dp"
+            android:layout_height="630dp"
+            android:layout_marginBottom="7dp"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toTopOf="@+id/btnUncheckAll"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/notifDesc">
+
+        </LinearLayout>
+
+    </ScrollView>
 
     <Button
         android:id="@+id/btnCheckAlll"
