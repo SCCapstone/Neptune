@@ -8,6 +8,8 @@ import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.util.Log;
+import android.content.ClipboardManager;
+import android.content.Context;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
@@ -199,6 +201,7 @@ public class Server extends ServerConfig {
     public void sendNotification(NeptuneNotification notification) {
         this.sendNotification(notification, SendNotificationAction.CREATE);
     }
+
 
     public boolean sendClipboard(String dataToSend) {
         return false;

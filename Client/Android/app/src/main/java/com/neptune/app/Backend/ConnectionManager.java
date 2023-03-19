@@ -426,8 +426,7 @@ public class ConnectionManager {
 
 
     // Creates the web socket for the client
-    public void createWebSocketClient() {
-        URI uri;
+    public void createWebSocketClient(URI uri) {
         try {
             //  Connect to socket
             uri = new URI("/api/v1/server/socket/"+this.socketUUID);
@@ -440,30 +439,28 @@ public class ConnectionManager {
          webSocketClient = new WebSocketClient(uri) {
             @Override
             public void onOpen(ServerHandshake handshakedata) {
+                // Produces a message when WebSocket is connected
                 System.out.println("Connected");
             }
 
             @Override
             public void onMessage(String message) {
+                // Produces a message when received from the server
                 System.out.println(message);
             }
 
             @Override
             public void onClose(int code, String reason, boolean remote) {
+                // Produces a message when the Websocket connection is closed
                 System.out.println("Disconnected");
             }
 
             @Override
             public void onError(Exception ex) {
+                // Produces error when it occurs
                 ex.printStackTrace();
             }
         };
-
-        //webSocketClient.connect();
-    }
-
-    public void sendWebSocketInfo (String apiURL, JsonObject requestData) throws MalformedURLException {
-        sendRequest(apiURL, requestData);
     }
 
     public void initiateConnection() {
@@ -477,9 +474,14 @@ public class ConnectionManager {
         thread.start();
         thread.setName(Server.serverId + " - Initiation runner");
 
-        createWebSocketClient();
-        webSocketClient.connect();
-
+        // Creates WebSocket and Connects to the server
+        try {
+            createWebSocketClient(new URI("/api/v1/server/socket/" + this.socketUUID));
+            webSocketClient.connect();
+        } catch (URISyntaxException e){
+            // Throw exception when error occurs with connection
+            e.printStackTrace();
+        }
     }
 
     /**
