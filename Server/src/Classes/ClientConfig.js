@@ -165,8 +165,10 @@ class ClientConfig extends ConfigItem {
 	/**
 	 * @typedef {object} ClipboardSettings
 	 * @property {boolean} [enabled=false] - Clipboard data sent/received synced between the two
-	 * @property {boolean} [allowAutoReceive=false] - Clipboard data allowed to be set automatically (when receive from client)
-	 * @property {boolean} [autoSendToClient=false] - Clipboard data auto received from client (them)
+	 * @property {boolean} [allowClientToSet=false] - Allow client to update this server's clipboard data remotely
+	 * @property {boolean} [allowClientToGet=false] - Allow client to request this server's clipboard data remotely
+	 * @property {boolean} [synchronizeClipboardToClient=false] - Send clipboard to client when this server' clipboard data changes
+	 * @property {boolean} [synchronizeClipboardToServer=false] - Mainly for parity, does not effect anything. Treat as read-only.  
 	 */
 	/**
 	 * Clipboard settings, synced between the two devices (you have to call client.syncSettings())

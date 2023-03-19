@@ -1,6 +1,6 @@
 # Brief
 Neptune Server utilizes "Neptune Runner," which sets up and hooks into Windows' Toast API.\
-To do this, Neptune Runner creates a startmenu shortcut on run and calls `ToastNotificationManagerCompat.CreateToastNotifier`, which, presumably (it's not documented what it actually does),creates a registery key (`\HKCU\SOFTWARE\Classes\CLSID\<Application GUID>\`) and registers a new COM Object.\
+To do this, Neptune Runner creates a startmenu shortcut on run and calls `ToastNotificationManagerCompat.CreateToastNotifier`, which, presumably (it's not documented what it actually does),creates a registry key (`\HKCU\SOFTWARE\Classes\CLSID\<Application GUID>\`) and registers a new COM Object.\
 This is a requirement for receiving activation data from toast notifications on Windows. Without this, after a notification times out into the action center (or otherwise is in the action center) the application (us) is not activated and does not receive any updates for that toast.\
 (We'll only get updates for notifications in the action center IF we register a startmenu shortcut and create the registery key).
 

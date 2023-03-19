@@ -379,6 +379,15 @@ async function main() {
 	process.env["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 	process.env["QT_ENABLE_HIGHDPI_SCALING"] = "1"
 
+	var clipboard = NodeGUI.QApplication.clipboard();
+	if (clipboard) {
+		clipboard.addEventListener('changed', () => {
+			// Neptune.log.debug('Clipboard data changed: ' + clipboard.text());
+		});
+	} else {
+		Neptune.log.debug("No clipboard object, clipboard support questionable.");
+	}
+
 
 	// Tray icon
 	// https://docs.nodegui.org/docs/api/generated/classes/qsystemtrayicon/ | https://github.com/nodegui/examples/blob/master/nodegui/systray/src/index.ts
