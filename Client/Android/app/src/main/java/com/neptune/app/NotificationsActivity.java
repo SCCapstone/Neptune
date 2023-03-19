@@ -8,14 +8,15 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.ListView;
+import android.widget.CompoundButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 
 import com.google.gson.JsonParseException;
 import com.neptune.app.Backend.ConnectionManager;
@@ -24,23 +25,25 @@ import com.neptune.app.Backend.ServerManager;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 
 public class NotificationsActivity extends AppCompatActivity {
 
-    Button showBut;
-    ListView notifView;
-
-    Button btnUncheckAll;
-    Button btnCheckAll;
-
-    Server server;
-
+    private Button btnCheckAll;
+    private Button btnUncheckAll;
+    private Button showBut;
+    private CheckBox appName;
+    private ImageView appIcon;
+    private LinearLayout appsLayout;
+    private List<String> keys;
+    private Map<String, Drawable> allApps;
+    private Map<String, Drawable> sortedApps;
     public HashMap<String, String> applicationNamesToPackageNames = new HashMap<>();
+    private Server server;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,7 +58,8 @@ public class NotificationsActivity extends AppCompatActivity {
         btnUncheckAll = findViewById(R.id.btnUncheckAll);
         btnCheckAll = findViewById(R.id.btnCheckAlll);
 
-        notifView = findViewById(R.id.listview);
+        appsLayout = findViewById(R.id.appList);
+
         showBut = findViewById(R.id.check); // ?????????
         showBut.setVisibility(View.INVISIBLE);
         showBut.performClick();
@@ -66,6 +70,7 @@ public class NotificationsActivity extends AppCompatActivity {
         mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
 
         List<ResolveInfo> ril = getPackageManager().queryIntentActivities(mainIntent, 0);
+        allApps = new HashMap<String, Drawable>();
         //List<String> componentList = new ArrayList<String>();
         String name;
         List<String> appsList = new ArrayList<>();
@@ -79,31 +84,35 @@ public class NotificationsActivity extends AppCompatActivity {
                         name = ri.activityInfo.applicationInfo.loadLabel(
                                 getPackageManager()).toString();
                     }
-                    appsList.add(name);
+                    //appsList.add(name);
+                    allApps.put(name, ri.activityInfo.loadIcon(getPackageManager()));
                     applicationNamesToPackageNames.put(name, ri.activityInfo.applicationInfo.packageName);
                 }
             } catch (Exception r) {};
         }
 
-        String[] apps = new String[appsList.size()];
-        for (int i = 0; i<appsList.size(); i++) {
-            apps[i] = appsList.get(i);
-        }
-        Arrays.sort(apps);
-        //notifView.setAdapter(new ArrayAdapter<String>(NotificationsActivity.this, android.R.layout.simple_list_item_multiple_choice, apps));
-        ArrayAdapter<String> allApps = new ArrayAdapter<String>(NotificationsActivity.this, android.R.layout.simple_list_item_multiple_choice, apps);
-        notifView.setAdapter(allApps);
+        //Takes all the app names that were gathered and stored in the map and sorts them in alphabetical order.
+        sortedApps = new TreeMap<>();
+        sortedApps.putAll(allApps);
 
-        /*I did it this way because List<String> blacklistedApps = new ArrayList<String>(Arrays.asList(apps)) didn't work. Neither did making the blacklist global.
-        I don't know why, it was just being weird so I made the blacklist this way. Will try to fix if there's time but it works now.
-        This also grabs the server ID from the other activities so that we can call the correct server's blacklist here.
-        * */
+        //Creates a list of the keys of map item, which is the app name. This is for easier use down the road.
+        keys = new ArrayList<String>();
+        for(String key : sortedApps.keySet()) {
+            keys.add(key);
+        }
+
+        //This populates the scroll view that contains the linear layout of app icons and their names in a checkbox.
+        for(Map.Entry<String, Drawable> b : sortedApps.entrySet()) {
+            loadLinearLayout(b.getKey(), b.getValue());
+        }
+
+        //This grabs the server's ID that was passed from the previous activity, so we can ensure we are editing the correct server's blacklist.
         String serverId = getIntent().getStringExtra("ID2");
         server = MainActivity.serverManager.getServer(UUID.fromString(serverId));
+
         /*  These lines of code check if there is a blacklist created for the server and adds all apps to it if there is not one.
             If there is one created, it checks the boxes of the apps not in the blacklist.
          */
-
         if(server.notificationBlacklistApps == null) {
             // No blacklist created, make one
             server.notificationBlacklistApps = new ArrayList<String>();
@@ -111,50 +120,29 @@ public class NotificationsActivity extends AppCompatActivity {
                 server.notificationBlacklistApps.add(packageName);
             }
         } else {
-            for (int a = 0; a<notifView.getCount(); a++) {
-                String appName = (String) notifView.getItemAtPosition(a);
+            for (int a = 0;a<sortedApps.size(); a++) {
+                String appName = keys.get(a);
                 String appPackage = applicationNamesToPackageNames.get(appName);
                 if (!server.notificationBlacklistApps.contains(appPackage)) {
                     //Log.i("PACKAGE BLOCKED BY SERVER, CHECKING:", appPackage);
-                    notifView.setItemChecked(a, true);
+                    ((CheckBox)(appsLayout.findViewWithTag(appName))).performClick();
                 }
             }
         }
-
-        notifView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                save();
-            }
-        });
-
-        btnCheckAll.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                for (int a = 0; a<notifView.getCount(); a++) {
-                    notifView.setItemChecked(a, true);
-                }
-                save();
-            }
-        });
-
-        btnUncheckAll.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                for (int a = 0; a<notifView.getCount(); a++) {
-                    notifView.setItemChecked(a, false);
-                }
-                save();
-            }
-        });
     }
 
     private void save() {
+        CheckBox currentCheckBox;
         try {
-            for (int i = 0; i<notifView.getCount(); i++) {
-                String appName = (String) notifView.getItemAtPosition(i);
-                String appPackage = applicationNamesToPackageNames.get(appName);
-                if (notifView.isItemChecked(i)) {
+            for (int i = 0; i<keys.size(); i++) {
+                String name = keys.get(i);
+                String appPackage = applicationNamesToPackageNames.get(name);
+                currentCheckBox = ((CheckBox)(appsLayout.findViewWithTag(appName)));
+
+                if(currentCheckBox == null)
+                    continue;
+
+                if (currentCheckBox.isChecked()) {
                     //Log.i("PACKAGE NOT ON LIST:", appPackage);
                     if (server.notificationBlacklistApps.contains(appPackage))
                         server.notificationBlacklistApps.remove(appPackage);
@@ -170,6 +158,59 @@ public class NotificationsActivity extends AppCompatActivity {
             e.printStackTrace();
             showErrorMessage("Failed to update and save configuration!", e.getMessage());
         }
+    }
+
+    //Loads each item in the LinearLayout that contains all the apps icons and checkboxes with their names.
+    public void loadLinearLayout(String name, Drawable icon) {
+        appsLayout = findViewById(R.id.appList);
+        final View appsView = getLayoutInflater().inflate(R.layout.app_line, null);
+        appName = appsView.findViewById(R.id.appName);
+        appName.setTag(name);
+        appIcon = appsView.findViewById(R.id.appIcon);
+        appName.setText(name);
+        appIcon.setImageDrawable(icon);
+
+        //When a checkbox is clicked and the box is changed for unchecked to checked or vice versa, the blacklist will be updated and saved.
+        appName.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if(b) {
+                    server.notificationBlacklistApps.remove(applicationNamesToPackageNames.get(name));
+                } else {
+                    server.notificationBlacklistApps.add(applicationNamesToPackageNames.get(name));
+                }
+
+                try {
+                    server.save();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        //This is the on click listener for the button to check all the checkboxes.
+        btnCheckAll.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                for (int a = 0; a<sortedApps.size(); a++) {
+                    ((CheckBox)(appsLayout.findViewWithTag(keys.get(a)))).setChecked(true);
+                }
+                save();
+            }
+        });
+
+        //This is the on click listener for the button to uncheck all the checkboxes.
+        btnUncheckAll.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                for (int a = 0; a<sortedApps.size(); a++) {
+                    ((CheckBox)(appsLayout.findViewWithTag(keys.get(a)))).setChecked(false);
+                }
+                save();
+            }
+        });
+
+        appsLayout.addView(appsView);
     }
 
     @Override
