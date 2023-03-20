@@ -250,29 +250,76 @@ Response data: _raw file data_
 
 ## Clipboard
 No special endpoints required, all data can be sent as normally as a packet.\
-At the time we are targeting raw text (no rich text) and images. Possibility to include rich text is possible, but any other type of arbitrary data may pose a risk.
+We send the following formats across: text (plain, Unicode/ASCII), image data (bitmap, png, DIB), rich text, HTML data.\
 
 
 There are multiple types of data that can be stored inside the clipboard of each host OS. We **do not** support all types, but do support some of the more major ones.\
 For a list of types on Windows, see: https://learn.microsoft.com/en-us/windows/win32/dataxchg/standard-clipboard-formats \
-Data types:
-```c#
+For Server, there's the Clipboard class that get/sets the clipboard data.\
+**Read data from Windows, all line endings are changed to just a linefeed character (we remove the carriage return). Setting data in Windows we replace all line endings with a carriage return/linefeed combination (we add a carriage return).**\
+Here's an example of RichText clipboard data in Windows. (The data is "Abc" copied from `write.exe`):
+```json5
 {
-    enum ClipboardDataType {
-        Binary = 0, // Binary or raw data. Encoded as base64
-        Text = 1, // Text data, Unicode
-        RichText = 2, // Rich text data
-        HTML = 5, // HTML format
-        Image = 10, // Image data, treat as raw here
-        DIBv5 = 11, // DIBv5 image format
-        DIB = 12, // Standard windows DIB format
-        PNG = 13, // PNG data
-        JPG = 14, // JPG data
-    }
+    "RTF As Text": "data:application/octet-stream;hex, 7B5C727466315C616E73695C616E7369637067313235325C64656666305C6E6F7569636F6D7061745C6465666C616E67313033337B5C666F6E7474626C7B5C66305C666E696C5C6663686172736574302043616C696272693B7D7D0D0A7B5C2A5C67656E657261746F722052696368656432302031302E302E31393034317D5C766965776B696E64345C756331200D0A5C706172645C73613230305C736C3237365C736C6D756C74315C66305C667332325C6C616E6739204162635C7061720D0A7D0D0A00",
+    "Text": "data:text/plain;base64, QQBiAGMA",
+    "RichEdit Binary": "data:application/octet-stream;hex, 80885800000081901800000041C012000000430061006C00690062007200690084901C00000094881600000040180000431000004418DC004A200900000085901A0000009588140000004820C80000004920170000004B100500A08816000000A8C0080000004162630DA9180000AC180000",
+    "Object Descriptor": "data:application/octet-stream;hex, 7800000080DCFD73A9AE1A1098A700AA00374959010000000000000000000000000000000000000000000000340000005600000057006F0072006400700061006400200044006F00630075006D0065006E007400000057006F0072006400700061006400200044006F00630075006D0065006E0074000000",
+    UnicodeText: "data:text/plain;base64, QQBiAGMA",
+    "Rich Text Format Without Objects": "data:application/octet-stream;hex, 7B5C727466315C616E73695C616E7369637067313235325C64656666305C6E6F7569636F6D7061745C6465666C616E67313033337B5C666F6E7474626C7B5C66305C666E696C5C6663686172736574302043616C696272693B7D7D0D0A7B5C2A5C67656E657261746F722052696368656432302031302E302E31393034317D5C766965776B696E64345C756331200D0A5C706172645C73613230305C736C3237365C736C6D756C74315C66305C667332325C6C616E6739204162635C7061720D0A7D0D0A00",
+    "Rich Text Format": "data:text/rtf;base64, ewBcAHIAdABmADEAXABhAG4AcwBpAFwAYQBuAHMAaQBjAHAAZwAxADIANQAyAFwAZABlAGYAZgAwAFwAbgBvAHUAaQBjAG8AbQBwAGEAdABcAGQAZQBmAGwAYQBuAGcAMQAwADMAMwB7AFwAZgBvAG4AdAB0AGIAbAB7AFwAZgAwAFwAZgBuAGkAbABcAGYAYwBoAGEAcgBzAGUAdAAwACAAQwBhAGwAaQBiAHIAaQA7AH0AfQANAAoAewBcACoAXABnAGUAbgBlAHIAYQB0AG8AcgAgAFIAaQBjAGgAZQBkADIAMAAgADEAMAAuADAALgAxADkAMAA0ADEAfQBcAHYAaQBlAHcAawBpAG4AZAA0AFwAdQBjADEAIAANAAoAXABwAGEAcgBkAFwAcwBhADIAMAAwAFwAcwBsADIANwA2AFwAcwBsAG0AdQBsAHQAMQBcAGYAMABcAGYAcwAyADIAXABsAGEAbgBnADkAIABBAGIAYwBcAHAAYQByAA0ACgB9AA0ACgA="
 }
 ```
 
-HTML is used, some times in conjuction to rich text, to keep formatting data.
+We try and store everything as base64, but in some instances that does not work (such as for byte arrays). In those cases we use hex encoding.\
+The key is the format name ("Text", "Rich Text Format", etc), and the value is a string that contains the mime type, encoding method, and data (`data:<mime_type>;<encoding>, <data>`).
+
+Here's an example of plain text in Windows. (The contents is "Neptune"):
+```json5
+{
+    "OEMText": "data:text/cp437;base64, TmVwdHVuZQ==", // CF_OEMTEXT: Text format containing characters in the OEM character set. Each line ends with a carriage return/linefeed (CR-LF) combination. A null character signals the end of the data.
+    "UnicodeText": "data:text/plain;base64, TgBlAHAAdAB1AG4AZQA=", // CF_UNICODETEXT, Unicode text format. Each line ends with a linefeed character (LF)!! Not a carriage return/linefeed combination (CR-LF).
+    "Locale": "data:application/octet-stream;hex, 09040000", // Windows specific, CF_LOCALE, the locale identifier.
+    "Text": "data:text/plain;base64, TgBlAHAAdAB1AG4AZQA=" // CF_TEXT (base64 encoded ASCII text)
+}
+```
+
+Images are stored a few different ways in the clipboard. It appears most applications use and accept CF_DIB (DeviceIndependentBitmap), which is what we'll use most of the time. Occasionally there's PNG data, if this is the case that will take precedent when sending between devices.\
+Here's an example of image data in Windows. (A 5x5 image copied from Chrome):
+```json5
+{
+    "Bitmap": "data:image/bitmap;base64, Qk2aAAAAAAAAADYAAAAoAAAABQAAAAUAAAABACAAAAAAAAAAAADEDgAAxA4AAAAAAAAAAAAA/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////w==",
+    "Format17": "data:application/octet-stream;hex, 7C000000050000000500000001002000000000000000000000000000000000000000000000000000000000000000000000000000000000FF206E695700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", // CF_DIBV5
+    "HTML Format": "data:text/html;base64, ~~snipped~~", // Would be HTML code for displaying the image by using the source image URL. (<img src="..." />)
+    "PNG": "data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAQSURBVBhXY/iPBVBf8P9/AG8TY51nJdgkAAAAAElFTkSuQmCC",
+    "DeviceIndependentBitmap": "data:image/bitmap;base64, Qk2aAAAAAAAAADYAAAAoAAAABQAAAAUAAAABACAAAAAAAAAAAADEDgAAxA4AAAAAAAAAAAAA/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////w=="
+}
+```
+
+
+
+We cannot share all types of clipboard data between devices, but we can share rich-text, plain text, and images at the bare minimum. Here's what the "universal" style looks like using the "Neptune" clipboard example above:
+```json5
+{
+    "Text": "data:text/plain;base64, TgBlAHAAdAB1AG4AZQA=" // The Unicode value OR "Text" if Unicode is not an available
+}
+```
+
+If we wanted to transfer rich text, it would be:
+```json5
+{
+    "Text": "data:text/plain;base64, QQBiAGMA", // "Abc" without rich text
+    "RichText": "data:text/rtf;base64, ewBcAHIAdABmADEAXABhAG4AcwBpAFwAYQBuAHMAaQBjAHAAZwAxADIANQAyAFwAZABlAGYAZgAwAFwAbgBvAHUAaQBjAG8AbQBwAGEAdABcAGQAZQBmAGwAYQBuAGcAMQAwADMAMwB7AFwAZgBvAG4AdAB0AGIAbAB7AFwAZgAwAFwAZgBuAGkAbABcAGYAYwBoAGEAcgBzAGUAdAAwACAAQwBhAGwAaQBiAHIAaQA7AH0AfQANAAoAewBcACoAXABnAGUAbgBlAHIAYQB0AG8AcgAgAFIAaQBjAGgAZQBkADIAMAAgADEAMAAuADAALgAxADkAMAA0ADEAfQBcAHYAaQBlAHcAawBpAG4AZAA0AFwAdQBjADEAIAANAAoAXABwAGEAcgBkAFwAcwBhADIAMAAwAFwAcwBsADIANwA2AFwAcwBsAG0AdQBsAHQAMQBcAGYAMABcAGYAcwAyADIAXABsAGEAbgBnADkAIABOAGUAcAB0AHUAbgBlAFwAcABhAHIADQAKAH0ADQAKAA==" // The letters "Abc" with rich text
+}
+```
+
+An image:
+```json5
+{
+    "Image": "data:image/bitmap;base64, Qk2aAAAAAAAAADYAAAAoAAAABQAAAAUAAAABACAAAAAAAAAAAADEDgAAxA4AAAAAAAAAAAAA/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////w=="
+    "HTML": "data:text/html;base64, ~~snipped~~" // We'll preserve this data as well
+}
+```
+
 
 
 ### Sending clipboard
@@ -288,10 +335,11 @@ POST Data:
 ```json5
 {
     "data": { // Clipboard contents. Object key represents the data type, value represents .. the value.
-        "text": "123ABC my clipboard data!", // Text contents
-        "richtext": "{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil\fcharset0 Calibri;}}\uc1\pard\sa200\sl276\slmult1\f0\fs22\lang9 123ABC my clipboard data!}" // Rich text contents
+        "Image": "data:image/bitmap;base64, Qk2aAAAAAAAAADYAAAAoAAAABQAAAAUAAAABACAAAAAAAAAAAADEDgAAxA4AAAAAAAAAAAAA/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////w==", // Image data
+        "HTML": "data:text/html;base64, ~~snipped~~", // HTML formatting data
+        "Text": "data:text/plain;base64, TgBlAHAAdAB1AG4AZQA=", // Plain text
+        "RichText": "data:text/rtf;base64, ~~snipped~~" // Rich text data
     },
-    "encoding": "utf8", // How the data is encoded (almost always base64)
 }
 ```
 
@@ -305,7 +353,8 @@ Response:
 Status can be one of the following:\
 okay: Clipboard updated\
 clipboardSharingOff: Unable to set, clipboard sharing disabled.\
-setBlocked: Server/client does not allow the other device to set the clipboard contents.
+setBlocked: Server/client does not allow the other device to set the clipboard contents.\
+failed: Generic error.
 
 
 
@@ -327,10 +376,11 @@ Response:
 ```json5
 {
     "data": { // Clipboard contents. Object key represents the data type, value represents .. the value.
-        "text": "123ABC my clipboard data!", // Text contents
-        "richtext": "{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil\fcharset0 Calibri;}}\uc1\pard\sa200\sl276\slmult1\f0\fs22\lang9 123ABC my clipboard data!}" // Rich text contents
+        "Image": "data:image/bitmap;base64, Qk2aAAAAAAAAADYAAAAoAAAABQAAAAUAAAABACAAAAAAAAAAAADEDgAAxA4AAAAAAAAAAAAA/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////w==", // Image data
+        "HTML": "data:text/html;base64, ~~snipped~~", // HTML formatting data
+        "Text": "data:text/plain;base64, TgBlAHAAdAB1AG4AZQA=", // Plain text
+        "RichText": "data:text/rtf;base64, ~~snipped~~" // Rich text data
     },
-    "encoding": "utf8", // How the data is encoded (almost always base64)
 
     "status": "okay", // Status (okay, no permissions, etc)
     "errorMessage": "", // Error message if an error was encountered
@@ -338,7 +388,8 @@ Response:
 ```
 okay: Clipboard updated\
 clipboardSharingOff: Unable to get, clipboard sharing disabled.\
-getBlocked: Server/client does not allow the other device to get the clipboard contents.
+getBlocked: Server/client does not allow the other device to get the clipboard contents.\
+failed: Generic error.
 
 ---
 

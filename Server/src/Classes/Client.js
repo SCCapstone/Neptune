@@ -242,8 +242,17 @@ class Client extends ClientConfig {
 		} else if (command == "/api/v1/server/clipboard/upload") {
 			if (this.clipboardSettings.enabled) {
 				if (this.clipboardSettings.allowClientToSet) {
-					// convert data types if need-be
+					let setClipboardStatus = Clipboard.setStandardizedClipboardData(data["data"]).then((success) => {
+						this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", { status: "success" });
+					}).catch((err) => {
+						this.log.error("Error retrieving clipboard data using Clipboard class. Falling back to QT.")
+						this.log.debug(err);
 
+						this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", {
+							status: "failed",
+							errorMessage: "Unknown server error"
+						});
+					});
 				} else
 					this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", { status: "setBlocked" });
 			} else
@@ -252,26 +261,39 @@ class Client extends ClientConfig {
 		} else if (command == "/api/v1/server/clipboard/get") {
 			if (this.clipboardSettings.enabled) {
 				if (this.clipboardSettings.allowClientToGet) {
-					let clipboardDataPromise = Clipboard.getClipboardData();
+					let clipboardDataPromise = Clipboard.getStandardizedClipboardData();
 					clipboardDataPromise.then((clipboardData) => {
 						this.#connectionManager.sendRequest("/api/v1/server/data", {
 							data: data,
-							encoding: "base64",
 							status: "okay",
 						});
 					}).catch((err) => {
-						this.log.error("Error retrieving clipboard data using Clipboard class. Falling back to QT.")
-						this.log.debug(err);
+						try {
+							this.log.error("Error retrieving clipboard data using Clipboard class. Falling back to QT.")
+							this.log.error(err);
 
-						let clipboard = NodeGUI.QApplication.clipboard();
-						this.#connectionManager.sendRequest("/api/v1/server/data", {
-							data: {
-								"Text": new Buffer(clipboard.text()).toString('base64'),
-							},
-							encoding: "base64",
-							status: "simple",
-							errorMessage: "Main clipboard retrieval failed, using fallback method (simple data mode)."
-						});
+							let clipboard = NodeGUI.QApplication.clipboard();
+							let data = {};
+							let text = clipboard.text();
+							if (text != undefined && text != "") {
+								data.Text = "data:text/plain;base64, " + Buffer.from(text).toString('base64');
+							}
+							// add picture support
+
+							this.#connectionManager.sendRequest("/api/v1/server/data", {
+								data: data,
+								status: "simple",
+								errorMessage: "Main clipboard retrieval failed, using fallback method (simple data mode)."
+							});
+						} catch (simpleModeError) {
+							this.log.error("Error retrieving clipboard data using QT.")
+							this.log.error(err);
+							this.#connectionManager.sendRequest("/api/v1/server/data", {
+								data: {},
+								status: "failed",
+								errorMessage: "Unknown server error."
+							});
+						} 
 					})
 				} else
 					this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", { status: "getBlocked" });
