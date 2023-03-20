@@ -121,6 +121,8 @@ class Clipboard {
 						returnData.Text = clipboardData.Unicode;
 					} else if (typeof clipboardData.Text === "string") {
 						returnData.Text = clipboardData.Text;
+					} else if (typeof clipboardData.FileNameW === "string") {
+						returnData.Text = clipboardData.FileNameW;
 					}
 
 					// Copy RichText over
@@ -198,6 +200,8 @@ class Clipboard {
 										returnData.RichText = data;
 									} else if (fileExtension == "html" && returnData.HTML === undefined) {
 										returnData.HTML = data;
+									} else if (returnData.Text !== undefined) {
+										returnData.Text = data;
 									}
 								}
 							}
