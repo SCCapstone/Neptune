@@ -26,6 +26,52 @@ This data is a layer on the _actual_ data the client is sending. The `data` port
 The server or client would receive this "packet" of data and peel it (decrypt the `data` portion) to read the request/response of the other application. This is to provide always applied encryption to requests and responses.\
 
 
+## Queuing
+Queuing is an alternative method to sending data to the client.\
+If a WebSocket connection is not established, Neptune Server will store all requests in a 'queue'. This queue can be retrieved using `/api/v1/server/requestQueue/get`.\
+The server will then respond with an array of request, (data "packets"), the client will then have to deal with as a batch.
+
+POST Data:
+```json5
+{}
+```
+
+Server response:
+```json5
+[
+    {
+        "command": "/api/v1/client/configuration/set",
+        "data": {
+            "fiendlyName": "", // Device display name
+            "notificationSettings": { // Notification settings
+                "enabled": true // Send notification data
+            },
+            "clipboardSettings": {
+                "enabled": false, // this && two below
+                "autoSendToServer": false, // Automatically send to server (sent and ignored by client)
+                "autoSendToClient": false // Automatically send to client (sent and ignored by server)
+            },
+            "fileSharingSettings": {
+                "enabled": false, // Enable file sharing
+                "autoReceiveFromServer": false, // Auto receive files from the server (sent and ignored by client)
+                "autoReceiveFromClient": false, // Auto receive files from the client (sent and ignored by server)
+                "serverBrowsable": false, // Client can view the files on the server (sent and ignored by server)
+                "clientBrowsable": false // Server can view the files on client (remotely) (sent and ignored by client)
+            }
+        }
+    },
+    {
+        "command": "/api/v1/client/battery/get",
+        "data": {}
+    },
+    {
+        // ...
+    }
+]
+```
+
+
+
 
 ## Key negotiation, pairing
 Before the two applications can talk to each other, we need to setup a socket connection. A socket will allow the server to send data to the client device without having to host a whole web server on the client app.\
@@ -328,8 +374,8 @@ On server, the variable `client.clipboardSettings.allowClientToSet` must be true
 On client, the variable `server.clipboardSettings.allowServerToSet` must be true for the server to set the clipboard.
 
 
-Server endpoint: `/api/v1/server/clipboard/upload` -> `/api/v1/server/clipboard/uploadStatus`\
-Client endpoint: `/api/v1/client/clipboard/upload` -> `/api/v1/client/clipboard/uploadStatus`
+Server endpoint: `/api/v1/server/clipboard/set` -> `/api/v1/server/clipboard/uploadStatus`\
+Client endpoint: `/api/v1/client/clipboard/set` -> `/api/v1/client/clipboard/uploadStatus`
 
 POST Data:
 ```json5
@@ -520,8 +566,16 @@ Data
     },
     "clipboardSettings": {
         "enabled": false, // this && two below
-        "autoSendToServer": false, // Automatically send to server (sent and ignored by client)
-        "autoSendToClient": false // Automatically send to client (sent and ignored by server)
+
+        // These cannot be changed by the server
+        "allowServerToSet": false, // Allow server to set the client's clipboard (client)
+        "allowServerToGet": false, // Allow server to get the client's clipboard (client)
+        "synchronizeClipboardToServer": false, // Automatically send to server (client)
+
+        // These cannot be change by the client
+        "allowClientToSet": false, // Allow client to set the server's clipboard (server)
+        "allowClientToGet": false, // Allow client to get the server's clipboard (server)
+        "synchronizeClipboardToClient": false // Automatically send to client (server)
     },
     "fileSharingSettings": {
         "enabled": false, // Enable file sharing

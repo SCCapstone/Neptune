@@ -1,14 +1,14 @@
 package com.neptune.app.Backend;
 
+import android.media.metrics.Event;
 import android.os.StrictMode;
-import android.util.Base64;
+import android.text.TextPaint;
 import android.util.Log;
-
-import androidx.annotation.NonNull;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import com.neptune.app.Backend.Structs.APIDataPackage;
 import com.neptune.app.MainActivity;
 
 import org.java_websocket.handshake.ServerHandshake;
@@ -25,30 +25,23 @@ import java.io.OutputStreamWriter;
 import java.math.BigInteger;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.PublicKey;
-import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
+import java.sql.Connection;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -57,16 +50,16 @@ import org.java_websocket.client.WebSocketClient;
 import javax.crypto.KeyAgreement;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
-import javax.crypto.interfaces.DHPrivateKey;
 import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.DHPublicKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import at.favre.lib.crypto.HKDF;
-import kotlin.NotImplementedError;
-
 public class ConnectionManager {
+    private final String TAG = "Connection-Manager";
+
+    public final EventEmitter EventEmitter = new EventEmitter();
+
     private boolean hasNegotiated;
     private Date lastCommunicatedTime;
     // protected AsyncHttpClient AsyncHttpClient; // Eh maybe not .. but probably
@@ -239,7 +232,8 @@ public class ConnectionManager {
             //your codes here
             try {
                 URL url = new URL("http://" + this.IPAddress.toString() + "/api/v1/server/initiateConnection");
-                Log.d("Connection-Manager", "Initiating connection: http://" + this.IPAddress.toString() + "/api/v1/server/initiateConnection");
+
+                Log.d(TAG, "Initiating connection: http://" + this.IPAddress.toString() + "/api/v1/server/initiateConnection");
                 HttpURLConnection connection = (HttpURLConnection)url.openConnection();
                 connection.setRequestMethod("POST");
                 connection.setRequestProperty("Content-Type", "application/json");
@@ -252,7 +246,7 @@ public class ConnectionManager {
                     byte[] input = connectionParameters.getBytes(StandardCharsets.UTF_8);
                     stream.write(input, 0, input.length);
                 }
-                Log.d("Connection-Manager", "reading response...");
+                Log.d(TAG, "reading response...");
                 StringBuilder response = new StringBuilder();
                 try(BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
                     String responseLine = null;
@@ -262,7 +256,7 @@ public class ConnectionManager {
                 }
                 connection.disconnect();
 
-                Log.d("Connection-Manager", "Received response: " + response.toString());
+                Log.d(TAG, "Received response: " + response.toString());
 
                 JSONObject serverResponse = new JSONObject(response.toString());
                 if (serverResponse.has("error"))
@@ -333,11 +327,11 @@ public class ConnectionManager {
                 // the response.. needs b1, newPair, chkMsg, chkMsgHash, chkMsgHashFunction
                 String publicKey = NeptuneCrypto.convertBytesToBase64(bobPublic.getY().toByteArray()); // this might be wrong
                 String step2 = "{\"b1\": \"" + publicKey + "\",\"newPair\": " + newPair + ", \"chkMsg\": \"" + chkMsgEncrypted + "\", \"chkMsgHash\": \"" + chkMsgHash + "\", \"chkMsgHashFunction\": \"sha256\", \"clientId\": \"" + clientIdString + "\"}";
-                Log.d("Connection-Manager", "Sending step2 data: " + step2);
+                Log.d(TAG, "Sending step2 data: " + step2);
 
                 // Send step2
                 URL url2 = new URL("http://" + this.IPAddress.toString() + "/api/v1/server/initiateConnection/" + this.conInitUUID);
-                Log.d("Connection-Manager", "Initiating connection: http://" + this.IPAddress.toString() + "/api/v1/server/initiateConnection/" + this.conInitUUID);
+                Log.d(TAG, "Initiating connection: http://" + this.IPAddress.toString() + "/api/v1/server/initiateConnection/" + this.conInitUUID);
                 HttpURLConnection connection2 = (HttpURLConnection)url2.openConnection();
                 connection2.setRequestMethod("POST");
                 connection2.setRequestProperty("Content-Type", "application/json");
@@ -380,7 +374,7 @@ public class ConnectionManager {
                     data = NeptuneCrypto.decrypt(data, this.sharedSecret);
                 }
 
-                Log.d("Connection-Manager", "Received response: " + data);
+                Log.d(TAG, "Received response: " + data);
 
                 JSONObject serverResponse2 = new JSONObject(data);
 
@@ -392,7 +386,7 @@ public class ConnectionManager {
 
                 // at some point
 
-                Log.d("Connection-Manager", "Connection complete! SocketUUID: " + this.socketUUID);
+                Log.d(TAG, "Connection complete! SocketUUID: " + this.socketUUID);
 
                 if (this.Server.pairId == null) {
                     this.pair();
@@ -426,62 +420,83 @@ public class ConnectionManager {
 
 
     // Creates the web socket for the client
-    public void createWebSocketClient(URI uri) {
-        try {
-            //  Connect to socket
-            uri = new URI("/api/v1/server/socket/"+this.socketUUID);
-        }
+    public void createWebSocketClient() {
+        URI uri;
+        try { uri = new URI("/api/v1/server/socket/"+this.socketUUID); }
         catch (URISyntaxException e) {
             e.printStackTrace();
             return;
         }
 
+        EventEmitter connectionManagerEventEmitter = this.EventEmitter;
+        SecretKey connectionManagerSharedSecret = this.sharedSecret;
+
          webSocketClient = new WebSocketClient(uri) {
             @Override
-            public void onOpen(ServerHandshake handshakedata) {
-                // Produces a message when WebSocket is connected
-                System.out.println("Connected");
+            public void onOpen(ServerHandshake serverHandshake) {
+                Log.d(TAG, "WebSocket connected ServerHandshake status code:>message: "
+                        + serverHandshake.getHttpStatus() + ":>"
+                        + serverHandshake.getHttpStatusMessage());
             }
 
             @Override
             public void onMessage(String message) {
-                // Produces a message when received from the server
-                System.out.println(message);
+                Log.d(TAG, "WebSocket message: " + message);
+
+                try {
+                    JsonObject jsonResponse = JsonParser.parseString(message).getAsJsonObject();
+                    if (jsonResponse.has("data")) {
+                        String responseData = jsonResponse.get("data").getAsString();
+                        if (NeptuneCrypto.isEncrypted(responseData)) {
+                            try {
+                                responseData = NeptuneCrypto.decrypt(responseData, connectionManagerSharedSecret);
+                            } catch (NoSuchPaddingException | NoSuchAlgorithmException e) {
+                                Log.e(TAG, "WebSocket unable to decrypt message!");
+                                e.printStackTrace();
+                            }
+                        }
+
+                        APIDataPackage apiData = new APIDataPackage(jsonResponse.get("command").getAsString(), JsonParser.parseString(responseData).getAsJsonObject());
+                        connectionManagerEventEmitter.emit("command", apiData);
+                    }
+                } catch (JsonParseException e) {
+                    Log.e(TAG, "WebSocket unable to parse api message!");
+                    e.printStackTrace();
+                }
             }
 
             @Override
             public void onClose(int code, String reason, boolean remote) {
-                // Produces a message when the Websocket connection is closed
                 System.out.println("Disconnected");
+                Log.e(TAG, "WebSocket disconnected.");
+                // Start polling thread/service ?
             }
 
             @Override
             public void onError(Exception ex) {
-                // Produces error when it occurs
+                Log.e(TAG, "WebSocket error! " + ex.getMessage());
                 ex.printStackTrace();
             }
         };
     }
 
+    /**
+     * Connect to the server (pair if required), create+connect websocket
+     */
     public void initiateConnection() {
         Thread thread = new Thread(() -> {
             try {
                 initiateConnectionSync();
+
+                // Creates WebSocket and connects to the server
+                createWebSocketClient();
+                webSocketClient.connect();
             } catch (FailedToPair e) {
                 e.printStackTrace();
             }
         });
         thread.start();
         thread.setName(Server.serverId + " - Initiation runner");
-
-        // Creates WebSocket and Connects to the server
-        try {
-            createWebSocketClient(new URI("/api/v1/server/socket/" + this.socketUUID));
-            webSocketClient.connect();
-        } catch (URISyntaxException e){
-            // Throw exception when error occurs with connection
-            e.printStackTrace();
-        }
     }
 
     /**

@@ -3,6 +3,8 @@ package com.neptune.app.Backend;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.neptune.app.Backend.Structs.ServerClipboardSettings;
+
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -44,10 +46,10 @@ public class ServerConfig extends ConfigItem {
 
     // Settings
     public boolean syncNotifications = true;
-    // Allow the clipboard to be pushed/pulled
-    public boolean clipboardSharingEnabled = false;
-    // Automatically send clipboard data on update
-    public boolean clipboardAutoSendToServer = false;
+
+    // Clipboard
+    public ServerClipboardSettings clipboardSettings = new ServerClipboardSettings();
+
     // Allow files to be pushed/pulled (enable base file sharing)
     public boolean fileSharingEnabled = false;
     // Allow server to pull data from us (request)

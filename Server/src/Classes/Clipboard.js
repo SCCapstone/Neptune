@@ -189,19 +189,19 @@ class Clipboard {
 							switch (mimeType) {
 								case "image":
 									if (fileExtension == "png") {
-										returnData.Image = data; // Go with a PNG over whatever else
+										returnData.Image = clipboardData[format]; // Go with a PNG over whatever else
 									} else if (returnData.Image === undefined) {
-										returnData.Image = data; // Only add image if not already there
+										returnData.Image = clipboardData[format]; // Only add image if not already there
 									}
 									break;
 
 								case "text": {
 									if ((fileExtension == "rtf" || fileExtension == "richtext") && returnData.RichText === undefined) {
-										returnData.RichText = data;
+										returnData.RichText = clipboardData[format];
 									} else if (fileExtension == "html" && returnData.HTML === undefined) {
-										returnData.HTML = data;
+										returnData.HTML = clipboardData[format];
 									} else if (returnData.Text !== undefined) {
-										returnData.Text = data;
+										returnData.Text = clipboardData[format];
 									}
 								}
 							}

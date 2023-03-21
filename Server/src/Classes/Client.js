@@ -205,6 +205,9 @@ class Client extends ClientConfig {
 			if (typeof data["clipboardSettings"] === "object") {
 				if (data["clipboardSettings"].enabled === false) // Only allow client to disable it
 					this.clipboardSettings.enabled = false;
+
+				if (typeof data["clipboardSettings"].synchronizeClipboardToServer === "boolean") // For parity
+					this.clipboardSettings.synchronizeClipboardToServer = data["clipboardSettings"].synchronizeClipboardToServer;
 			}
 
 			if (typeof data["fileSharingSettings"] === "object") {
@@ -230,7 +233,9 @@ class Client extends ClientConfig {
 				},
 				clipboardSettings: {
 					enabled: this.clipboardSettings.enabled,
-					autoSendToClient: this.clipboardSettings.autoSendToClient,
+					allowClientToSet: this.clipboardSettings.allowClientToSet,
+					allowClientToGet: this.clipboardSettings.allowClientToGet,
+					synchronizeClipboardToClient: this.clipboardSettings.autoSendToClient,
 				},
 				fileSharingSettings: {
 					enabled: this.fileSharingSettings.enabled,
@@ -239,7 +244,7 @@ class Client extends ClientConfig {
 				}
 			});
 
-		} else if (command == "/api/v1/server/clipboard/upload") {
+		} else if (command == "/api/v1/server/clipboard/set") {
 			if (this.clipboardSettings.enabled) {
 				if (this.clipboardSettings.allowClientToSet) {
 					let setClipboardStatus = Clipboard.setStandardizedClipboardData(data["data"]).then((success) => {

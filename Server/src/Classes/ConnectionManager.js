@@ -79,6 +79,12 @@ class ConnectionManager extends EventEmitter {
     #encryptionParameters;
 
 
+    /**
+     * 
+     * 
+     */
+    #requestQueues;
+
 
 	constructor(client, sharedSecret, miscData) {
 		super();

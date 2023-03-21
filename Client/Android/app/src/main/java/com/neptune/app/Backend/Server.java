@@ -8,49 +8,45 @@ import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.util.Log;
-import android.content.ClipboardManager;
-import android.content.Context;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.google.gson.JsonParser;
+import com.neptune.app.Backend.Exceptions.TooManyEventListenersException;
+import com.neptune.app.Backend.Exceptions.TooManyEventsException;
+import com.neptune.app.Backend.Interfaces.ICallback;
+import com.neptune.app.Backend.Structs.APIDataPackage;
 import com.neptune.app.MainActivity;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAccessor;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.UUID;
 
-import kotlin.NotImplementedError;
-
 public class Server extends ServerConfig {
+    private final String TAG;
+
     private ConnectionManager connectionManager;
 
 
     public Server(String serverId, ConfigurationManager configurationManager) throws JsonParseException, IOException {
         super(serverId, configurationManager);
-        Log.i("Server", "Server(): " + serverId);
+        TAG = "Server-" + this.serverId.toString();
+        Log.i(TAG, "Server(): " + serverId);
     }
     public Server(UUID serverId, ConfigurationManager configurationManager) throws JsonParseException, IOException {
         super(serverId.toString(), configurationManager);
-        Log.i("Server", "Server(): " + serverId.toString());
+        TAG = "Server-" + this.serverId.toString();
+        Log.i(TAG, "Server(): " + serverId);
     }
 
     public Server(JsonObject jsonObject, ConfigurationManager configurationManager) throws JsonParseException, IOException {
         super(jsonObject.get("serverId").getAsString(), configurationManager);
         fromJson(jsonObject);
-        Log.i("Server", "Server(): " + this.serverId.toString());
+        TAG = "Server-" + this.serverId.toString();
+        Log.i(TAG, "Server(): " + this.serverId.toString());
     }
 
     //
@@ -58,7 +54,7 @@ public class Server extends ServerConfig {
     /**
      * This will create the connection manager and initiate connection.
      * If the connection manager already exists, it'll check if we're connected. If not, we reconnect. If connected we return.
-     * @throws ConnectionManager.FailedToPair
+     * @throws ConnectionManager.FailedToPair Unable to pair to server
      */
     public void setupConnectionManager() throws ConnectionManager.FailedToPair {
         if (connectionManager != null) {
@@ -68,8 +64,48 @@ public class Server extends ServerConfig {
         }
 
         connectionManager = new ConnectionManager(this.ipAddress, this);
-        Log.d("SERVER", "setupConnectionManager: we did something");
+        try {
+            connectionManager.EventEmitter.addListener("command", this.getCommandListener());
+        } catch (TooManyEventListenersException | TooManyEventsException e) {
+            // Literally how?
+            e.printStackTrace();
+        }
+
+        Log.d(TAG, "setupConnectionManager: we did something");
         connectionManager.initiateConnectionSync();
+    }
+
+    /**
+     * Creates the event listener callback. This should be used on "command" events from ConnectionManager.
+     * @return Callback method
+     */
+    private ICallback getCommandListener() {
+        return params -> {
+            APIDataPackage apiDataPackage = null;
+            if (params.length == 1) {
+                if (params[0] instanceof APIDataPackage)
+                    apiDataPackage = (APIDataPackage) params[0];
+            }
+            if (apiDataPackage == null) {
+                Log.e(TAG + "-CommandListener", "Command event emitted, but invalid event data provided.");
+                return;
+            }
+
+            String command = apiDataPackage.command.toLowerCase();
+            if (command.equals("/api/v1/echo")) {
+                this.connectionManager.sendRequestAsync("/api/v1/echoed", apiDataPackage.data);
+            } else if (command.equals("/api/v1/client/ping")) {
+                Date now = new Date();
+                SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+                formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+                String timestamp = formatter.format(now);
+
+                JsonObject pong = new JsonObject();
+                pong.addProperty("receivedAt", apiDataPackage.data.get("timestamp").toString());
+                pong.addProperty("timestamp", timestamp);
+                this.connectionManager.sendRequestAsync("/api/v1/server/pong", pong);
+            }
+        };
     }
 
     /**
@@ -122,7 +158,7 @@ public class Server extends ServerConfig {
             connectionManager.sendRequestAsync("/api/v1/client/battery/info", batteryData);
         } catch (Exception e) {
             e.printStackTrace();
-            Log.e("Server-" + this.serverId, "sendBatteryInfo: failure");
+            Log.e(TAG, "sendBatteryInfo: failure");
         }
     }
 
@@ -139,9 +175,6 @@ public class Server extends ServerConfig {
                 if (connectionManager == null)
                     return;
             }
-
-            if (!this.syncNotifications)
-                return;
 
             if (!this.syncNotifications) {
                 return;
@@ -174,15 +207,17 @@ public class Server extends ServerConfig {
      * Sends shared configuration information to the server.
      * (Pushes some config items to the server)
      */
-    public void syncConfiguration() throws MalformedURLException {
+    public void syncConfiguration() {
         JsonObject data = new JsonObject();
 
         JsonObject notificationSettings = new JsonObject();
         notificationSettings.addProperty("enabled", this.syncNotifications);
 
         JsonObject clipboardSettings = new JsonObject();
-        clipboardSettings.addProperty("enabled", this.clipboardSharingEnabled);
-        clipboardSettings.addProperty("autoSendToServer", this.clipboardAutoSendToServer);
+        clipboardSettings.addProperty("enabled", this.clipboardSettings.enabled);
+        clipboardSettings.addProperty("allowServerToSet", this.clipboardSettings.allowServerToSet);
+        clipboardSettings.addProperty("allowServerToGet", this.clipboardSettings.allowServerToGet);
+        clipboardSettings.addProperty("synchronizeClipboardToServer", this.clipboardSettings.synchronizeClipboardToServer);
 
         JsonObject fileSharingSettings = new JsonObject();
         fileSharingSettings.addProperty("enabled", this.fileSharingEnabled);
@@ -203,8 +238,13 @@ public class Server extends ServerConfig {
     }
 
 
-    public boolean sendClipboard(String dataToSend) {
-        return false;
+    public void sendClipboard(String dataToSend) {
+        if (!this.clipboardSettings.enabled)
+            return;
+
+        JsonObject clipboardData = Clipboard.getClipboard();
+
+        this.connectionManager.sendRequestAsync("/api/v1/server/clipboard/set", clipboardData);
     }
 
     public boolean sendFile(String filePath) {
