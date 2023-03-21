@@ -70,7 +70,7 @@ public class DeviceActivity extends AppCompatActivity {
 
         //CheckBox chkSyncNotifications = findViewById(R.id.notificationsCheckbox);
         CheckBox chkClipboardSharing = findViewById(R.id.chkClipboardSharingEnabled);
-        chkClipboardSharing.setChecked(server.clipboardSharingEnabled == true);
+        chkClipboardSharing.setChecked(server.clipboardSettings.enabled == true);
         CheckBox chkFileSharingEnabled = findViewById(R.id.chkFileSharingEnabled);
         chkFileSharingEnabled.setChecked(server.fileSharingEnabled == true);
 
@@ -78,7 +78,7 @@ public class DeviceActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 server.syncNotifications = notificationsCheckbox.isChecked();
-                server.clipboardSharingEnabled = chkClipboardSharing.isChecked();
+                server.clipboardSettings.enabled = chkClipboardSharing.isChecked();
                 server.fileSharingEnabled = chkFileSharingEnabled.isChecked();
             }
         };
