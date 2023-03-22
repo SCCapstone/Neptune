@@ -534,9 +534,9 @@ class thisTest extends NeptuneWindow {
 			this.actionView_connection_details.addEventListener('triggered', () => {
 				let selectedItem = this.GetSelectedClient();
 				if (selectedItem !== undefined) {
-					let connectionDetails = this.newChildWindow('ConnectionDetails');
-					connectionDetails.setClient(selectedItem);
-					connectionDetails.show();
+					let newConnectionDetails = this.newChildWindow('newConnectionDetails');
+					newConnectionDetails.setClient(selectedItem);
+					newConnectionDetails.show();
 				}
 			});
 
