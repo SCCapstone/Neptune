@@ -552,6 +552,12 @@ async function main() {
 	 * @type {Map<String,conInitObject>}
 	 */
 	var conInitUUIDs = {};
+
+	/**
+	 * A collection of socket UUIDs mapped to conInitUUIDs.
+	 * @type {Map<String, String>}
+	 */
+	var socketUUIDs = {};
 	
 
 
@@ -565,7 +571,7 @@ async function main() {
 		conInitLog.info("Initiating new client connection, uuid: " + conInitUUID);
 
 		// https://nodejs.org/api/crypto.html#class-diffiehellmangroup
-		let supportedKeyGroups = ['modp14', 'modp15', 'modp16', 'modp17', 'modp18'];
+		let supportedKeyGroups = ['modp14', 'modp15', 'modp16'];
 		let keyGroup = 'modp16';
 		if (req.body.supportedKeyGroups !== undefined) {
 			for (var i = 0; i<req.body.supportedKeyGroups.length; i++) {
@@ -574,6 +580,7 @@ async function main() {
 				}
 			}
 		}
+		conInitLog.debug("Selected DH key group: " + keyGroup);
 
 		// Select the cipher and hash
 		let supportedCiphers = ["chacha20-poly1305", "chacha20", "aes-256-gcm", "aes-128-gcm"];
@@ -588,16 +595,19 @@ async function main() {
 				}
 			}
 		}
-		if (req.body.supportedHashAlgorithm !== undefined) {
-			for (var i = 0; i<req.body.supportedHashAlgorithm.length; i++) {
-				if (supportedHashAlgorithms.indexOf(req.body.supportedHashAlgorithm[i]) != -1) {
-					hashAlgorithm = req.body.supportedHashAlgorithm[0];
+		conInitLog.silly("Selected cipher: " + cipher);
+
+		if (req.body.supportedHashAlgorithms !== undefined) {
+			for (var i = 0; i<req.body.supportedHashAlgorithms.length; i++) {
+				if (supportedHashAlgorithms.indexOf(req.body.supportedHashAlgorithms[i]) != -1) {
+					hashAlgorithm = req.body.supportedHashAlgorithms[0];
 				}
 			}
 		}
+		conInitLog.silly("Selected hash algorithm: " + hashAlgorithm);
 		
 
-		conInitLog.debug("DH key group: " + keyGroup);
+
 		let alice = crypto.getDiffieHellman(keyGroup);
 		alice.generateKeys();
 
@@ -643,7 +653,9 @@ async function main() {
 			conInitUUIDs[conInitUUID].dynamicSaltDHObject = dynamicSalt;
 		}
 
-		res.status(200).send(JSON.stringify(myResponsePacket));
+		let responseString = JSON.stringify(myResponsePacket);
+		conInitLog.silly("Sending: " + responseString);
+		res.status(200).send(responseString);
 	});
 
 
@@ -678,7 +690,7 @@ async function main() {
 
 		// Generate shared secret
 		let aliceSecret = conInitObject.aliceDHObject.computeSecret(Buffer.from(req.body.b1,'base64'));
-		conInitObject.secret = NeptuneCrypto.HKDF(aliceSecret, "mySalt1234", {hashAlgorithm: "sha256", keyLength: 32}).key;
+		conInitObject.secret = NeptuneCrypto.HKDF(aliceSecret, "mySalt1234", {hashAlgorithm: conInitObject.selectedHashAlgorithm, keyLength: 32}).key;
 
 		
 		// Validate chkMsg
@@ -698,7 +710,7 @@ async function main() {
 			if (client.pairKey !== undefined) {
 				// Regenerate key using shared pair key
 				conInitObject.log.debug("Using pairKey!");
-				conInitObject.secret = NeptuneCrypto.HKDF(aliceSecret, client.pairKey, {hashAlgorithm: "sha256", keyLength: 32}).key;
+				conInitObject.secret = NeptuneCrypto.HKDF(aliceSecret, client.pairKey, {hashAlgorithm: conInitObject.selectedHashAlgorithm, keyLength: 32}).key;
 			}
 
 			if (NeptuneCrypto.isEncrypted(chkMsg))
@@ -744,14 +756,7 @@ async function main() {
 
 		// Create socket
 		let socketUUID = crypto.randomUUID();
-		conInitObject.log.info("Generating socket, id: " + socketUUID);
-
-		var ws = new WebSocketServer({server: httpServer, path: '/api/v1/server/socket/' + socketUUID});
-
-		ws.on("connection", function(ws){
-			conInitObject.log.info("Client connected to socket " + socketUUID);
-			client.setupConnectionManagerWebsocket(ws);
-		});
+		socketUUIDs[socketUUID] = conInitUUID;
 		conInitObject.socketCreated = true; // Done		
 
 		// Setup connection manager (enables HTTP listener)
@@ -813,6 +818,41 @@ async function main() {
 			}
 		}, 30000);
 	})
+
+	let SocketServer = new WebSocketServer({server: httpServer});
+	// Listen for socket connections
+	SocketServer.on('connection', (ws, req) => {
+		if (req.url === undefined) {
+			Neptune.webLog.error("New connection via WebSocket, no URL specified. Terminating.");
+			WScript.terminate();
+			return;
+		}
+		let urlParts = req.url.split("/");
+		if (urlParts.length != 6) {
+			Neptune.webLog.error("New connection via WebSocket, URL (" + req.url + ") invalid. Terminating.");
+			ws.terminate();
+			return;
+		}
+
+		let socketUUID = urlParts[5].toLowerCase();
+		let conInitUUID = socketUUIDs[socketUUID];
+		if (conInitUUID === undefined || conInitUUIDs[conInitUUID] === undefined) {
+			Neptune.webLog.error("New connection via WebSocket, invalid socket UUID (" + socketUUID +"). Terminating.");
+			ws.disconnect(1002, "InvalidSocketUUID"); // Tells client to reinitialize the connection
+			return;
+		}
+
+		let conInitObject = conInitUUIDs[conInitUUID];
+		let client = conInitObject.client;
+		if (client === undefined) {
+			Neptune.webLog.error("New connection via WebSocket, socket UUID (" + socketUUID +") valid, but unable to find the client to setup the socket with. Terminating.");
+			ws.disconnect(1002, "InvalidClient"); // Tells client to reinitialize the connection
+			return;
+		}
+
+		Neptune.webLog.info("Client " + client.clientId + " connected to socket, socketUUID: " + socketUUID);
+		client.setupConnectionManagerWebsocket(ws);
+	});
 
 
 	// Listener

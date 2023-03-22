@@ -31,6 +31,8 @@ class ExampleAdapter extends TypeAdapter<ExampleAdapter> {
         reader.beginObject();
         String fieldName = null;
 
+        String jsonKeyValue = "";
+
         while (reader.hasNext()) {
             JsonToken token = reader.peek();
 
@@ -40,8 +42,8 @@ class ExampleAdapter extends TypeAdapter<ExampleAdapter> {
             switch (fieldName) {
                 case "jsonKey":
                     token = reader.peek();
-                    // Set the value in myObject here!
-                    String value = reader.nextString();
+                    if (token == JsonToken.STRING)
+                        jsonKeyValue = reader.nextString();
                     break;
             }
         }

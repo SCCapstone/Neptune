@@ -110,6 +110,11 @@ class Client extends ClientConfig {
 	 * @param {object} miscData - Misc data, such as the createdAt date
 	 */
 	setupConnectionManager(secret, miscData) {
+		if (this.#connectionManager !== undefined) {
+			this.#connectionManager.removeAllListeners();
+			this.#connectionManager.destroy(); // Close that one!
+		}
+		
 		this.#connectionManager = new ConnectionManager(this, secret, miscData);
 		this.#secret = crypto.createHash('sha256').update(secret).digest('hex');
 

@@ -292,12 +292,12 @@ class ConnectionManager extends EventEmitter {
 
 		this.#webSocket.on('close', (code, reason) => {
 			// clean up!
-			this.#log.info("Client disconnected");
+			this.#log.info("WebSocket: client disconnected");
 		});
 
 		this.#webSocket.on('pong', (data) => {
 			// pong response
-			this.#log.debug("Client sent pong response");
+			this.#log.debug("WebSocket: client sent pong response");
 		});
 
 		this.#webSocket.on('open', () => {
@@ -305,12 +305,14 @@ class ConnectionManager extends EventEmitter {
 		});
 
 		this.#webSocket.on('ping', (data) => {
-			this.#log.debug("Pong!");
+			this.#log.debug("WebSocket: pinged, sending pong.");
 			this.#webSocket.pong();
 			this.emit('ping', data);
 		});
 
-		this.#log.info("Listening...");
+		this.#log.info("WebSocket: connected and listening...");
+
+		this.sendRequest("/api/v1/client/battery/get", {}); // Get battery data on WebSocket connection
 	}
 }
 

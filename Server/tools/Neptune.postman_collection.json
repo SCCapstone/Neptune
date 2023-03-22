@@ -1,13 +1,13 @@
 {
 	"info": {
 		"_postman_id": "ba5db15a-e131-42e0-838b-2d7f193edab5",
-		"name": "Neptune",
+		"name": "HTTP",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "24496580"
 	},
 	"item": [
 		{
-			"name": "Client -> Server",
+			"name": "Server",
 			"item": [
 				{
 					"name": "Connect",
@@ -20,8 +20,25 @@
 									"script": {
 										"exec": [
 											"var data = JSON.parse(responseBody);\r",
-											"pm.environment.set(\"conInitUUID\",data.conInitUUID);\r",
-											"pm.environment.set(\"stepOneResponse\", responseBody);"
+											"pm.environment.set(\"stepOneResponse\", responseBody);\r",
+											"\r",
+											"pm.test(\"Set conInitUUID\", function() {\r",
+											"    pm.environment.set(\"conInitUUID\",data.conInitUUID);\r",
+											"})\r",
+											"\r",
+											"pm.test(\"Has all properties\", function() {\r",
+											"    if (data[\"g1\"] == undefined || data[\"p1\"] == undefined || data[\"a1\"] == undefined\r",
+											"        || data[\"conInitUUID\"] == undefined || data[\"selectedKeyGroup\"] == undefined\r",
+											"        || data[\"selectedCipher\"] == undefined || data[\"selectedHashAlgorithm\"] == undefined) {\r",
+											"            throw Error(\"Missing some properties in response. Invalid response.\");\r",
+											"        }\r",
+											"})\r",
+											"\r",
+											"pm.test(\"No error code\", function() {\r",
+											"    pm.response.to.not.be.error;\r",
+											"    pm.response.to.have.jsonBody()\r",
+											"    pm.response.to.not.have.jsonBody(\"error\");\r",
+											"})"
 										],
 										"type": "text/javascript"
 									}
@@ -40,7 +57,7 @@
 									}
 								},
 								"url": {
-									"raw": "localhost:25560/api/v1/client/newSocketConnection",
+									"raw": "localhost:25560/api/v1/server/initiateConnection",
 									"host": [
 										"localhost"
 									],
@@ -48,8 +65,8 @@
 									"path": [
 										"api",
 										"v1",
-										"client",
-										"newSocketConnection"
+										"server",
+										"initiateConnection"
 									]
 								},
 								"description": "Step1: \"Client sends HTTP post to `/api/v1/client/newSocketConnection`\"\n\n\n`acceptedKeyGroups`: DH key groups\n\n`acceptedHashTypes`: allowed hash functions\n\n`acceptedCrypto`: allowed crypto functions (AES256-GCM, ChaCha20, AES256-CBC, AES128-GCM, AES128-CBC)\n\n`useDynamicSalt`: use separate DH exchange to derive the salt used to derive the AES key/iv."
@@ -70,7 +87,7 @@
 											}
 										},
 										"url": {
-											"raw": "localhost:25560/api/v1/client/newSocketConnection",
+											"raw": "localhost:25560/api/v1/server/initiateConnection",
 											"host": [
 												"localhost"
 											],
@@ -78,8 +95,8 @@
 											"path": [
 												"api",
 												"v1",
-												"client",
-												"newSocketConnection"
+												"server",
+												"initiateConnection"
 											]
 										}
 									},
@@ -97,15 +114,15 @@
 										},
 										{
 											"key": "Content-Length",
-											"value": "426"
+											"value": "1542"
 										},
 										{
 											"key": "ETag",
-											"value": "W/\"1aa-Tc0r0neHt0FWSRgrL7uJatFxjds\""
+											"value": "W/\"606-qva7O7WFBxID/CvGE/+LYDhxa3o\""
 										},
 										{
 											"key": "Date",
-											"value": "Fri, 18 Nov 2022 02:43:16 GMT"
+											"value": "Wed, 22 Mar 2023 05:29:44 GMT"
 										},
 										{
 											"key": "Connection",
@@ -117,7 +134,7 @@
 										}
 									],
 									"cookie": [],
-									"body": "{\"g1\":\"Ag==\",\"p1\":\"p6ZbwcMRuISLWdkBD4ZYylENsebSCSo8w1NiWheYFVQVTo42N/mV38Ln7HvgtDggJFiP7eAQtbA6b4xAp+LwNMu6RAuM4GgrxS3UUWGHsO+87A5epW6fPt8Q7evX6Pkb7qyTf0jBimqbZiX+y1Pm5Xfu9njkl5fpm9alCxnf72s=\",\"a1\":\"eGYowR1nDjx7mlFCtlu7yCkUi/q1WxZt2vPiqlS4rP2SDi61dJCRDeEi1YOD9YttADCCTFbm3DDLd3GoHCcD19T0Zk9n6EkmQOYuPwAaBKyzb5eOFasC6d75cZQ0EkIPiGZu6dqkCl5YFpQibAolZePF1mkVvWwfl3GHBKa7jqY=\",\"conInitUUID\":\"e94e706d-fa0e-40c0-b3b8-a68d94aaf688\"}"
+									"body": "{\"g1\":\"Ag==\",\"p1\":\"///////////JD9qiIWjCNMTGYouA3BzRKQJOCIpnzHQCC76mOxObIlFKCHmONATd75UZs806QxswKwpt8l8UN0/hNW1tUcJF5IW1dmJefsb0TELppjftawv/XLb0Brft7jhr+1qJn6WunyQRfEsf5kkoZlHs5Fs9wgB8uKFjvwWY2kg2HFXTmmkWP6j9JM9fg2VdI9yjrZYcYvNWIIVSu57VKQdwlpZtZww1Tkq8mATxdGwIyhghfDKQXkYuNs474553LBgOhgObJ4Oi7Aeij7XFXfBvTFLJ3ivL9pVYFxg5lUl86pVq5RXSJhiY+gUQFXKOWoqqxC2tMxcNBFB6M6hVIavfHLpk7PuFBFjb7wqK6nFXXQYMfbOXD4Wm4eTHq/WujNsJM9cejJTgSiVhnc7j0iYa0u5r8S/6BtmKCGTYdgJzPshqZFIfKxgXeyAMu+EXV3phXWx3CYjAutlG4gjiT6B05asxQ9tb/OD9EI5LgtEgqSEIARpyPBKnh+bXiHGaEL26WyaZwycYavTiPBqUaDS2FQvaJYPpyirUTOjbu8LbBN6O+S6O/BQfvsqmKHxZR05rwF2ZspZPoJDDoiM7oYZRW+ftH2EpcM7i16+4G912IXBIHNAGkSfVsFqpk7TqmI2P3cGG/7fckKbAj030Nck0BjGZ//////////8=\",\"a1\":\"qtR75fVvd4ncM46AB09/jbGJl4Yir/t/OEa8GmVab+i2Ksy/isRBCIg7G+LMUvbwYksMtgnozDhrvgm9BJqeFLJg1GJjqyuNl4wIijvzkLJvogVbj0iXyU90Cuemay0oN/EZOmqeDXxg//2GOSSEnqU/iitf2USLCH82OM736zu+SI0GX5+flkRjDnOQMF2nJxoGiMXlY35LDpz4rXEcdaiSnLz9m/YfbmpaHYLnfiscYhUYWX6OCLvJjWbHv5PLynHbQt8XT4Wh6kyTVJeJHjfK7e58e5bV5bvqU1LdOEAlXhJRNdhJi40ADy5F9Os6iIxt7eDoLTj5wLhvQZJSLGB29z2VD4TZXXM0scRBeYzS/U8E90pZqC1pZW2kkzGXDwEIKUcp7empbXI+rWBc6xPuotHEMVN4lvAHsLdrU3ykJv1kgOs11bGZXGyJ25POpOcp3F73dlc3Kz0f+W/yZOjiinVu3nDXsLiiEVci5eHM9dMHrpu+IuCm/S5W1Fi5mW1TVMhfih0SuFb+Z4RJbmdXSHULobJN59N22LQmv2NSk/G8uF32wqbJ4Ay4Hc0V6CiNhNvYgsfn2rA+mNDBNlMYl29warUuLj0LE6BeLn3wYhALjfF8Od/xhUCv6Z8MwdfTbsWUwAStJl4A1+7NpA7fJv6PZdCUFz7yCZ4V/EU=\",\"conInitUUID\":\"b955885f-379c-470a-86d3-2077d8fd96e4\",\"selectedKeyGroup\":\"modp16\",\"selectedCipher\":\"aes-128-gcm\",\"selectedHashAlgorithm\":\"sha256\"}"
 								}
 							]
 						},
@@ -147,7 +164,7 @@
 									}
 								},
 								"url": {
-									"raw": "localhost:25561/respondTo/api/v1/client/newSocketConnection",
+									"raw": "localhost:25561/respondTo/api/v1/server/initiateConnection",
 									"host": [
 										"localhost"
 									],
@@ -156,21 +173,21 @@
 										"respondTo",
 										"api",
 										"v1",
-										"client",
-										"newSocketConnection"
+										"server",
+										"initiateConnection"
 									]
 								},
 								"description": "Uses clientImpersonator.js!"
 							},
 							"response": [
 								{
-									"name": "generate data for Step2",
+									"name": "GenerateStep2Request",
 									"originalRequest": {
 										"method": "POST",
 										"header": [],
 										"body": {
 											"mode": "raw",
-											"raw": "{\"g1\":\"Ag==\",\"p1\":\"p6ZbwcMRuISLWdkBD4ZYylENsebSCSo8w1NiWheYFVQVTo42N/mV38Ln7HvgtDggJFiP7eAQtbA6b4xAp+LwNMu6RAuM4GgrxS3UUWGHsO+87A5epW6fPt8Q7evX6Pkb7qyTf0jBimqbZiX+y1Pm5Xfu9njkl5fpm9alCxnf72s=\",\"a1\":\"eGYowR1nDjx7mlFCtlu7yCkUi/q1WxZt2vPiqlS4rP2SDi61dJCRDeEi1YOD9YttADCCTFbm3DDLd3GoHCcD19T0Zk9n6EkmQOYuPwAaBKyzb5eOFasC6d75cZQ0EkIPiGZu6dqkCl5YFpQibAolZePF1mkVvWwfl3GHBKa7jqY=\",\"conInitUUID\":\"e94e706d-fa0e-40c0-b3b8-a68d94aaf688\"}",
+											"raw": "{{stepOneResponse}}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -178,7 +195,7 @@
 											}
 										},
 										"url": {
-											"raw": "localhost:25561/respondTo/api/v1/client/newSocketConnection",
+											"raw": "localhost:25561/respondTo/api/v1/server/initiateConnection",
 											"host": [
 												"localhost"
 											],
@@ -187,8 +204,8 @@
 												"respondTo",
 												"api",
 												"v1",
-												"client",
-												"newSocketConnection"
+												"server",
+												"initiateConnection"
 											]
 										}
 									},
@@ -206,15 +223,15 @@
 										},
 										{
 											"key": "Content-Length",
-											"value": "558"
+											"value": "1444"
 										},
 										{
 											"key": "ETag",
-											"value": "W/\"22e-wNR9LdcWdRhB0cGVEKjl8Jahruw\""
+											"value": "W/\"5a4-ZPjbTgyvnubLaBDBt7RUV0d3jFY\""
 										},
 										{
 											"key": "Date",
-											"value": "Fri, 18 Nov 2022 02:44:08 GMT"
+											"value": "Wed, 22 Mar 2023 05:29:46 GMT"
 										},
 										{
 											"key": "Connection",
@@ -226,7 +243,7 @@
 										}
 									],
 									"cookie": [],
-									"body": "{\"b1\":\"IO0CfN+C9SGCgCVkTBwqnKjCunL3Tgtileedc0QGzocKsaqHgNAQ7RR92rjvWoXfLOvmnYGq7NecbpWVRnxenLTdr8wC/GSt82gF0MuZv5AQu3uxM6jVI3DpVnxLLGngHumDO2hlSxECHtOjgLygdmPVHfh+0rXx8i2YwHkM6c4=\",\"newPair\":true,\"chkMsg\":\"ncrypt::1:chacha20-poly1305:sha256:MTIzNA==:aTxbcGotYTlqNi8/fikwMQ==:554c273a296f444a3f4c6d3e:igdIbdikLvIrjiDlOoPix+JHxPsPy/MjPJcsdWJ0N7hOEqB2A6+RfRvju/NmPl7Q+uKsb0RpWpOtg+NVR4hSkw==:LHJFOzJsdzIxVC18MmZocg==:5b6acc52c65468bb0dd6c2f2b1ce0a9f\",\"chkMsgHash\":\"05fa3a40026ec16917e967fbbd5351f6df78107620fe24e7c1389e075aaadfed\",\"chkMsgHashFunction\":\"sha256\"}"
+									"body": "{\"b1\":\"vl2rZ2IHpaFnacIBj37xztwPjgnFPBAr6a3ST+nizZCPTjhV0O+MhGOrME6W2e3Dhgh1J2k/EghYd56qbsiDHipUs59ZrVOh9Ss5CDeLiZGFJ4qpZaHe8e0FM/68rDh1L7dvu6JZaQB1OZSjOAMSAK+iJXL2XJYo55yiyl3MZvytp/DYkSl6Vcl2foyP8V205fwTxqGfymXBKYQNEwvNTqfgudKSW0L1Fw+QoRJpWvKFndy49Iggz5j1IQ4FGzRJ9M1BlXPLCpH5rwQAGa56aNBDW4nqjwGmFNpuP8pVuW5prHav3a7gjtR5j/YL9jM4JdXAiYW0axYcWPijBvv6VPwbBxEV5O23z1xdemezNAPmHwHs/c1i7/g57D8/v/xuBIwun8DO7VVmQndVtz+pPmDDoyY7nEvlklttZEihXtvMBEAx0xhf7G1ZN3LKttYLE+7yUoBObuBnkNtetKAdRlEZ5T7L00ZO74EcECfSDqey5AWVE9clfKg9fUCSCjJscfzTdXkPlF9nqU/xEhCjUaYpdVWU9YgYCDphLaUoA1PUTnMZqIdO3H6KurQiyS2q34/jkcjQqqm+7Va/g3uwN50TF/dtUSWv2zjsghYOLiJoGztTbEy3mHhn3kKrkozibfZv2qZcnv243/CvLA3UhxNAjTcdSfqx54XmOuGGucs=\",\"newPair\":true,\"chkMsg\":\"ncrypt::1:chacha20-poly1305:sha256:MidbTUhqciY1TiRMcGlQdmpHWXZUTFhtYEs1LylCbnE=:Snw5OHElW358f28hLV0wTA==:6f3d612e273160483d535164:+gD3R66RIYZ4EsJW6DejNXTuQmtLqZ3aDm8yiEjkn8acHPZO7Vni4uLzIQV3tCBKNAmHiB4Tw3aiTKLo/IiHXdjfJPbTi5wqqLESgmoM8bwXzVGMOmol3g==:IzFffEAnc108SlRcZm1CKA==:c4190f45a2c7cc48731f269c3513d689\",\"chkMsgHash\":\"0ae0f05b123a6512cf9944bb1055daf77a1737ac23ab51bb2cce60b4c8660abe\",\"chkMsgHashFunction\":\"sha256\",\"clientId\":\"ncrypt::1:chacha20-poly1305:sha256:aio2LyxnLDpTVm8hbUsja0p9UHJ3RnhVS25TciRWRVs=:amdlIlV8TkBEKkdPPVowZg==:6d587b235a6e6424515b5474:Zgfn1SB1SzdSXg==:fDhULy97Mjs8dW18W2onWA==:9440d6d2d3160f926f5f5cfe65c938ea\",\"anticipatedConfMsg\":\"2727d70ded7891583ba69b73e6ec5f17c5a3d72460a8f325cc65a6ccfb99b09c\"}"
 								}
 							]
 						},
@@ -237,8 +254,17 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"var data = JSON.parse(responseBody);\r",
-											"pm.environment.set(\"socketUUID\", data.socketUUID);"
+											"pm.environment.set(\"stepTwoServerResponse\", \"{ \\\"data\\\": \\\"\" + responseBody + \"\\\" }\");\r",
+											"\r",
+											"pm.test(\"Data is encrypted\", function() {\r",
+											"    if (!responseBody.trim().startsWith(\"ncrypt:\")) {\r",
+											"        throw new Error(\"No encryption prefix found.\");\r",
+											"    }\r",
+											"});\r",
+											"\r",
+											"pm.test(\"No error code\", function() {\r",
+											"    pm.response.to.not.have.jsonBody(\"error\");\r",
+											"});"
 										],
 										"type": "text/javascript"
 									}
@@ -257,7 +283,7 @@
 									}
 								},
 								"url": {
-									"raw": "localhost:25560/api/v1/client/newSocketConnection/{{conInitUUID}}",
+									"raw": "localhost:25560/api/v1/server/initiateConnection/{{conInitUUID}}",
 									"host": [
 										"localhost"
 									],
@@ -265,21 +291,21 @@
 									"path": [
 										"api",
 										"v1",
-										"client",
-										"newSocketConnection",
+										"server",
+										"initiateConnection",
 										"{{conInitUUID}}"
 									]
 								}
 							},
 							"response": [
 								{
-									"name": "Step2",
+									"name": "Encrypted Step2",
 									"originalRequest": {
 										"method": "POST",
 										"header": [],
 										"body": {
 											"mode": "raw",
-											"raw": "{\"b1\":\"IO0CfN+C9SGCgCVkTBwqnKjCunL3Tgtileedc0QGzocKsaqHgNAQ7RR92rjvWoXfLOvmnYGq7NecbpWVRnxenLTdr8wC/GSt82gF0MuZv5AQu3uxM6jVI3DpVnxLLGngHumDO2hlSxECHtOjgLygdmPVHfh+0rXx8i2YwHkM6c4=\",\"newPair\":true,\"chkMsg\":\"ncrypt::1:chacha20-poly1305:sha256:MTIzNA==:aTxbcGotYTlqNi8/fikwMQ==:554c273a296f444a3f4c6d3e:igdIbdikLvIrjiDlOoPix+JHxPsPy/MjPJcsdWJ0N7hOEqB2A6+RfRvju/NmPl7Q+uKsb0RpWpOtg+NVR4hSkw==:LHJFOzJsdzIxVC18MmZocg==:5b6acc52c65468bb0dd6c2f2b1ce0a9f\",\"chkMsgHash\":\"05fa3a40026ec16917e967fbbd5351f6df78107620fe24e7c1389e075aaadfed\",\"chkMsgHashFunction\":\"sha256\"}",
+											"raw": "{{stepTwoResponse}}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -287,7 +313,7 @@
 											}
 										},
 										"url": {
-											"raw": "localhost:25560/api/v1/client/newSocketConnection/e94e706d-fa0e-40c0-b3b8-a68d94aaf688",
+											"raw": "localhost:25560/api/v1/server/initiateConnection/{{conInitUUID}}",
 											"host": [
 												"localhost"
 											],
@@ -295,9 +321,9 @@
 											"path": [
 												"api",
 												"v1",
-												"client",
-												"newSocketConnection",
-												"e94e706d-fa0e-40c0-b3b8-a68d94aaf688"
+												"server",
+												"initiateConnection",
+												"{{conInitUUID}}"
 											]
 										}
 									},
@@ -315,15 +341,15 @@
 										},
 										{
 											"key": "Content-Length",
-											"value": "130"
+											"value": "358"
 										},
 										{
 											"key": "ETag",
-											"value": "W/\"82-bsU+GDfrsFM06uWSe09vXUnRoro\""
+											"value": "W/\"166-IZlW3xnxwnQ5SVhwz0BLjzaFB04\""
 										},
 										{
 											"key": "Date",
-											"value": "Fri, 18 Nov 2022 02:44:20 GMT"
+											"value": "Wed, 22 Mar 2023 05:29:48 GMT"
 										},
 										{
 											"key": "Connection",
@@ -335,9 +361,232 @@
 										}
 									],
 									"cookie": [],
-									"body": "{\"confMsg\":\"e7d617a931df0b394c5c43335a3d66a0d3350ea634d39d8f49dc3332bf0672ac\",\"socketUUID\":\"d40ae0f3-fc6e-47ec-8ea9-c222bbababe0\"}"
+									"body": "ncrypt::1:aes-128-gcm:sha256:IyMsTCRvKWNBTXYvbSZ8VS5lfDFwMVpPb242PmRWLGI=:TlVdPStRa0FZR3ttNC1CPw==:7c565832736550477e4b6651:9oruTQodePIAFFpj2RIXVZ72nzBTgKYlQDhMS6j7EUE+1bAgosk0q+QhAdKIgU0FfsUEpmhAZOC/L85jnQrIz4Sg5o5eQRcIwYxD9j9yZVg8UaL/aqgzntxzAqIh3m0bR3A/HDGtVnv/b3t6qvELbSuPefN7KEOkcNpH/N2WqWg2yA==:KH1CKTokPUYnJmRjcDhBXw==:7063798fcdd59da5d12a8aead8ad312d"
 								}
 							]
+						},
+						{
+							"name": "Decrypt Step2",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var data = JSON.parse(responseBody);\r",
+											"\r",
+											"pm.test(\"Socket UUID not empty\", function() {\r",
+											"    if (data[\"socketUUID\"] === undefined) {\r",
+											"        throw new Error(\"No socketUUID.\");\r",
+											"    }    \r",
+											"    pm.environment.set(\"socketUUID\", data.socketUUID);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"ConfMsg is correct\", function() {\r",
+											"    if (data[\"expectedConfMsg\"]) {\r",
+											"        pm.response.to.have.jsonBody(\"confMsg\", data[\"expectedConfMsg\"]);\r",
+											"    }\r",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {}
+							},
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{{stepTwoServerResponse}}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "localhost:25561/respondTo/api/v1/server/initiateConnection/{{conInitUUID}}",
+									"host": [
+										"localhost"
+									],
+									"port": "25561",
+									"path": [
+										"respondTo",
+										"api",
+										"v1",
+										"server",
+										"initiateConnection",
+										"{{conInitUUID}}"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Decrypted Step2",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{{stepTwoServerResponse}}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:25561/respondTo/api/v1/server/initiateConnection/{{conInitUUID}}",
+											"host": [
+												"localhost"
+											],
+											"port": "25561",
+											"path": [
+												"respondTo",
+												"api",
+												"v1",
+												"server",
+												"initiateConnection",
+												"{{conInitUUID}}"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "html",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Content-Type",
+											"value": "text/html; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "215"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"d7-YzIHgKd8rM2BhohcNIFXBOOGNvE\""
+										},
+										{
+											"key": "Date",
+											"value": "Wed, 22 Mar 2023 05:29:52 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\"confMsg\":\"2727d70ded7891583ba69b73e6ec5f17c5a3d72460a8f325cc65a6ccfb99b09c\",\"socketUUID\":\"7c42c563-f29f-4dd7-9f23-9da699b9e94e\",\"expectedConfMsg\":\"2727d70ded7891583ba69b73e6ec5f17c5a3d72460a8f325cc65a6ccfb99b09c\"}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "New Folder",
+					"item": [
+						{
+							"name": "Get pair data",
+							"request": {
+								"method": "POST",
+								"header": []
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Commands",
+					"item": [
+						{
+							"name": "Echo",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var data = JSON.parse(responseBody);\r",
+											"\r",
+											"pm.test(\"Valid echo\", function() {\r",
+											"    pm.response.to.have.jsonBody(\"data\", \"{\\\"sampleKey\\\":\\\"sampleValue\\\",\\\"message\\\":\\\"Hey!\\\",\\\"boolean\\\":true}\");\r",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"conInitUUID\": \"{{conInitUUID}}\",\r\n    \"command\":\"/api/v1/echo\",\r\n    \"data\":\"{\\\"sampleKey\\\":\\\"sampleValue\\\",\\\"message\\\":\\\"Hey!\\\",\\\"boolean\\\":true}\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "localhost:25560/api/v1/server/socket/{{socketUUID}}/http",
+									"host": [
+										"localhost"
+									],
+									"port": "25560",
+									"path": [
+										"api",
+										"v1",
+										"server",
+										"socket",
+										"{{socketUUID}}",
+										"http"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Sample notification",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"conInitUUID\": \"{{conInitUUID}}\",\r\n    \"command\":\"/api/v1/server/sendNotification\",\r\n    \"data\":\"{\\\"action\\\":\\\"create\\\",\\\"applicationName\\\":\\\"Notification Tester\\\",\\\"applicationPackage\\\":\\\"com.cnewb.notificationtester\\\",\\\"notificationId\\\":128,\\\"notificationIcon\\\":\\\"base64:image\\\",\\\"title\\\":\\\"Testing client notifications\\\",\\\"type\\\":\\\"text\\\",\\\"contents\\\":{\\\"text\\\":\\\"Just a basic notification. Nothing special!\\\",\\\"subtext\\\":\\\"Beep bop\\\",\\\"actions\\\":[{\\\"id\\\":\\\"action_simple\\\",\\\"text\\\":\\\"Simple action\\\",\\\"type\\\":\\\"button\\\"}]}}\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "localhost:25560/api/v1/server/socket/{{socketUUID}}/http",
+									"host": [
+										"localhost"
+									],
+									"port": "25560",
+									"path": [
+										"api",
+										"v1",
+										"server",
+										"socket",
+										"{{socketUUID}}",
+										"http"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				}

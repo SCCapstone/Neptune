@@ -329,7 +329,7 @@ public class NeptuneCrypto {
             throw new MissingDecryptionKey();
         }
 
-        String[] encryptedData = encryptedText.split(encryptedPrefix)[1].split(":");
+        String[] encryptedData = encryptedText.trim().split(encryptedPrefix)[1].split(":");
 
         // Version 1 has 9 segments for AEAD ciphers and 7 for non-AEAD ciphers
         String version = encryptedData[0];

@@ -11,6 +11,7 @@ import android.util.Log;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.neptune.app.Backend.Exceptions.FailedToPair;
 import com.neptune.app.Backend.Exceptions.TooManyEventListenersException;
 import com.neptune.app.Backend.Exceptions.TooManyEventsException;
 import com.neptune.app.Backend.Interfaces.ICallback;
@@ -20,7 +21,6 @@ import com.neptune.app.MainActivity;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -54,11 +54,11 @@ public class Server extends ServerConfig {
     /**
      * This will create the connection manager and initiate connection.
      * If the connection manager already exists, it'll check if we're connected. If not, we reconnect. If connected we return.
-     * @throws ConnectionManager.FailedToPair Unable to pair to server
+     * @throws FailedToPair Unable to pair to server
      */
-    public void setupConnectionManager() throws ConnectionManager.FailedToPair {
+    public void setupConnectionManager() throws FailedToPair {
         if (connectionManager != null) {
-            if (connectionManager.ping() < 0)
+            if (!connectionManager.getHasNegotiated() && !connectionManager.isWebSocketConnected())
                 connectionManager.initiateConnectionSync();
             return;
         }
@@ -81,31 +81,41 @@ public class Server extends ServerConfig {
      */
     private ICallback getCommandListener() {
         return params -> {
-            APIDataPackage apiDataPackage = null;
-            if (params.length == 1) {
-                if (params[0] instanceof APIDataPackage)
-                    apiDataPackage = (APIDataPackage) params[0];
-            }
-            if (apiDataPackage == null) {
-                Log.e(TAG + "-CommandListener", "Command event emitted, but invalid event data provided.");
-                return;
-            }
+            try {
+                APIDataPackage apiDataPackage = null;
+                if (params.length == 1) {
+                    if (params[0] instanceof APIDataPackage)
+                        apiDataPackage = (APIDataPackage) params[0];
+                }
+                if (apiDataPackage == null) {
+                    Log.e(TAG + "-CommandListener", "Command event emitted, but invalid event data provided.");
+                    return;
+                }
 
-            String command = apiDataPackage.command.toLowerCase();
-            if (command.equals("/api/v1/echo")) {
-                this.connectionManager.sendRequestAsync("/api/v1/echoed", apiDataPackage.data);
-            } else if (command.equals("/api/v1/client/ping")) {
-                Date now = new Date();
-                SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
-                formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-                String timestamp = formatter.format(now);
+                String command = apiDataPackage.command.toLowerCase();
+                if (command.equals("/api/v1/echo")) {
+                    this.connectionManager.sendRequestAsync("/api/v1/echoed", apiDataPackage.getOriginalPacket().get("data"));
+                } else if (command.equals("/api/v1/client/ping") && apiDataPackage.isJsonObject()) {
+                    Date now = new Date();
+                    SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+                    formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+                    String timestamp = formatter.format(now);
 
-                JsonObject pong = new JsonObject();
-                pong.addProperty("receivedAt", apiDataPackage.data.get("timestamp").toString());
-                pong.addProperty("timestamp", timestamp);
-                this.connectionManager.sendRequestAsync("/api/v1/server/pong", pong);
+                    JsonObject pong = new JsonObject();
+                    pong.addProperty("receivedAt", apiDataPackage.jsonObject().get("timestamp").toString());
+                    pong.addProperty("timestamp", timestamp);
+                    this.connectionManager.sendRequestAsync("/api/v1/server/pong", pong);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error processing command!");
+                Log.e(TAG, e.getMessage());
+                e.printStackTrace();
             }
         };
+    }
+
+    public ConnectionManager getConnectionManager() {
+        return this.connectionManager;
     }
 
     /**
@@ -116,7 +126,7 @@ public class Server extends ServerConfig {
             if (connectionManager == null) {
                 try {
                     this.setupConnectionManager();
-                } catch (ConnectionManager.FailedToPair e) {
+                } catch (FailedToPair e) {
                     e.printStackTrace();
                     return;
                 }
@@ -167,7 +177,7 @@ public class Server extends ServerConfig {
             if (connectionManager == null) {
                 try {
                     this.setupConnectionManager();
-                } catch (ConnectionManager.FailedToPair e) {
+                } catch (FailedToPair e) {
                     e.printStackTrace();
                     return;
                 }
@@ -269,7 +279,7 @@ public class Server extends ServerConfig {
         this.delete();
     }
 
-    public void pair() throws ConnectionManager.FailedToPair {
+    public void pair() throws FailedToPair {
         if (connectionManager == null) {
             setupConnectionManager();
         }

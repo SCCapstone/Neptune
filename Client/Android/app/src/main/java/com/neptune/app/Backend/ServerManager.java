@@ -2,6 +2,7 @@ package com.neptune.app.Backend;
 
 import android.util.Log;
 
+import com.neptune.app.Backend.Exceptions.FailedToPair;
 import com.neptune.app.MainActivity;
 
 import java.io.File;
@@ -33,7 +34,7 @@ public class ServerManager {
     }
 
 
-    public void pair(UUID serverId, IPAddress ipAddress) throws ConnectionManager.FailedToPair {
+    public void pair(UUID serverId, IPAddress ipAddress) throws FailedToPair {
         if (servers.containsKey(serverId)) {
             Server server = servers.get(serverId);
             server.ipAddress = ipAddress;
@@ -117,7 +118,7 @@ public class ServerManager {
                     try {
                         Log.i("ServerManager", "connectToServer: setting up server " + server.serverId);
                         server.setupConnectionManager();
-                    } catch (ConnectionManager.FailedToPair e) {
+                    } catch (FailedToPair e) {
                         Log.e("ServerManager", "connectToServer: " + server.serverId + " failed to pair?", e);
                     }
                 }

@@ -43,17 +43,20 @@ public class ClientConfigEncryptionAdapter extends TypeAdapter<ClientConfigEncry
             switch (fieldName) {
                 case "enabled":
                     token = reader.peek();
-                    clientConfigEncryption.enabled = reader.nextBoolean();
+                    if (token == JsonToken.BOOLEAN)
+                        clientConfigEncryption.enabled = reader.nextBoolean();
                     break;
 
                 case "active":
                     token = reader.peek();
-                    clientConfigEncryption.active = reader.nextBoolean();
+                    if (token == JsonToken.BOOLEAN)
+                        clientConfigEncryption.active = reader.nextBoolean();
                     break;
 
                 case "newKeyLength":
                     token = reader.peek();
-                    clientConfigEncryption.newKeyLength = reader.nextInt();
+                    if (token == JsonToken.NUMBER)
+                        clientConfigEncryption.newKeyLength = reader.nextInt();
                     break;
             }
         }

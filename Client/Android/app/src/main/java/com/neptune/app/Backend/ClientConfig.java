@@ -8,6 +8,7 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.neptune.app.Backend.Adapters.ClientConfigEncryptionAdapter;
 import com.neptune.app.Backend.Structs.ClientConfigEncryption;
+import com.neptune.app.Backend.Structs.ConnectionManagerSettings;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -38,6 +39,8 @@ public class ClientConfig extends ConfigItem {
 
     // Array of server ids we're paired with (saved to system)
     public String[] savedServerIds = new String[0];
+
+    public ConnectionManagerSettings connectionManagerSettings = new ConnectionManagerSettings();
 
 
 

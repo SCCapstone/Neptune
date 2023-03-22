@@ -327,7 +327,7 @@ NeptuneCrypto.decrypt = function(encryptedText, key) {
 		throw new TypeError("key expected string got " + (typeof key).toString());
 
 
-	if (encryptedText.substring(0, encryptedPrefix.length) != encryptedPrefix) {// Check for prefix
+	if (encryptedText.trimStart().substring(0, encryptedPrefix.length) != encryptedPrefix) {// Check for prefix
 		//return encryptedText;
 		throw new DataNotEncrypted();
 	}
@@ -335,7 +335,7 @@ NeptuneCrypto.decrypt = function(encryptedText, key) {
 		throw new MissingDecryptionKey();
 
 
-	let encryptedData = encryptedText.split(encryptedPrefix)[1].split(":");
+	let encryptedData = encryptedText.trimEnd().split(encryptedPrefix)[1].split(":");
 	var version = encryptedData[0];
 	var cipherAlgorithm = encryptedData[1];
 	if (cipherAlgorithm == "aes-256-gcm" || cipherAlgorithm == "chacha20-poly1305" || cipherAlgorithm == "aes-192-gcm" || cipherAlgorithm == "aes-128-gcm") {

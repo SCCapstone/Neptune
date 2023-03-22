@@ -6,22 +6,16 @@ package com.neptune.app;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.fragment.app.DialogFragment;
 
 import android.app.Activity;
-import android.app.NotificationChannel;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.net.wifi.WifiManager;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Looper;
 import android.text.format.Formatter;
 import android.util.Log;
 import android.view.View;
-import android.view.textclassifier.ConversationActions;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -32,10 +26,9 @@ import android.content.Intent;
 import com.google.gson.JsonParseException;
 import com.neptune.app.Backend.ClientConfig;
 import com.neptune.app.Backend.ConfigurationManager;
-import com.neptune.app.Backend.ConnectionManager;
+import com.neptune.app.Backend.Exceptions.FailedToPair;
 import com.neptune.app.Backend.IPAddress;
 import com.neptune.app.Backend.NeptuneKeepAlive;
-import com.neptune.app.Backend.NotificationListenerService;
 import com.neptune.app.Backend.NotificationManager;
 import com.neptune.app.Backend.Server;
 import com.neptune.app.Backend.ServerManager;
@@ -43,11 +36,8 @@ import com.neptune.app.Backend.ServerManager;
 import org.json.JSONException;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity implements RenameDialog.RenameDialogListener{
     public static ServerManager serverManager;
@@ -256,9 +246,13 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             public void onClick(View v) {
                 new Thread(() -> {
                     try {
-                        Log.i("MainActivity", "Reconnecting to " + server.friendlyName);
+                        Log.i("MainActivity", "Syncing with " + server.friendlyName);
                         server.setupConnectionManager();
+                        if (!server.getConnectionManager().isWebSocketConnected())
+                            server.getConnectionManager().createWebSocketClient(false);
                         server.syncConfiguration();
+                        server.ping();
+                        server.sendBatteryInfo();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -399,7 +393,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
                 server.delete();
             runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
 
-        } catch (ConnectionManager.FailedToPair e) {
+        } catch (FailedToPair e) {
             e.printStackTrace();
             if (server != null)
                 server.delete();

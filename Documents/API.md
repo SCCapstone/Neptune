@@ -26,7 +26,8 @@ This data is a layer on the _actual_ data the client is sending. The `data` port
 The server or client would receive this "packet" of data and peel it (decrypt the `data` portion) to read the request/response of the other application. This is to provide always applied encryption to requests and responses.\
 
 
-## Queuing
+
+## Server Queuing
 Queuing is an alternative method to sending data to the client.\
 If a WebSocket connection is not established, Neptune Server will store all requests in a 'queue'. This queue can be retrieved using `/api/v1/server/requestQueue/get`.\
 The server will then respond with an array of request, (data "packets"), the client will then have to deal with as a batch.
@@ -36,40 +37,133 @@ POST Data:
 {}
 ```
 
-Server response:
+Server response (multiple items):
+```json5
+{
+    "command": "/api/v1/server/requestQueue/queue",
+    "data": [
+        {
+            "command": "/api/v1/client/configuration/set",
+            "data": {
+                // ...
+            }
+        },
+        {
+            "command": "/api/v1/client/battery/get",
+            "data": {}
+        },
+        {
+            // ...
+        }
+    ]
+}
+```
+One item:
+```json5
+{
+    "command": "/api/v1/server/requestQueue/queue",
+    "data": {
+        "command": "/api/v1/client/battery/get",
+        "data": {}
+    }
+}
+```
+
+For server responses, the root data property is encrypted as normal. But, for each request packet in data, those packet's data properties are also encrypted.\
+For example with two requests, this would the outer response:
+```json5
+{
+    "command": "/api/v1/server/requestQueue/queue",
+    "data": "blah blah encrypted data"
+}
+```
+`data` would be decrypted to:
 ```json5
 [
     {
-        "command": "/api/v1/client/configuration/set",
-        "data": {
-            "fiendlyName": "", // Device display name
-            "notificationSettings": { // Notification settings
-                "enabled": true // Send notification data
-            },
-            "clipboardSettings": {
-                "enabled": false, // this && two below
-                "autoSendToServer": false, // Automatically send to server (sent and ignored by client)
-                "autoSendToClient": false // Automatically send to client (sent and ignored by server)
-            },
-            "fileSharingSettings": {
-                "enabled": false, // Enable file sharing
-                "autoReceiveFromServer": false, // Auto receive files from the server (sent and ignored by client)
-                "autoReceiveFromClient": false, // Auto receive files from the client (sent and ignored by server)
-                "serverBrowsable": false, // Client can view the files on the server (sent and ignored by server)
-                "clientBrowsable": false // Server can view the files on client (remotely) (sent and ignored by client)
-            }
-        }
+        "command": "/api/v1/client/battery/get", // API endpoint
+        "data": "blah blah encrypted data" // Encrypted data...
     },
     {
-        "command": "/api/v1/client/battery/get",
-        "data": {}
-    },
-    {
-        // ...
+        "command": "/api/v1/client/configuration/set", // Endpoint
+        "data": "blah blah encrypted data" // Encrypted data...
     }
 ]
+    
 ```
 
+
+## Client Queuing
+The client can also queue up requests. This is done if the client is unable to reach the server when the request was made.\
+**Note: polling requests DO NOT queue!**\
+The queue is drained (sent to the server) when a request is able to reach the server or when the client polls the server.\
+
+Server endpoint (client sending queue): `/api/v1/client/requestQueue/queue` (this represents the queue of the client)\
+Client endpoint (requesting): `/api/v1/client/requestQueue/get` (this requests the queue of the client)
+
+Sending the queue to the server is the exact same as the response from server when requesting the queue (the above response data is our request data!)
+
+POST Data:\
+Multiple items:
+```json5
+{
+    "command": "/api/v1/client/requestQueue/queue",
+    "data": [
+        {
+            "command": "/api/v1/server/configuration/data",
+            "data": {
+                // ...
+            }
+        },
+        {
+            "command": "/api/v1/client/battery/info",
+            "data": {}
+        },
+        {
+            // ...
+        }
+    ]
+}
+```
+One item:
+```json5
+{
+    "command": "/api/v1/server/requestQueue/queue",
+    "data": {
+        "command": "/api/v1/client/battery/info",
+        "data": {}
+    }
+}
+```
+
+For client requests, the root data property is encrypted as normal. But, for each request packet in data, those packet's data properties are also encrypted.\
+For example with two requests, this would the outer response:
+```json5
+{
+    "command": "/api/v1/client/requestQueue/queue",
+    "data": "blah blah encrypted data"
+}
+```
+`data` would be decrypted to:
+```json5
+[
+    {
+        "command": "/api/v1/client/battery/info", // API endpoint
+        "data": "blah blah encrypted data" // Encrypted data...
+    },
+    {
+        "command": "/api/v1/client/configuration/data", // Endpoint
+        "data": "blah blah encrypted data" // Encrypted data...
+    }
+]
+    
+```
+
+There's no response to this request.
+
+
+
+---
 
 
 
@@ -133,7 +227,7 @@ POST Data:
     "b1": "APx0efpXjbQwbHHoKdKbYk+KdVWrM9hh71YNKWO67JkuANy1+ZPGjuDBE+YPri4uaXBUDZU94A5nkDtAQvlpfq4eiRLB/5e/fw/clara/Nx190Sv56Jmmg/do+BQ3gdmy3zxnhB+N0etM5r59qyR4JAEd2/ysI44jrd1vBE/eKvCCsYDXwqopXC6yxk8aXggGkdj/sUZnVQj//CHZ5wzwVwHTyFyweT2PFvDJi3OZF0Xw/Fsm8igqJ1LQNyxSMhp7q/xirTRvC90EOR9VROOWvt7oBRiKE6ik/DfW9XtxOcNg9rkmT0/dqK0CQlxPoY+CYBJ6mARjd8+PTCXKL3yk/Hq1ESsaZvqjxZYg7GtrkebjzUu4zpwStV4pI62OLtXmqgFUalUGJpkZMqPQzWUW+eB4cg+rN+nqsrclXFHjHhnZszRr8PCm/CuzZSAWMyhG2mBNIm+0s/d2vye3OFUCCY071wsUesrGph9mHWMm3S65BDr+mF9+sjRUx91HBqg2X70KsTAEXNZw2BZOXFfKSov1B1q6CJsmO3uPL8HUweAYFw1AZxlei9eXHYp0ngaFyOnkUoFAYBwmEkx6y92rRy8PQQBjYzdz9M/fjK/N88Jcj/1t1ETqL6CgBYT6DmCNB8WoqhpG0m6Ijta7uNm9cM7wY0zn3hVS46KMFH7T95a", // Client's public DH key\
     "b2": "", // Client's public DH key (if using dynamic salt)
     
-    "clientId": "ncrypt::1:aes-128-gcm:sha256:RUVeekg1dmI0WS9XPiUmV0R1KFIzXiBxbDpINUNOLig=:KUw6RUZtTksjcmBhJGNFJg==:3EC393B11AA8CBD149930839:8hRlIsC2qkESBAIBkuPBQFZRf3Ii+cVcALGXlyb4BXWW7qBY:QmU+IHk4Jz5wMnNWMTlKZg==:919A25DC8B99CD2076C78920C0A603A3", // The client UUID (this is who we are, encrypted)
+    "clientId": "ncrypt::1:aes-128-gcm:sha256:RUVeekg1dmI0WS9XPiUmV0R1KFIzXiBxbDpINUNOLig=:KUw6RUZtTksjcmBhJGNFJg==:3EC393B11AA8CBD149930839:8hRlIsC2qkESBAIBkuPBQFZRf3Ii+cVcALGXlyb4BXWW7qBY:QmU+IHk4Jz5wMnNWMTlKZg==:919A25DC8B99CD2076C78920C0A603A3", // The client UUID (this is who we are, encrypted). NOTE!!! This is encrypted using a key generated using a static salt! All other data is encrypted with a key generated using the pairKey (if present) this is NOT! Static salt: "mysalt1234"
     "newPair": true, // If the server and client have not paired before, this will be true, otherwise false / exempt. Signals that a pair request will follow after socket connection.
     "pairId": null, // Encrypted, used in deriving the salt used to create the AES key and iv. Provides the server with an assurance that we've talked before. Empty if client/server have not paired before.
     
@@ -146,7 +240,7 @@ POST Data:
 Response:
 ```json5
 {
-    "socketId": "708384c6-e8fe-4188-97b0-95988b5db546", // The socket id the client needs to connect to (/api/v1/server/socket/{socketId}).
+    "socketUUID": "708384c6-e8fe-4188-97b0-95988b5db546", // The socket id the client needs to connect to (/api/v1/server/socket/{socketId}).
     "confMsg": "c6e5e46c59267114f91d64df0e069b0dae176f9a134656820bba1e6164318980", // Hash of the decrypted chkMsg concatenated with the chkMsgHash. Used to tell the client the server can decrypt and encrypt.
 }
 ```
