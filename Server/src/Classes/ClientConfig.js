@@ -165,32 +165,50 @@ class ClientConfig extends ConfigItem {
 	/**
 	 * @typedef {object} ClipboardSettings
 	 * @property {boolean} [enabled=false] - Clipboard data sent/received synced between the two
-	 * @property {boolean} [allowClientToSet=false] - Allow client to update this server's clipboard data remotely
+	 * @property {boolean} [allowClientToSet=true] - Allow client to update this server's clipboard data remotely
 	 * @property {boolean} [allowClientToGet=false] - Allow client to request this server's clipboard data remotely
-	 * @property {boolean} [synchronizeClipboardToClient=false] - Send clipboard to client when this server' clipboard data changes
+	 * @property {boolean} [synchronizeClipboardToClient=false] - Send clipboard to client when this server's clipboard data changes
 	 * @property {boolean} [synchronizeClipboardToServer=false] - Mainly for parity, does not effect anything. Treat as read-only.  
 	 */
 	/**
 	 * Clipboard settings, synced between the two devices (you have to call client.syncSettings())
 	 * @type {ClipboardSettings}
 	 */
-	clipboardSettings = {};
+	clipboardSettings = {
+		enabled: false,
+		allowClientToSet: true,
+		allowClientToGet: false,
+
+		synchronizeClipboardToClient: false,
+	};
 
 
 	/**
 	 * @typedef {object} FileSharingSettings
-	 * @property {boolean} [enabled=false] - Clipboard data sent/received synced between the two
-	 * @property {boolean} [notifyOnReceive=true] - Notify the user when a file is automatically received
-	 * @property {boolean} [autoReceiveFromClient=false] - Auto receive and download files sent from the client (them)
+	 * @property {boolean} [enabled=false] - If file sharing is allowed between the two devices.
+	 * @property {boolean} [allowClientToUpload=true] - Whether client can upload any files. This toggles the ability to receive files from the client.
+	 * @property {boolean} [allowClientToDownload=true] - Whether client can download files (that we send it). This toggles the ability to send files to the client.
+	 * @property {boolean} [requireConfirmationOnClinetUploads=false] - Whether to ask the user to confirm receiving a file from client. False and files are automatically downloaded.
+	 * @property {boolean} [notifyOnClientUpload=true] - Notify the user when a file is received
+	 * @property {string} [receivedFilesDirectory="./data/receivedFiles/"] - Where received files are saved (default is ./data/receivedFiles/)
+	 * 
 	 * @property {boolean} [clientBrowsable=false] - Remote client device is browsable
 	 * @property {boolean} [serverBrowsable=false] - Allow the client device to remotely browse our files
-	 * @property {string} receivedFilesDirectory - Where received files are saved (default is ./data/receivedFiles/)
 	 */
 	/**
 	 * File sharing settings settings, synced between the two devices (you have to call client.syncSettings())
 	 * @type {FileSharingSettings}
 	 */
-	fileSharingSettings = {};
+	fileSharingSettings = {
+		enabled: false,
+
+		allowClientToUpload: true,
+		allowClientToDownload: true,
+
+		requireConfirmationOnClinetUploads: true,
+		notifyOnClientUpload: true,
+
+	};
 
 
 

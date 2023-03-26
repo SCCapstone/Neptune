@@ -296,16 +296,6 @@ Here's the steps broken further down:
 2) Server replies with a UUID (fileUUID). This UUID is used only for _this_ upload.
 3) Client uploads (regular HTTP upload) to the unique URL (`/api/v1/server/socket/{{socketUUID}}/filesharing/{{fileUUID}}`)
 
-The filesharing upload can be used for other things than _just_ file sharing, such as large images from the clipboard, images from notifications, etc.\
-Set upload types:
-```c#
-enum UploadType {
-    FileSharing = 0, // This file is being uploaded as a part of file sharing. Save this file, treat as file sharing.
-    NotificationImage = 1, // If a notification is a "big image" (contains an image) then this is the image that notification contains. This is going to be used in a notification.
-    NotificationIcon = 2, // Notifications have icons, if the icon, for whatever reason, cannot be uploaded in base64 in the original notification data then this would be how it is uploaded.
-    ClipboardImage = 5, // This is an image is going to be a part of the clipboard. Do not treat this as file sharing, put in clipboard.
-}
-```
 
 The server will save all files uploaded, _then_ follow the auto receive/prompt user. All files are saved to the server under the UUID and without any file extensions until it is determined that the file is to be accepted by the user. This is to prevent any acidental executation of unallowed files.
 
@@ -314,27 +304,29 @@ The server will save all files uploaded, _then_ follow the auto receive/prompt u
 Step one is generating this UUID:
 
 #### Generating a file UUID:
-Server endpoint: `/api/v1/server/filesharing/upload`
+Server endpoint: `/api/v1/server/filesharing/upload` -> `/api/v1/server/filesharing/upload/fileUUID`
 
 POST Data:
 ```json5
 {
+    "requestId": 123, // Client provided id to track which file this uuid is for, returned as is in response.
     "filename": "myDocument.pdf", // Name of the file being uploaded. Raw name, extension and all
-    "extension": "pdf", // File type/extension
-    "uploadType": 0, // What this upload is for, why this is being uploaded (see: filesharing.uploadType)
-    "notificationId": 1234, // If upload type is NotificationImage (1) or NotificationIcon (2) then this is the notification this image belongs to
 }
 ```
 
 Response:
 ```json5
 {
-    "fileUUID": "d5a11522-99b2-4a99-8e0c-1017f7e1efa2" // The file UUID, this is used to create the URL to upload the file.
+    "fileUUID": "d5a11522-99b2-4a99-8e0c-1017f7e1efa2", // The file UUID, this is used to create the URL to upload the file.
+    "requestId": 123, // Client provided id to track which file this is for
 }
 ```
+If not allowed, no fileUUID we be provided.
+
+
 
 #### Uploading file:
-Files are to uploaded, _not in a packet, over websocket or otherwise_, to `/api/v1/server/socket/{{socketUUID}}/filesharing/{{fileUUID}}` -> (response) `/api/v1/server/filesharing/uploadStatus`
+Files are to uploaded, _not in a packet, over websocket or otherwise_, to `/api/v1/server/socket/{{socketUUID}}/filesharing/{{fileUUID}}/upload` -> (response) `/api/v1/server/filesharing/uploadStatus`
 
 Data sent: the raw file.
 
@@ -362,16 +354,13 @@ POST Data:
 {
     "fileUUID": "d5a11522-99b2-4a99-8e0c-1017f7e1efa2", // The file UUID the client needs to download
     "authenticationCode": "1234", // Code used to authenticate the client
-
-    "filename": "myDocument.pdf", // Name of the file being uploaded. Raw name, extension and all
-    "extension": "pdf", // File type/extension
 }
 ```
 
 Reponse: none
 
 #### Downloading from server:
-Server endpoint (raw, not over websocket): `/api/v1/server/socket/{{socketUUID}}/filesharing/{{fileUUID}}` -> _raw file data_
+Server endpoint (raw, not over websocket): `/api/v1/server/socket/{{socketUUID}}/filesharing/{{fileUUID}}/download` -> _raw file data_
 
 POST Data:
 ```json5
@@ -531,6 +520,7 @@ clipboardSharingOff: Unable to get, clipboard sharing disabled.\
 getBlocked: Server/client does not allow the other device to get the clipboard contents.\
 failed: Generic error.
 
+
 ---
 
 
@@ -539,52 +529,58 @@ failed: Generic error.
 _NOTE: this is a work in progress, API subject to drastic change_
 
 ### Images
-_See filesharing and uploading. Use upload type `Image`._
+Convert to base64, see the clipboard for an example of the expected format.
 
 
 
-### Sending notifications to the server:
+### Sending notifications to the server {needs updating: both sides}:
 Used to send one or more notifications to the server. Update, create or remove.
 
-Server endpoint: `/api/v1/server/sendNotification` -> (no response)
+Server endpoint: `/api/v1/server/notifications/send` -> (no response)
 
 POST Data:
 ```json5
 [
  {
     "action": "create", // What to do with this data, how to process (create, remove, update)
+
     "applicationName": "Notification Tester", // The app that created the notification
     "applicationPackage": "com.cnewb.notificationtester", // The package name of that application
     "notificationId": 23, // Notification ID provided by Android, used to refer to this notification on either end
     "notificationIcon": "base64:image", // Base64 representation of the notification icon
+
     "title": "Testing", // Title of the notification
     "type": "text", // Notification type (text, image, inline, chronometer)
+
     "contents": { // Content of the notification
         "text": "Just a basic notification", // The text description
         "subtext": "Beep bop", // Subtext
-        "image": "base64:image", // Image in base64 OR
-        "imageId": "", // Image id of the upload image
+        "image": "base64:image", // Image in base64
         "timerData": {}, // Data related to timer
         "progress": {
             "max": 100, // Maximum value
             "min": 0, // Minimum value
             "current": 50 // Current position
+            "description": "blah blah this may not actually exist." // Data associated with the progress bar, such as a title or something
         },
-        "actions": [
+        "actions": [ // Buttons or textboxes, things the user can interact with
             {
                 "id": "action_read", // The 'name' of the action
                 "text": "Mark as Read", // The text displayed on the button
-                "type": "button" // Button
+                "type": "button" // Button OR textbox
+            },
+            {
+                "id": "textbox", // The 'name' of the action
+                "text": "", // The text already typed
+                "hintText": "Type a message...", // Unique to text box, the "hint"
+                "type": "textbox" // Button OR textbox
             }
         ]
     },
-    "extras": {}, // Extra data.
-    "persistent": false, // Notification is persistent
-    "color": 64132, // Color of the notification (Notification#Color)
+
     "onlyAlertOnce": true, // only like the sound, vibrate and ticker to be played if the notification is not already showing.
     "priority": 0, // #setImportance
     "timestamp": "2040-04-23T18:25:43.511Z", // When this item was displayed
-    "timeoutAfter": 0, // duration in milliseconds after which this notification should be canceled, if it is not already canceled.
     "isActive": true // Display this.
  }   
 ]
@@ -594,50 +590,57 @@ No response:
 
 
 
-### Activating/dismissing a notification:
+### Activating/dismissing a notification {client: not implemented}
 Used to activate or dismiss a notification on the client.
 
-Client endpoint: `/api/v1/client/updateNotification` -> (no response)
+Client endpoint: `/api/v1/client/notifications/update` -> (no response)
 
 POST Data:
 ```json5
-[
- {
-    "applicationName": "Notification Tester", // The app that created the notification
+{
     "applicationPackage": "com.cnewb.notificationtester", // The package name of that application
     "notificationId": "23", // Notification ID provided by Android
-    "action": "action", // Activate, dismiss, action
+    "action": "action", // "activate" OR "dismiss"
     "actionParameters": {
         "id": "action_read", // Name of the action user clicked on server
         "text": "" // If action included text, this would be the text.
     }
- }   
-]
+}   
 ```
 
 No response
 
 
 
-### Misc notification requests
-Asks the client to send all active notifications over (via `/api/v1/server/sendNotification`).
+### Misc notification requests {not implemented}
+Asks the client to send all active notifications over (via `/api/v1/server/notifications/send`).\
+There is a "search list" and "ignore list". Each have the same keys/properties and do the same thing, except the search list is used to get notifications that **match** parameters where as the ignore list is to ignore/skip notifications that match parameters.\
+Example parameters given with the ignore list (you can switch it to searchList to ONLY get notifications matching these parameters).
 
-Client endpoint: `/api/v1/server/getNotifications` -> (no response)
+Client endpoint: `/api/v1/server/notifications/getAll` -> (no response)
 
 POST Data:
 ```json5
 {
-    "ignoreList": [ // Don't send these, (optional)
-        {
-            "applicationName": "Notification Tester", // The app that created the notification
-            "applicationPackage": "com.cnewb.notificationtester", // The package name of that application
-            "notificationId": "23", // Notification ID provided by Android
+    "ignoreList": { // Optional, we filter out these notifications
+            "applicationName": [ // If the notification's application name is this, do not send
+                "Notification Tester"
+            ],
+            
+            "applicationPackage": [ // If the notification's package name is this, do not send
+                "com.cnewb.notificationtester"
+            ],
+
+            "notificationId": [ // Ignore these notification ids
+                "23"
+            ], 
         }
     ]
 }
 ```
 
 No response
+
 
 
 ---
@@ -651,7 +654,7 @@ Sever endpoint: `/api/v1/server/configuration/set` -> (no response)\
 Client endpoint: `/api/v1/client/configuration/set` -> (no response)
 
 
-Data
+Data to send to server:
 ```json5
 {
     "fiendlyName": "", // Device display name
@@ -662,24 +665,42 @@ Data
         "enabled": false, // this && two below
 
         // These cannot be changed by the server
-        "allowServerToSet": false, // Allow server to set the client's clipboard (client)
-        "allowServerToGet": false, // Allow server to get the client's clipboard (client)
-        "synchronizeClipboardToServer": false, // Automatically send to server (client)
-
-        // These cannot be change by the client
-        "allowClientToSet": false, // Allow client to set the server's clipboard (server)
-        "allowClientToGet": false, // Allow client to get the server's clipboard (server)
-        "synchronizeClipboardToClient": false // Automatically send to client (server)
+        "allowServerToSet": false, // Allow server to set the client's clipboard (client) - this is mainly for parity and cannot be changed by the client nor is it used.
+        "allowServerToGet": false, // Allow server to get the client's clipboard (client) - this is mainly for parity and cannot be changed by the client nor is it used.
+        "synchronizeClipboardToServer": false, // Automatically send to server (client) - this is mainly for parity and cannot be changed by the client nor is it used.
     },
     "fileSharingSettings": {
-        "enabled": false, // Enable file sharing
-        "autoReceiveFromServer": false, // Auto receive files from the server (sent and ignored by client)
-        "autoReceiveFromClient": false, // Auto receive files from the client (sent and ignored by server)
-        "serverBrowsable": false, // Client can view the files on the server (sent and ignored by server)
-        "clientBrowsable": false // Server can view the files on client (remotely) (sent and ignored by client)
+        "enabled": true, // Enable file sharing
+        "allowServerToUpload": true, // Whether server can upload any files. This toggles the ability to receive files from the server. - this is mainly for parity and cannot be changed by the client nor is it used.
+        "allowServerToDownload": true, // Whether server can download files (that we send it). This toggles the ability to send files to the server. - this is mainly for parity and cannot be changed by the client nor is it used.
     }
 }
 ```
+
+
+Data to send to client:
+```json5
+{
+    "fiendlyName": "", // Device display name
+    "notificationSettings": { // Notification settings
+        "enabled": true // Send notification data
+    },
+    "clipboardSettings": {
+        "enabled": false, // this && two below
+        // These cannot be change by the client
+        "allowClientToSet": false, // Allow client to set the server's clipboard (server)
+        "allowClientToGet": false, // Allow client to get the server's clipboard (server)
+        "synchronizeClipboardToClient": false, // Automatically send to client - this is mainly for parity and isn't used by the client.
+    },
+    "fileSharingSettings": {
+        "enabled": true, // Enable file sharing
+        "allowClientToUpload": true, // Whether client can upload any files. This toggles the ability to receive files from the client. - this is mainly for parity and isn't used by the client.
+        "allowClientToDownload": true, // Whether client can download files (that we send it). This toggles the ability to send files to the client. - this is mainly for parity and isn't used by the client.
+    }
+}
+```
+
+
 
 No response
 
@@ -696,7 +717,7 @@ POST data:
 {}
 ```
 
-Response:
+Response from client:
 ```json5
 {
     "fiendlyName": "", // Device display name
@@ -705,15 +726,39 @@ Response:
     },
     "clipboardSettings": {
         "enabled": false, // this && two below
-        "autoSendToServer": false, // Automatically send to server (sent and ignored by client)
-        "autoSendToClient": false // Automatically send to client (sent and ignored by server)
+
+        // These cannot be changed by the server
+        "allowServerToSet": false, // Allow server to set the client's clipboard (client) - this is mainly for parity and cannot be changed by the client nor is it used.
+        "allowServerToGet": false, // Allow server to get the client's clipboard (client) - this is mainly for parity and cannot be changed by the client nor is it used.
+        "synchronizeClipboardToServer": false, // Automatically send to server (client) - this is mainly for parity and cannot be changed by the client nor is it used.
     },
     "fileSharingSettings": {
-        "enabled": false, // Enable file sharing
-        "autoReceiveFromServer": false, // Auto receive files from the server (sent and ignored by client)
-        "autoReceiveFromClient": false, // Auto receive files from the client (sent and ignored by server)
-        "serverBrowsable": false, // Client can view the files on the server (sent and ignored by server)
-        "clientBrowsable": false // Server can view the files on client (remotely) (sent and ignored by client)
+        "enabled": true, // Enable file sharing
+        "allowServerToUpload": true, // Whether server can upload any files. This toggles the ability to receive files from the server. - this is mainly for parity and cannot be changed by the client nor is it used.
+        "allowServerToDownload": true, // Whether server can download files (that we send it). This toggles the ability to send files to the server. - this is mainly for parity and cannot be changed by the client nor is it used.
+    }
+}
+```
+
+
+Response from server:
+```json5
+{
+    "fiendlyName": "", // Device display name
+    "notificationSettings": { // Notification settings
+        "enabled": true // Send notification data
+    },
+    "clipboardSettings": {
+        "enabled": false, // this && two below
+        // These cannot be change by the client
+        "allowClientToSet": false, // Allow client to set the server's clipboard (server)
+        "allowClientToGet": false, // Allow client to get the server's clipboard (server)
+        "synchronizeClipboardToClient": false, // Automatically send to client - this is mainly for parity and isn't used by the client.
+    },
+    "fileSharingSettings": {
+        "enabled": true, // Enable file sharing
+        "allowClientToUpload": true, // Whether client can upload any files. This toggles the ability to receive files from the client. - this is mainly for parity and isn't used by the client.
+        "allowClientToDownload": true, // Whether client can download files (that we send it). This toggles the ability to send files to the client. - this is mainly for parity and isn't used by the client.
     }
 }
 ```
@@ -745,8 +790,8 @@ Other end will not respond, the device that sent the request will remove and unp
 Used to request battery information of a device, no parameters.
 
 
-Server command: `/api/v1/server/battery/getInfo` -> (reply) `/api/v1/server/battery/info`\
-Client command: `/api/v1/client/battery/getInfo` -> (reply) `/api/v1/client/battery/info`\
+Server command: `/api/v1/server/battery/get` -> (reply) `/api/v1/server/battery/info`\
+Client command: `/api/v1/client/battery/get` -> (reply) `/api/v1/client/battery/info`\
 POST data:
 ```
 {}
@@ -822,6 +867,6 @@ No response (they've disconnected).
 
 
 ### Acknowledge
-Used by the server to tell the client request was received and there is no response generated. (So the client stops waiting for a resposne.)
+Used by the server to tell the client request was received and there is no response generated. (So the client stops waiting for a response.)
 
 Server will respond with `/api/v1/server/ack` on all requests that otherwise do NOT have a response. No data with this response.

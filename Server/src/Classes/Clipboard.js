@@ -62,7 +62,7 @@ class Clipboard {
 	 * 
 	 * @typedef {object} StandardizedClipboardData 
 	 * @property {string} [Image] - Image data, can be PNG, DIB, Bitmap, etc .. Depends on mime type, which is `image/<image type>` (you want `<image type>`).
-	 * @property {string} [Text] - Plain text data, either Unicode or ASCII.
+	 * @property {string} [Text] - Plain text data, either Unicode (UTF8) or ASCII.
 	 * @property {string} [RichText] - Rich text data
 	 * @property {string} [HTML] - HTML format data
 	 */
@@ -214,29 +214,31 @@ class Clipboard {
 				// convert to standard HTML
 				if (os.type() == "Windows_NT" && typeof returnData.HTML === "string") {
 					let data = breakUpParts(returnData.HTML);
-					let cfHTML = Buffer.from(data.data, data.encoding).toString('ascii');
-					
-					let lines = cfHTML.split(/(?:\r\n|\r|\n)/g);
-					let htmlData = "";
-					let inHTML = false;
-					lines.forEach((line) => {
-						if (inHTML)
-							htmlData += line;
-						else if (line.split(':').length < 2) {
-							inHTML = true;
-							htmlData += line;
+					if (data !== undefined) {
+						let cfHTML = Buffer.from(data.data, data.encoding).toString('ascii');
+						
+						let lines = cfHTML.split(/(?:\r\n|\r|\n)/g);
+						let htmlData = "";
+						let inHTML = false;
+						lines.forEach((line) => {
+							if (inHTML)
+								htmlData += line;
+							else if (line.split(':').length < 2) {
+								inHTML = true;
+								htmlData += line;
+							}
+						})
+
+
+						if (htmlData) {
+							if (correctWindowsLineEndings)
+								htmlData = htmlData.replace(/\r\n/,'\n');
+
+							htmlData = Buffer.from(htmlData, 'ascii').toString("utf8"); // ASCII -> UTF8
+							htmlData = Buffer.from(htmlData, "utf8").toString('base64'); // UTF8 -> BASE64
+
+							returnData.HTML = "data:text/html;" + "base64" + ", " + htmlData;
 						}
-					})
-
-
-					if (htmlData) {
-						if (correctWindowsLineEndings)
-							htmlData = htmlData.replace(/\r\n/,'\n');
-
-						htmlData = Buffer.from(htmlData, 'ascii').toString("utf8"); // ASCII -> UTF8
-						htmlData = Buffer.from(htmlData, "utf8").toString('base64'); // UTF8 -> BASE64
-
-						returnData.HTML = "data:text/html;" + "base64" + ", " + htmlData;
 					}
 				}
 
@@ -356,7 +358,7 @@ foreach ($format in $dataObject.GetFormats()) {
 				$data = "data:application/octet-stream;hex, " + [BitConverter]::ToString($bytes).Replace('-', '')
 			
 			} else {
-				$encoder = [System.Text.Encoding]::Unicode
+				$encoder = [System.Text.Encoding]::UTF8
 				$type = "plain"
 				if ($format -eq "RichText" -or $format.StartsWith("Rich Text")) {
 					$type = "rtf"
@@ -663,7 +665,7 @@ foreach ($type in $data.PSObject.Properties) {
 		$dataObject.SetImage($image)
 
 	} elseif ($mime_type -eq "text") {
-		$encoder = [System.Text.Encoding]::Default
+		$encoder = [System.Text.Encoding]::UTF8
 		if ($file_extension -eq "ibm437") {
 			$encoder = [System.Text.Encoding]::GetEncoding(437)
 		}
@@ -701,6 +703,54 @@ Exit
 				if (err !== undefined) {
 					powershell.kill();
 					reject(err);
+				}
+			});
+		});
+	}
+
+
+	static setUnixClipboardData(data) {
+		// this is nasty, I know
+		return new Promise(async (resolve, reject) => {
+			exec('command -v xclip', (err, stdout, stderr) => {
+				if (!err && stdout && !stderr) {
+					let formats = Object.keys(data);
+					let count = 0;
+
+					formats.forEach((format) => {
+						if (format !== undefined) {
+							exec(`echo "${data[format]}" | base64 -d | xclip -selection clipboard -t ${format}`, (err, stdout, stderr) => {
+								if (err) {
+									reject(err);
+								} else if (stderr) {
+									reject(stderr);
+								}
+
+								count++;
+								if (count === formats.length) {
+									resolve();
+								}
+							});
+						}
+					});
+				} else {
+					if (data.TEXT !== undefined && data.UTF8_STRING !== undefined)
+					exec('command -v xsel', (err, stdout, stderr) => {
+						if (!err && stdout && !stderr) {
+							let text = data.TEXT !== undefined? data.TEXT : data.UTF8_STRING;
+							exec(`echo "${data.TEXT}" | xsel --clipboard`, (err, stdout, stderr) => {
+								if (err) {
+									reject(err);
+								} else if (stderr) {
+									reject(stderr);
+								}
+
+								resolve();
+							});
+						} else {
+							reject('Unable to find xclip or xsel.');
+						}
+					});
 				}
 			});
 		});
@@ -831,7 +881,38 @@ Exit
 			}
 		}
 
+		// Data ready
+		let platform = os.type();
+		if (platform == 'Windows_NT') {
+			return this.setWindowsClipboardData(knownGoodData);
+		} else if (platform == "Linux" || platform == "FreeBSD") {
+			if (knownGoodData.Image !== undefined) { // Image
+				let imageData = breakUpParts(knownGoodData.Image);
+				if (imageData.mimeType === "image") {
+					knownGoodData[imageData.mimeType + "/" + imageData.fileExtension] = knownGoodData.Image;
+					delete knownGoodData.Image;
+				}
 
+			} else if (knownGoodData.Text !== undefined) { // Text
+				let texdData = breakUpParts(knownGoodData.Text);
+				if (textData.mimeType == "text" && textData.fileExtension == "plain") {
+					knownGoodData["UTF8_STRING"] = knownGoodData.Text;
+
+					// UTF8 -> ASCII
+					let ASCIIText = Buffer.from(textData.data, textData.encoding).toString('ASCII');
+					let ASCIIBase64 = Buffer.from(ASCIIText, "ASCII").toString("base64");
+					knownGoodData["TEXT"] = "data:" + textData.mimeType + "/" + textData.fileExtension + ";base64, " + ASCIIBase64;
+				}
+
+			} else if (knownGoodData.HTML !== undefined) { // HTML
+				knownGoodData["text/html"] = knownGoodData.HTML;
+
+			} else if (knownGoodData.RichText !== undefined) { // RichText
+				knownGoodData["text/rtf"] = knownGoodData.RichText;
+			}
+
+			return this.setUnixClipboardData(knownGoodData);
+		}
 	}
 }
 

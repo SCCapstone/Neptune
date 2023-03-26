@@ -9,7 +9,7 @@
     tools:context=".DeviceActivity">
 
     <Button
-        android:id="@+id/button2"
+        android:id="@+id/btnSendFile"
         android:layout_width="0dp"
         android:layout_height="48dp"
         android:layout_marginStart="16dp"
@@ -22,19 +22,19 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
-        android:id="@+id/button3"
+        android:id="@+id/btnSendClipboard"
         android:layout_width="0dp"
         android:layout_height="50dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="8dp"
         android:enabled="false"
         android:text="Send clipboard"
-        app:layout_constraintEnd_toStartOf="@+id/button4"
+        app:layout_constraintEnd_toStartOf="@+id/btnReceiveClipboard"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button2" />
+        app:layout_constraintTop_toBottomOf="@+id/btnSendFile" />
 
     <Button
-        android:id="@+id/button4"
+        android:id="@+id/btnReceiveClipboard"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
@@ -42,8 +42,8 @@
         android:enabled="false"
         android:text="Receive clipboard"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/button3"
-        app:layout_constraintTop_toBottomOf="@+id/button2" />
+        app:layout_constraintStart_toEndOf="@+id/btnSendClipboard"
+        app:layout_constraintTop_toBottomOf="@+id/btnSendFile" />
 
     <View
         android:id="@+id/view"

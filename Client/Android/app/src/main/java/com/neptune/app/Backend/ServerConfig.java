@@ -1,9 +1,14 @@
 package com.neptune.app.Backend;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.neptune.app.Backend.Adapters.ServerClipboardSettingsAdapter;
+import com.neptune.app.Backend.Adapters.ServerFilesharingSettingsAdapter;
+import com.neptune.app.Backend.Structs.ConnectionManagerSettings;
 import com.neptune.app.Backend.Structs.ServerClipboardSettings;
+import com.neptune.app.Backend.Structs.ServerFilesharingSettings;
 
 import java.io.IOException;
 import java.text.DateFormat;
@@ -47,21 +52,23 @@ public class ServerConfig extends ConfigItem {
     // Settings
     public boolean syncNotifications = true;
 
-    // Clipboard
+    // Clipboard settings
     public ServerClipboardSettings clipboardSettings = new ServerClipboardSettings();
 
-    // Allow files to be pushed/pulled (enable base file sharing)
-    public boolean fileSharingEnabled = false;
-    // Allow server to pull data from us (request)
-    public boolean fileSharingClientBrowsable = false;
-    // Allow automatic downloading of files sent by the server
-    public boolean fileSharingAutoReceiveFromServer = false;
+    // Filesharing settings
+    public ServerFilesharingSettings filesharingSettings = new ServerFilesharingSettings();
 
 
+
+    // Class specific
+    private boolean allowLoad = false;
     public ServerConfig(String serverId, ConfigurationManager parent) throws IOException, JsonParseException {
         super("server_" + serverId + ".json", parent);
 
         this.serverId = UUID.fromString(serverId);
+        gsonBuilder.registerTypeAdapter(ServerClipboardSettings.class, new ServerClipboardSettingsAdapter());
+        gsonBuilder.registerTypeAdapter(ServerFilesharingSettings.class, new ServerFilesharingSettingsAdapter());
+        allowLoad = true;
         load();
     }
 
@@ -72,7 +79,12 @@ public class ServerConfig extends ConfigItem {
      */
     @Override
     public void fromJson(JsonObject jsonObject) {
+        if (!allowLoad)
+            return;
+
         super.fromJson(jsonObject);
+
+        Gson gson = gsonBuilder.create();
 
         if (jsonObject.has("serverId"))
             this.serverId = UUID.fromString(jsonObject.get("serverId").getAsString());
@@ -122,6 +134,11 @@ public class ServerConfig extends ConfigItem {
         if(jsonObject.has("syncNotifications")) {
             this.syncNotifications = jsonObject.get("syncNotifications").getAsBoolean();
         }
+
+        if (jsonObject.has("clipboardSettings"))
+            this.clipboardSettings = gson.fromJson(jsonObject.getAsJsonObject("clipboardSettings"), ServerClipboardSettings.class);
+        if (jsonObject.has("filesharingSettings"))
+            this.filesharingSettings = gson.fromJson(jsonObject.getAsJsonObject("filesharingSettings"), ServerFilesharingSettings.class);
     }
 
     /**

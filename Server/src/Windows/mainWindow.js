@@ -66,7 +66,7 @@ class thisTest extends NeptuneWindow {
 	/** @type {NodeGUI.QAction} */
 	actionToggleFileSharing;
 	/** @type {NodeGUI.QAction} */
-	actionToggleServerBrowsable;
+	actionToggleAllowClientToUpload;
 	/** @type {NodeGUI.QAction} */
 	actionSend_file;
 	/** @type {NodeGUI.QAction} */
@@ -131,7 +131,7 @@ class thisTest extends NeptuneWindow {
 	/** @type {NodeGUI.QCheckBox} */
 	chkAutoSendClipboard;
 	/** @type {NodeGUI.QCheckBox} */
-	chkAutoReceiveClipboard;
+	chkClipboardAllowClientToGet;
 
 	// file sharing
 	/** @type {NodeGUI.QCheckBox} */
@@ -141,7 +141,7 @@ class thisTest extends NeptuneWindow {
 	/** @type {NodeGUI.QCheckBox} */
 	chkFileSharingNotify;
 	/** @type {NodeGUI.QCheckBox} */
-	chkServerBrowsable;
+	chkFilesharingAllowClientToUpload;
 	/** @type {NodeGUI.QLineEdit} */
 	txtFileSharingSaveDirectory;
 	/** @type {NodeGUI.QPushButton} */
@@ -269,11 +269,11 @@ class thisTest extends NeptuneWindow {
 			this.btnSendFile.setEnabled(enabled === true);
 			this.chkFileSharingAutoAccept.setEnabled(enabled === true);
 			this.chkFileSharingNotify.setEnabled(enabled === true);
-			this.chkServerBrowsable.setEnabled(enabled === true);
+			this.chkFilesharingAllowClientToUpload.setEnabled(enabled === true);
 			this.txtFileSharingSaveDirectory.setEnabled(enabled === true);
 			this.btnFileSharingSaveDirectoryBrowse.setEnabled(enabled === true);
 
-			this.actionToggleServerBrowsable.setEnabled(enabled === true);
+			this.actionToggleAllowClientToUpload.setEnabled(enabled === true);
 			this.actionSend_file.setEnabled(enabled === true);
 			this.actionBrowse_for_file.setEnabled(enabled === true);
 		}
@@ -283,11 +283,11 @@ class thisTest extends NeptuneWindow {
 		let client = this.GetSelectedClient();
 
 		if (client !== undefined) {
-			client.fileSharingSettings.enabled = enabled;
+			client.clipboardSettings.enabled = enabled;
 			this.btnSendClipboard.setEnabled(enabled === true);
 			this.btnReceiveClipboard.setEnabled(enabled === true);
 			this.chkAutoSendClipboard.setEnabled(enabled === true);
-			this.chkAutoReceiveClipboard.setEnabled(enabled === true);
+			this.chkClipboardAllowClientToGet.setEnabled(enabled === true);
 
 			this.actionSend_clipboard.setEnabled(enabled === true);
 			this.actionReceive_clipboard.setEnabled(enabled === true);
@@ -337,8 +337,8 @@ class thisTest extends NeptuneWindow {
 			this.chkAutoSendClipboard.setChecked(client.clipboardSettings.autoSendToClient === true);
 			this.chkAutoSendClipboard.setEnabled(client.clipboardSettings.enabled === true);
 
-			this.chkAutoReceiveClipboard.setChecked(client.clipboardSettings.allowAutoReceive === true);
-			this.chkAutoReceiveClipboard.setEnabled(client.clipboardSettings.enabled === true);
+			this.chkClipboardAllowClientToGet.setChecked(client.clipboardSettings.allowClientToGet === true);
+			this.chkClipboardAllowClientToGet.setEnabled(client.clipboardSettings.enabled === true);
 			
 
 
@@ -352,8 +352,8 @@ class thisTest extends NeptuneWindow {
 			this.chkFileSharingNotify.setChecked(client.fileSharingSettings.notifyOnReceive === true);
 			this.chkFileSharingNotify.setEnabled(client.fileSharingSettings.enabled === true);
 
-			this.chkServerBrowsable.setChecked(client.fileSharingSettings.serverBrowsable === true);
-			this.chkServerBrowsable.setEnabled(client.fileSharingSettings.enabled === true);
+			this.chkFilesharingAllowClientToUpload.setChecked(client.fileSharingSettings.allowClientToUpload === true);
+			this.chkFilesharingAllowClientToUpload.setEnabled(client.fileSharingSettings.enabled === true);
 
 			this.txtFileSharingSaveDirectory.setText(client.fileSharingSettings.receivedFilesDirectory !== undefined? client.fileSharingSettings.receivedFilesDirectory : "");
 			this.txtFileSharingSaveDirectory.setEnabled(client.fileSharingSettings.enabled === true);
@@ -375,13 +375,13 @@ class thisTest extends NeptuneWindow {
 			// clipboard
 			client.clipboardSettings.enabled = this.chkSyncClipboard.isChecked(); //(client.clipboardSettings.enabled === true);
 			client.clipboardSettings.autoSendToClient = this.chkAutoSendClipboard.isChecked(); //(client.clipboardSettings.autoSendToClient === true);
-			client.clipboardSettings.allowAutoReceive = this.chkAutoReceiveClipboard.isChecked(); //(client.clipboardSettings.allowAutoReceive === true);
+			client.clipboardSettings.allowClientToGet = this.chkClipboardAllowClientToGet.isChecked(); //(client.clipboardSettings.allowClientToGet === true);
 
 			// file sharing
 			client.fileSharingSettings.enabled = this.chkFileSharingEnable.isChecked(); //(client.fileSharingSettings.enabled === true);
 			client.fileSharingSettings.autoReceiveFromClient = this.chkFileSharingAutoAccept.isChecked(); //(client.fileSharingSettings.autoReceiveFromClient === true);
 			client.fileSharingSettings.notifyOnReceive = this.chkFileSharingNotify.isChecked(); //(client.fileSharingSettings.notifyOnReceive === true);
-			client.fileSharingSettings.serverBrowsable = this.chkServerBrowsable.isChecked(); //(client.fileSharingSettings.serverBrowsable === true);
+			client.fileSharingSettings.allowClientToUpload = this.chkFilesharingAllowClientToUpload.isChecked(); //(client.fileSharingSettings.allowClientToUpload === true);
 
 			client.fileSharingSettings.receivedFilesDirectory = this.txtFileSharingSaveDirectory.text(); //(client.fileSharingSettings.receivedFilesDirectory);
 
@@ -481,16 +481,16 @@ class thisTest extends NeptuneWindow {
 					client.syncConfiguration();
 				}
 			});
-			this.actionToggleServerBrowsable = new NodeGUI.QAction(this.MainWindow);
-			this.actionToggleServerBrowsable.setObjectName("actionToggleServerBrowsable");
-			this.actionToggleServerBrowsable.setCheckable(true);
-			this.actionToggleServerBrowsable.setEnabled(false);
-			this.actionToggleServerBrowsable.setText("Mark server browsable");
-			this.actionToggleServerBrowsable.addEventListener('triggered', (checked) => {
+			this.actionToggleAllowClientToUpload = new NodeGUI.QAction(this.MainWindow);
+			this.actionToggleAllowClientToUpload.setObjectName("actionToggleAllowClientToUpload");
+			this.actionToggleAllowClientToUpload.setCheckable(true);
+			this.actionToggleAllowClientToUpload.setEnabled(false);
+			this.actionToggleAllowClientToUpload.setText("Allow client to upload");
+			this.actionToggleAllowClientToUpload.addEventListener('triggered', (checked) => {
 				let client = this.GetSelectedClient();
 				if (client !== undefined) {
-					client.fileSharingSettings.serverBrowsable = checked;
-					this.chkServerBrowsable.setChecked(checked);
+					client.fileSharingSettings.allowClientToUpload = checked;
+					this.chkFilesharingAllowClientToUpload.setChecked(checked);
 					this.log("Saving + syncing configuration");
 					client.save();
 					client.syncConfiguration();
@@ -658,7 +658,7 @@ class thisTest extends NeptuneWindow {
 			this.menuClient_settings.addAction(this.actionReceive_clipboard);
 			this.menuClient_settings.addSeparator();
 			this.menuClient_settings.addAction(this.actionToggleFileSharing);
-			this.menuClient_settings.addAction(this.actionToggleServerBrowsable);
+			this.menuClient_settings.addAction(this.actionToggleAllowClientToUpload);
 			this.menuClient_settings.addAction(this.actionSend_file);
 			this.menuClient_settings.addAction(this.actionBrowse_for_file);
 			this.menuClient_settings.addSeparator();
@@ -880,7 +880,7 @@ class thisTest extends NeptuneWindow {
 
 			let syncSettingsClipboardContainer = new NodeGUI.QWidget(syncSettingsContainer);
 			syncSettingsClipboardContainer.setObjectName("syncSettingsClipboardContainer");
-			syncSettingsClipboardContainer.setEnabled(false);
+			//syncSettingsClipboardContainer.setEnabled(false);
 			// sizePolicy.setHeightForWidth(syncSettingsClipboardContainer.sizePolicy().hasHeightForWidth());
 			syncSettingsClipboardContainer.setSizePolicy(NodeGUI.QSizePolicyPolicy.Preferred, NodeGUI.QSizePolicyPolicy.Fixed);
 			let verticalLayout_2 = new NodeGUI.QBoxLayout(NodeGUI.Direction.TopToBottom, syncSettingsClipboardContainer);
@@ -910,27 +910,27 @@ class thisTest extends NeptuneWindow {
 			this.chkAutoSendClipboard.addEventListener('stateChanged', (state) => {
 				let client = this.GetSelectedClient();
 				if (client !== undefined) {
-					client.clipboardSettings.autoSendToClient = (state === 2);
+					client.clipboardSettings.synchronizeClipboardToClient = (state === 2);
 				}
 			});
 
 			verticalLayout_2.addWidget(this.chkAutoSendClipboard);
 
-			this.chkAutoReceiveClipboard = new NodeGUI.QCheckBox(syncSettingsClipboardContainer);
-			this.chkAutoReceiveClipboard.setObjectName("chkAutoReceiveClipboard");
-			this.chkAutoReceiveClipboard.setFont(font1);
-			this.chkAutoReceiveClipboard.setCursor(NodeGUI.CursorShape.PointingHandCursor);
+			this.chkClipboardAllowClientToGet = new NodeGUI.QCheckBox(syncSettingsClipboardContainer);
+			this.chkClipboardAllowClientToGet.setObjectName("chkClipboardAllowClientToGet");
+			this.chkClipboardAllowClientToGet.setFont(font1);
+			this.chkClipboardAllowClientToGet.setCursor(NodeGUI.CursorShape.PointingHandCursor);
 			if (this.enableToolTips)
-				this.chkAutoReceiveClipboard.setToolTip("Automatically receive clipboard data from the client and update our clipboard.");
-			this.chkAutoReceiveClipboard.setStyleSheet("margin-left: 25px;");
-			this.chkAutoReceiveClipboard.setText("Automatically receive from client");
-			this.chkAutoReceiveClipboard.addEventListener('stateChanged', (state) => {
+				this.chkClipboardAllowClientToGet.setToolTip("Allows the client to request and receive this computer's clipboard contents.");
+			this.chkClipboardAllowClientToGet.setStyleSheet("margin-left: 25px;");
+			this.chkClipboardAllowClientToGet.setText("Allow client to request clipboard data");
+			this.chkClipboardAllowClientToGet.addEventListener('stateChanged', (state) => {
 				let client = this.GetSelectedClient();
 				if (client !== undefined)
-					client.clipboardSettings.allowAutoReceive = (state === 2);
+					client.clipboardSettings.allowClientToGet = (state === 2);
 			});
 
-			verticalLayout_2.addWidget(this.chkAutoReceiveClipboard);
+			verticalLayout_2.addWidget(this.chkClipboardAllowClientToGet);
 
 
 			vlayCheckBoxes.addWidget(syncSettingsClipboardContainer);
@@ -944,7 +944,7 @@ class thisTest extends NeptuneWindow {
 
 			let syncSettingsFileSharingContainer = new NodeGUI.QWidget(syncSettingsContainer);
 			syncSettingsFileSharingContainer.setObjectName("syncSettingsFileSharingContainer");
-			syncSettingsFileSharingContainer.setEnabled(false);
+			//syncSettingsFileSharingContainer.setEnabled(false);
 			// sizePolicy.setHeightForWidth(syncSettingsFileSharingContainer.sizePolicy().hasHeightForWidth());
 			syncSettingsFileSharingContainer.setSizePolicy(NodeGUI.QSizePolicyPolicy.Preferred, NodeGUI.QSizePolicyPolicy.Fixed);
 			let gridLayout_4 = new NodeGUI.QGridLayout(syncSettingsFileSharingContainer);
@@ -997,23 +997,23 @@ class thisTest extends NeptuneWindow {
 
 			fileSharingCheckboxes.addWidget(this.chkFileSharingNotify);
 
-			this.chkServerBrowsable = new NodeGUI.QCheckBox(syncSettingsFileSharingContainer);
-			this.chkServerBrowsable.setObjectName("chkServerBrowsable");
-			this.chkServerBrowsable.setFont(font1);
-			this.chkServerBrowsable.setCursor(NodeGUI.CursorShape.PointingHandCursor);
+			this.chkFilesharingAllowClientToUpload = new NodeGUI.QCheckBox(syncSettingsFileSharingContainer);
+			this.chkFilesharingAllowClientToUpload.setObjectName("chkFilesharingAllowClientToUpload");
+			this.chkFilesharingAllowClientToUpload.setFont(font1);
+			this.chkFilesharingAllowClientToUpload.setCursor(NodeGUI.CursorShape.PointingHandCursor);
 			if (this.enableToolTips)
-				this.chkServerBrowsable.setToolTip("Allows the client to browse the files on this computer.");
-			this.chkServerBrowsable.setStyleSheet("margin-left: 25px;");
-			this.chkServerBrowsable.setText("Mark server as browsable by client");
-			this.chkServerBrowsable.addEventListener('stateChanged', (state) => {
+				this.chkFilesharingAllowClientToUpload.setToolTip("Allows the client to browse the files on this computer.");
+			this.chkFilesharingAllowClientToUpload.setStyleSheet("margin-left: 25px;");
+			this.chkFilesharingAllowClientToUpload.setText("Allow client to upload files.");
+			this.chkFilesharingAllowClientToUpload.addEventListener('stateChanged', (state) => {
 				let client = this.GetSelectedClient();
 				if (client !== undefined) {
-					client.fileSharingSettings.serverBrowsable = (state === 2);
-					this.actionToggleServerBrowsable.setChecked(state === 2);
+					client.fileSharingSettings.allowClientToUpload = (state === 2);
+					this.actionToggleAllowClientToUpload.setChecked(state === 2);
 				}
 			});
 
-			fileSharingCheckboxes.addWidget(this.chkServerBrowsable);
+			fileSharingCheckboxes.addWidget(this.chkFilesharingAllowClientToUpload);
 
 
 			gridLayout_4.addLayout(fileSharingCheckboxes, 0, 0, 1, 1);

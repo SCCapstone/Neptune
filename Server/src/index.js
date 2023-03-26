@@ -69,6 +69,7 @@ const NotificationManager = require('./Classes/NotificationManager.js');
 const LogMan = require('./Classes/LogMan.js').LogMan;
 const IPAddress = require("./Classes/IPAddress.js");
 const NeptuneCrypto = require('./Support/NeptuneCrypto.js');
+const { fileURLToPath } = require('node:url');
 
 
 
@@ -382,7 +383,12 @@ async function main() {
 	var clipboard = NodeGUI.QApplication.clipboard();
 	if (clipboard) {
 		clipboard.addEventListener('changed', () => {
-			// Neptune.log.debug('Clipboard data changed: ' + clipboard.text());
+			// Clipboard changed, push to client
+			// Neptune.log.silly("Clipboard data changed, pushing to clients.");
+			Neptune.clientManager.getClients().forEach(client => {
+				if (client.clipboardSettings.synchronizeClipboardToClient && !client.clipboardModificationsLocked)
+					client.sendClipboard();
+			});
 		});
 	} else {
 		Neptune.log.debug("No clipboard object, clipboard support questionable.");
@@ -488,14 +494,7 @@ async function main() {
 	var upload = multer({
 		dest: './data/uploads/',
 		limits: {
-			fileSize: 40000000, // 40MB
-		},
-		fileFilter: function (req, file, callback) {
-			var ext = path.extname(file.originalname);
-			if(ext !== '.png' && ext !== '.jpg' && ext !== '.jpeg') { // Only allow JPG's
-				return callback(new Error('Only images are allowed'))
-			}
-			callback(null, true)
+			fileSize: 1000000000, // 1,000MB
 		},
 	}); // For uploads
 
@@ -685,6 +684,7 @@ async function main() {
 			conInitObject.log.warn("Attempt to use old conInitUUID! UUID: " + conInitUUID + " . createdAt: " + conInitObject.createdTime.toISOString());
 			delete conInitUUIDs[conInitUUID];
 			res.status(408).send('{ "error": "Request timeout for conInitUUID" }');
+			return;
 		}
 
 
@@ -762,6 +762,7 @@ async function main() {
 		// Setup connection manager (enables HTTP listener)
 		client.setupConnectionManager(conInitObject.secret, {
 			conInitUUID: conInitUUID,
+			socketUUID: socketUUID,
 			encryptionParameters: {
 				cipherAlgorithm: conInitObject.selectedCipher,
 				hashAlgorithm: conInitObject.selectedHashAlgorithm,
@@ -786,7 +787,19 @@ async function main() {
 
 		res.status(200).send(encryptedResponse);
 	});
+	app.post('/api/v1/server/initiateConnection/:conInitUUID/scrap', (req, res) => {
+		let conInitUUID = req.params.conInitUUID;
+		if (conInitUUIDs[conInitUUID] !== undefined) {
+			Neptune.weblog.info("Scrapping initiation request for conInitUUID: " + conInitUUID.substr(0,48));
+			if (conInitUUIDs[conInitUUID].client !== undefined)
+				conInitUUIDs[conInitUUID].client.destroyConnectionManager();
 
+			conInitUUIDs[conInitUUID].enabled = false;
+			delete conInitUUIDs[conInitUUID];
+			res.status(200).end("{}");
+		} else
+			res.status(404).end("{}");
+	});
 
 	app.post('/api/v1/server/socket/:socketUUID/http', (req, res) => {
 		var sentResponse = false;
@@ -817,20 +830,22 @@ async function main() {
 				res.status(200).send("{}");
 			}
 		}, 30000);
-	})
+	});
 
 	let SocketServer = new WebSocketServer({server: httpServer});
 	// Listen for socket connections
 	SocketServer.on('connection', (ws, req) => {
 		if (req.url === undefined) {
 			Neptune.webLog.error("New connection via WebSocket, no URL specified. Terminating.");
-			WScript.terminate();
+			ws.send("{ \"command\": \"/api/v1/client/disconnect\" }");
+			ws.close();
 			return;
 		}
 		let urlParts = req.url.split("/");
 		if (urlParts.length != 6) {
 			Neptune.webLog.error("New connection via WebSocket, URL (" + req.url + ") invalid. Terminating.");
-			ws.terminate();
+			ws.send("{ \"command\": \"/api/v1/client/disconnect\" }");
+			ws.close();
 			return;
 		}
 
@@ -838,7 +853,8 @@ async function main() {
 		let conInitUUID = socketUUIDs[socketUUID];
 		if (conInitUUID === undefined || conInitUUIDs[conInitUUID] === undefined) {
 			Neptune.webLog.error("New connection via WebSocket, invalid socket UUID (" + socketUUID +"). Terminating.");
-			ws.disconnect(1002, "InvalidSocketUUID"); // Tells client to reinitialize the connection
+			ws.send("{ \"command\": \"/api/v1/client/disconnect\" }");
+			ws.close(1002, "InvalidSocketUUID"); // Tells client to reinitialize the connection
 			return;
 		}
 
@@ -846,7 +862,8 @@ async function main() {
 		let client = conInitObject.client;
 		if (client === undefined) {
 			Neptune.webLog.error("New connection via WebSocket, socket UUID (" + socketUUID +") valid, but unable to find the client to setup the socket with. Terminating.");
-			ws.disconnect(1002, "InvalidClient"); // Tells client to reinitialize the connection
+			ws.send("{ \"command\": \"/api/v1/client/disconnect\" }");
+			ws.close(1002, "InvalidClient"); // Tells client to reinitialize the connection
 			return;
 		}
 
@@ -855,11 +872,250 @@ async function main() {
 	});
 
 
+
+	/**
+	 * 
+	 * Downloading / uploading 
+	 * 
+	 */
+	/**
+	 * @typedef {object} fileSharingObject
+	 * @property {boolean} enabled - Whether the file is able to be downloaded/uploaded. Once the fileUUID is used, this is flipped off and the object is deleted.
+	 * @property {string} createdTime - Time object was created (ISO) (file have a life time of 2 minutes)
+	 * @property {boolean} isUpload - File is being uploaded
+	 * @property {string} filePath - If upload, this is the directory the file is being saved to. If not an uploaded, this is the file we're serving.
+	 * @property {string} clientUUID - UUID of the client.
+	 * @property {string} socketUUID - UUID of the socket client uses.
+	 * @property {string} authenticationCode - Random string of length 64 to represent a unique key only the client will know. Only used for download
+	 */
+
+
+	/**
+	 * @type {object} Neptune.filesharing
+	 */
+	Neptune.filesharing = {};
+
+	/** @type {Map<String, fileSharingObject>} fileUUIDs - A collection of file sharing ids. Key is the fileUUID */
+	let fileUUIDs = {};
+
+	/**
+	 * Used by the Client class to setup a file download
+	 * @param {Client} client - Client that will be downloading this file.
+	 * @param {string} filepath - Path to the file being downloaded by the client.
+	 * @return {string} fileUUID
+	 */
+	Neptune.filesharing.newClientDownload = function(client, filepath) {
+		if (!client.fileSharingSettings.enabled) // don't check this, client does that: || !client.fileSharingSettings.allowClientToDownload)
+			return;
+
+		if (fs.existsSync(filepath) && fs.lstatSync(filepath).isFile()) {
+			let fileUUID = crypto.randomUUID();
+
+			/** @type {fileSharingObject} */
+			let fileSharingObject = {
+				enabled: true,
+				createdTime: new Date().toISOString(),
+				isUpload: false,
+				filePath: filePath,
+				clientUUID: client.clientId,
+				authenticationCode: NeptuneCrypto.randomString(64),
+				socketUUID: client.getSocketUUID(),
+			}
+
+			fileUUIDs[fileUUID] = fileSharingObject;
+		} else {
+			throw new Error("File does not exist.");
+		}
+	}
+
+	/**
+	 * Used by the Client class to setup a file upload
+	 * @param {Client} client - Client that will be uploading this file.
+	 * @param {string} saveToDirectory - Path to save the uploaded file to.
+	 * @return {string} fileUUID
+	 */
+	Neptune.filesharing.newClientUpload = function(client, saveToDirectory) {
+		if (!client.fileSharingSettings.enabled || !client.fileSharingSettings.allowClientToUpload)
+			return;
+
+		if (fs.existsSync(saveToDirectory) && fs.lstatSync(saveToDirectory).isDirectory()) {
+			let fileUUID = crypto.randomUUID();
+
+			/** @type {fileSharingObject} */
+			let fileSharingObject = {
+				enabled: true,
+				createdTime: new Date().toISOString(),
+				isUpload: true,
+				filePath: filePath,
+				clientUUID: client.clientId,
+				socketUUID: client.getSocketUUID(),
+			}
+
+			fileUUIDs[fileUUID] = fileSharingObject;
+		} else {
+			throw new Error("Directory does not exist.");
+		}
+	}
+
+	// Download/upload endpoint
+	app.post('/api/v1/server/socket/:socketUUID/filesharing/:fileUUID/download', (req, res) => {
+		/** @type {string} */
+		let fileUUID = req.params.fileUUID;
+		let socketUUID = req.params.socketUUID;
+
+
+
+		Neptune.webLog.silly("Download requested: /api/v1/server/socket/" + socketUUID + "/" + fileUUID);
+		if (fileUUIDs[fileUUID] !== undefined) {
+			if (fileUUIDs[fileUUID].enabled !== true) {
+				Neptune.webLog.warn("Attempt to use disabled fileUUID! UUID: " + fileUUID);
+				delete fileUUIDs[fileUUID];
+				res.status(403).end('{ "error": "Invalid fileUUID" }');
+				return;
+			}
+		} else {
+			Neptune.webLog.silly("Attempt to use invalid fileUUID: " + fileUUID);
+			res.status(401).end('{ "error": "Invalid fileUUID" }');
+			return;
+		}
+
+		/** @type {fileSharingObject} */
+		let fileSharingObject = fileUUIDs[fileUUIDs];
+
+		// Validate timestamp
+		let timeNow = new Date();
+		if (((timeNow - fileSharingObject.createdTime)/(60000)) >= 5) { // Older than 5 minutes
+			Neptune.weblog.warn("Attempt to use expired fileUUID! UUID: " + fileUUID + " . createdAt: " + fileSharingObject.createdTime.toISOString());
+			delete fileUUID[fileUUID];
+			res.status(408).end('{ "error": "Request timeout for fileUUID" }');
+			return;
+		}
+
+		// Validate socketUUID
+		if (fileSharingObject.socketUUID !== socketUUID) {
+			Neptune.weblog.warn("File upload socketUUID mismatch! FileUUID: " + fileUUID + " .");
+			delete fileUUID[fileUUID];
+			res.status(408).send('{ "error": "Invalid socketUUID" }');
+			deleteFiles();
+			return;
+		}
+
+
+		// For download?
+		if (fileSharingObject.isUpload) {
+			Neptune.weblog.warn("Attempt to download using a upload fileUUID.");
+			delete fileUUIDs[fileUUID];
+			res.status(405).end('{ "error": "Attempt to upload using a download fileUUID." }');
+			return;
+		}
+
+
+		// Check validation code
+		if (req.body.authenticationCode !== fileSharingObject.authenticationCode) {
+			Neptune.webLog.warn("Invalid authenticationCode used on fileUUID: " + fileUUID);
+			res.status(401).end('{ "error": "Invalid authenticationCode" }');
+			return;
+		}
+
+
+
+
+		let filePath = fileSharingObject.filePath;
+		Neptune.weblog.info("Client " + fileSharingObject.clientUUID + " has downloaded " + filePath);
+
+		fileUUIDs[fileUUID].enabled = false;
+		delete fileUUIDs[fileUUID];
+
+		// Serve the file
+		let filename = filePath.replace(/^.*[\\\/]/, '');
+		res.setHeader('Content-disposition', 'attachment; filename=' + filename);
+		res.download(filePath);
+
+		return;
+	});
+
+
+	// Upload
+	app.post('/api/v1/server/socket/:socketUUID/filesharing/:fileUUID/download', upload.single('file'), (req, res) => {
+		let fileUUID = req.params.fileUUID;
+		let socketUUID = req.params.socketUUID;
+
+		function deleteFiles() {
+			if (fs.existsSync('./' + req.file.path)) {
+				fs.unlink('./' + req.file.path, err => {
+					Neptune.weblog.warn("Failed to delete blocked upload: " + req.file.filename)
+				});
+			}
+		}
+
+
+		Neptune.webLog.silly("Upload requested: /api/v1/server/socket/" + socketUUID + "/" + fileUUID);
+		if (fileUUIDs[fileUUID] !== undefined) {
+			if (fileUUIDs[fileUUID].enabled !== true) {
+				Neptune.webLog.warn("Attempt to use disabled fileUUID! UUID: " + fileUUID);
+				delete fileUUIDs[fileUUID];
+				res.status(403).send('{ "error": "Invalid fileUUID" }');
+				deleteFiles();
+				return;
+			}
+		} else {
+			Neptune.webLog.silly("Attempt to use invalid fileUUID: " + fileUUID);
+			res.status(401).send('{ "error": "Invalid fileUUID" }');
+			deleteFiles();
+			return;
+		}
+
+		/** @type {fileSharingObject} */
+		let fileSharingObject = fileUUIDs[fileUUIDs];
+
+		// Validate timestamp
+		let timeNow = new Date();
+		if (((timeNow - fileSharingObject.createdTime)/(60000)) >= 5) { // Older than 5 minutes
+			Neptune.weblog.warn("Attempt to use expired fileUUID! UUID: " + fileUUID + " . createdAt: " + fileSharingObject.createdTime.toISOString());
+			delete fileUUID[fileUUID];
+			res.status(408).send('{ "error": "Request timeout for fileUUID" }');
+			deleteFiles();
+			return;
+		}
+
+		// Validate socketUUID
+		if (fileSharingObject.socketUUID !== socketUUID) {
+			Neptune.weblog.warn("File upload socketUUID mismatch! FileUUID: " + fileUUID + " .");
+			delete fileUUID[fileUUID];
+			res.status(408).send('{ "error": "Invalid socketUUID" }');
+			deleteFiles();
+			return;
+		}
+
+		// For upload?
+		if (!fileSharingObject.isUpload) {
+			Neptune.weblog.warn("Attempt to upload using a download fileUUID.");
+			delete fileUUIDs[fileUUID];
+			res.status(405).send('{ "error": "Attempt to upload using a download fileUUID." }');
+			deleteFiles();
+			return;
+		}
+
+		// Process
+		Neptune.weblog.info("Received file \"" + req.file.filename + "\" from client " + fileSharingObject.clientUUID);
+		fs.rename(req.file.path, fileSharingObject.filePath + "/" + req.file.filename);
+		res.status(200).end("{ \"status\": \"success\", \"approved\": true }");
+	});
+
+
 	// Listener
 	httpServer.listen(Neptune.config.web.port, () => {
 		Neptune.webLog.info("Express server listening on port " + Neptune.config.web.port);
 	});
 
+
+
+
+	/**
+	 * 
+	 * CMD interaction
+	 * 
+	 */
 
 
 

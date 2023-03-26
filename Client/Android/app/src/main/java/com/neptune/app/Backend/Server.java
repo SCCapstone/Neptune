@@ -19,9 +19,14 @@ import com.neptune.app.Backend.Structs.APIDataPackage;
 import com.neptune.app.MainActivity;
 
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FilePermission;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 
@@ -30,6 +35,9 @@ public class Server extends ServerConfig {
 
     private ConnectionManager connectionManager;
 
+    // When uploading a file, we can't actually send the file until server sends us a fileUUID.
+    // So, to preserve the file path we're trying to upload we store the filepath as the value to the request id we send.
+    private Map<String, String> fileRequestIdsToFilePaths = new HashMap<>();
 
     public Server(String serverId, ConfigurationManager configurationManager) throws JsonParseException, IOException {
         super(serverId, configurationManager);
@@ -92,9 +100,17 @@ public class Server extends ServerConfig {
                     return;
                 }
 
+                // Process commands here!
                 String command = apiDataPackage.command.toLowerCase();
                 if (command.equals("/api/v1/echo")) {
                     this.connectionManager.sendRequestAsync("/api/v1/echoed", apiDataPackage.getOriginalPacket().get("data"));
+
+                } else if (command.equals("/api/v1/client/unpair")) {
+                    unpair();
+
+                } else if (command.equals("/api/v1/client/disconnect")) {
+                    this.connectionManager.disconnect();
+
                 } else if (command.equals("/api/v1/client/ping") && apiDataPackage.isJsonObject()) {
                     Date now = new Date();
                     SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
@@ -105,7 +121,136 @@ public class Server extends ServerConfig {
                     pong.addProperty("receivedAt", apiDataPackage.jsonObject().get("timestamp").toString());
                     pong.addProperty("timestamp", timestamp);
                     this.connectionManager.sendRequestAsync("/api/v1/server/pong", pong);
+
+                // Gets!
+                } else if (command.equals("/api/v1/client/configuration/get")) {
+                    this.syncConfiguration(true);
+
+                } else if (command.equals("/api/v1/client/battery/get")) {
+                    this.sendBatteryInfo();
+
+                } else if (command.equals("/api/v1/client/clipboard/get")) {
+                    JsonObject response = new JsonObject();
+
+                    if (clipboardSettings.enabled) {
+                        if (clipboardSettings.allowServerToGet)
+                            sendClipboard(true);
+                        else {
+                            response.addProperty("status", "getBlocked");
+                            this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/data", response);
+                        }
+                    } else {
+                        response.addProperty("status", "clipboardSharingOff");
+                        this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/data", response);
+                    }
+
+
+
+                // Sets!
+                } else if ((command.equals("/api/v1/client/clipboard/set") || command.equals("/api/v1/server/clipboard/data")) && apiDataPackage.isJsonObject()) {
+                    boolean isResponse = command.equals("/api/v1/server/clipboard/data"); // Are they setting or did we request?
+                    JsonObject response = new JsonObject();
+                    if (this.clipboardSettings.enabled) {
+                        if (this.clipboardSettings.allowServerToSet || isResponse) {
+                            if (Clipboard.setClipboard(apiDataPackage.jsonObject()) && isResponse) {
+                                response.addProperty("status", "success");
+                                this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/uploadStatus", response);
+                            } else if (isResponse) {
+                                response.addProperty("status", "failed");
+                                response.addProperty("errorMessage", "Unknown client error");
+                                this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/uploadStatus", response);
+                            }
+
+                        } else if (isResponse) {
+                            response.addProperty("status", "setBlocked");
+                            this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/uploadStatus", response);
+                        }
+                    } else if (isResponse) {
+                        response.addProperty("status", "clipboardSharingOff");
+                        this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/uploadStatus", response);
+                    }
+
+                } else if ((command.equals("/api/v1/client/configuration/set") || command.equals("/api/v1/server/configuration/data")) && apiDataPackage.isJsonObject()) {
+                    // Set notification, clipboard, filesharing enabled/disabled. DO NOT SET things like allowGet or allowUpload, etc
+
+
+
+                // File stuff
+                } else if (command.equals("/api/v1/client/filesharing/receive") && apiDataPackage.isJsonObject()) {
+                    // Download a file! (preferably in a new thread!)
+                    JsonObject data = apiDataPackage.jsonObject();
+                    if (data.has("fileUUID") && data.has("authenticationCode")) {
+                        String fileUUID = data.get("fileUUID").getAsString();
+                        String authenticationCode = data.get("authenticationCode").getAsString();
+
+                        // download file from "/api/v1/server/socket/" + connectionManager.getSocketUUID() + "/filesharing/" + fileUUID + "/download"
+                        // you'll have to send a POST request with json data, the json data must include the authentication code under the name "authenticationCode"
+                        // see api doc.
+                    }
+
+                } else if (command.equals("/api/v1/server/filesharing/upload/fileUUID") && apiDataPackage.isJsonObject()) {
+                    // We got our file UUID, upload!
+                    JsonObject data = apiDataPackage.jsonObject();
+                    if (data.has("fileUUID") && data.has("requestId")
+                            && fileRequestIdsToFilePaths.containsKey(data.get("requestId").getAsString())) {
+                        String filePath = fileRequestIdsToFilePaths.get(data.get("requestId").getAsString());
+                        String fileUUID = data.get("fileUUID").getAsString();
+
+                        // upload file to "/api/v1/server/socket/" + connectionManager.getSocketUUID() + "/filesharing/" + fileUUID + "/upload"
+                    }
+
+
+                } else if (command.equals("/api/v1/server/filesharing/uploadStatus") && apiDataPackage.isJsonObject()) {
+                    // Upload status
+                    JsonObject data = apiDataPackage.jsonObject();
+                    String status;
+                    boolean wasApproved = false;
+
+                    if (data.has("status"))
+                        status = data.get("status").getAsString();
+                    if (data.has("approved"))
+                        wasApproved = data.get("approved").getAsBoolean();
+
+                    // do something here if you want (send push notification? maybe a toast notification?)
+                    // not a big worry!
+
+
+                // Notification (activate/dismiss/update)
+                } else if (command.equals("/api/v1/client/notifications/update")) {
+                    if (apiDataPackage.isJsonObject()) {
+                        JsonObject data = apiDataPackage.jsonObject();
+                        String applicationPackage = data.get("applicationPackage").getAsString();
+                        int notificationId = data.get("notificationId").getAsInt();
+
+                        // Whether we're activating the notification (clicking it) or dismissing it
+                        boolean activateNotification = (data.get("action").getAsString().equalsIgnoreCase("activate"));
+
+                        String actionId = null; // If an input (button/text box) was activated (clicked), this would be the name of said input
+                        String actionText = null; // If there was any text entered into the notification (pass this to the notification)
+                        if (data.has("actionParameters")) {
+                            JsonObject actionParameters = data.get("actionParameters").getAsJsonObject();
+                            if (actionParameters.has("actionId"))
+                                actionId = actionParameters.get("actionId").getAsString();
+                            if (actionParameters.has("actionText"))
+                                actionText = actionParameters.get("actionText").getAsString();
+                        }
+
+                        if (activateNotification) {
+                            // Click the notification / button (if actionId present and valid)
+                            MainActivity.notificationManager.activateNotification(notificationId, actionId, actionText);
+
+                        } else {
+                            // Dismiss the notification
+                            MainActivity.notificationManager.dismissNotification(notificationId);
+                        }
+                    } else {
+                        // do array processing
+                    }
+                } else if (command.equals("/api/v1/client/notifications/getAll")) {
+                    // Return notifications, check ignore list / search list
+
                 }
+
             } catch (Exception e) {
                 Log.e(TAG, "Error processing command!");
                 Log.e(TAG, e.getMessage());
@@ -204,7 +349,7 @@ public class Server extends ServerConfig {
                         }
                     }
 
-                    connectionManager.sendRequestAsync("/api/v1/server/sendNotification", notificationData);
+                    connectionManager.sendRequestAsync("/api/v1/server/notifications/send", notificationData);
                 }
             }
 
@@ -216,8 +361,9 @@ public class Server extends ServerConfig {
     /**
      * Sends shared configuration information to the server.
      * (Pushes some config items to the server)
+     * @param isResponse Whether or not to send the request to /api/v1/client/configuration/data (true) end point or /api/v1/server/configuration/set (false) one.
      */
-    public void syncConfiguration() {
+    public void syncConfiguration(boolean isResponse) {
         JsonObject data = new JsonObject();
 
         JsonObject notificationSettings = new JsonObject();
@@ -230,35 +376,79 @@ public class Server extends ServerConfig {
         clipboardSettings.addProperty("synchronizeClipboardToServer", this.clipboardSettings.synchronizeClipboardToServer);
 
         JsonObject fileSharingSettings = new JsonObject();
-        fileSharingSettings.addProperty("enabled", this.fileSharingEnabled);
-        fileSharingSettings.addProperty("autoReceiveFromServer", this.fileSharingAutoReceiveFromServer);
-        fileSharingSettings.addProperty("clientBrowsable", this.fileSharingClientBrowsable);
+        fileSharingSettings.addProperty("enabled", this.filesharingSettings.enabled);
+        fileSharingSettings.addProperty("allowServerToUpload", this.filesharingSettings.allowServerToUpload);
+        fileSharingSettings.addProperty("allowServerToDownload", this.filesharingSettings.allowServerToDownload);
 
 
         data.add("notificationSettings", notificationSettings);
         data.add("clipboardSettings", clipboardSettings);
         data.add("fileSharingSettings", fileSharingSettings);
 
-
-        this.connectionManager.sendRequestAsync("/api/v1/server/configuration/set", data);
+        String apiUrl = "/api/v1/server/configuration/set";
+        if (isResponse)
+            apiUrl = "/api/v1/client/configuration/data";
+        this.connectionManager.sendRequestAsync(apiUrl, data);
     }
+    public void syncConfiguration() { syncConfiguration(false); }
 
     public void sendNotification(NeptuneNotification notification) {
         this.sendNotification(notification, SendNotificationAction.CREATE);
     }
 
 
-    public void sendClipboard(String dataToSend) {
+    /**
+     * Sends our clipboard to the server.
+     * @param isResponse Whether or not to send the request to /api/v1/server/clipboard/set (false, default) end point or /api/v1/client/clipboard/data (true) one.
+     */
+    public void sendClipboard(boolean isResponse) {
         if (!this.clipboardSettings.enabled)
             return;
 
         JsonObject clipboardData = Clipboard.getClipboard();
 
+        String apiUrl = "/api/v1/server/clipboard/set";
+        if (isResponse)
+            apiUrl = "/api/v1/client/clipboard/data";
         this.connectionManager.sendRequestAsync("/api/v1/server/clipboard/set", clipboardData);
     }
+    public void sendClipboard() { sendClipboard(false); }
 
-    public boolean sendFile(String filePath) {
-        return false;
+    public void requestClipboard() {
+        if (!this.clipboardSettings.enabled || !this.clipboardSettings.allowServerToSet)
+            return;
+        this.connectionManager.sendRequestAsync("/api/v1/server/clipboard/get", new JsonObject());
+    }
+
+    /**
+     * Uploads a file to the server (in two stages)
+     *
+     * First stage is this method, asks the server to create a new fileUUID for upload.
+     * The server then sends us a request with fileUUID that will be used in the URL the file will be uploaded to.
+     * We send a request id with our first request and the server sends it back. Because of that, we remember the file to upload.
+     * @param filePath
+     * @throws FileNotFoundException
+     */
+    public void sendFile(String filePath) throws FileNotFoundException {
+        if (!filesharingSettings.enabled) {
+            return;
+        }
+
+        File file = new File(filePath);
+        if (!file.exists() || !file.isFile())
+            throw new FileNotFoundException("File at \"" + filePath + "\" does not exist");
+        if (!file.canRead())
+            throw new SecurityException("Cannot read file at " + filePath);
+
+        String requestId = UUID.randomUUID().toString();
+        if (fileRequestIdsToFilePaths == null)
+            fileRequestIdsToFilePaths = new HashMap<>(1);
+
+        fileRequestIdsToFilePaths.put(requestId, filePath);
+        JsonObject uploadRequest = new JsonObject();
+        uploadRequest.addProperty("requestId", requestId);
+        uploadRequest.addProperty("filename", file.getName());
+        this.connectionManager.sendRequestAsync("/api/v1/server/filesharing/upload/newFileUUID", uploadRequest);
     }
 
     public double ping() {

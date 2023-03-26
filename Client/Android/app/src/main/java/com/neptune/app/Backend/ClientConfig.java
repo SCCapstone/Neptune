@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.neptune.app.Backend.Adapters.ClientConfigEncryptionAdapter;
+import com.neptune.app.Backend.Adapters.ConnectionManagerSettingsAdapter;
 import com.neptune.app.Backend.Structs.ClientConfigEncryption;
 import com.neptune.app.Backend.Structs.ConnectionManagerSettings;
 
@@ -51,6 +52,7 @@ public class ClientConfig extends ConfigItem {
         super(filePath, parent);
 
         gsonBuilder.registerTypeAdapter(ClientConfigEncryption.class, new ClientConfigEncryptionAdapter());
+        gsonBuilder.registerTypeAdapter(ConnectionManagerSettings.class, new ConnectionManagerSettingsAdapter());
         allowLoad = true;
         load();
     }
@@ -74,6 +76,9 @@ public class ClientConfig extends ConfigItem {
             this.friendlyName = jsonObject.get("friendlyName").getAsString();
         if (jsonObject.has("encryption"))
             this.encryption = gson.fromJson(jsonObject.getAsJsonObject("encryption"), ClientConfigEncryption.class);
+        if (jsonObject.has("connectionManagerSettings"))
+            this.connectionManagerSettings = gson.fromJson(jsonObject.getAsJsonObject("connectionManagerSettings"), ConnectionManagerSettings.class);
+
 
         if (jsonObject.has("savedServerIds")) {
             JsonArray savedServerIds = jsonObject.getAsJsonArray("savedServerIds");
@@ -100,6 +105,10 @@ public class ClientConfig extends ConfigItem {
         if (encryption == null) encryption = new ClientConfigEncryption();
         JsonElement encryptionElement = JsonParser.parseString(gson.toJson(this.encryption, ClientConfigEncryption.class)).getAsJsonObject();
         jsonObject.add("encryption", encryptionElement);
+
+        if (connectionManagerSettings == null) connectionManagerSettings = new ConnectionManagerSettings();
+        JsonElement connectionManagerSettingsElement = JsonParser.parseString(gson.toJson(this.connectionManagerSettings, ConnectionManagerSettings.class)).getAsJsonObject();
+        jsonObject.add("connectionManagerSettings", connectionManagerSettingsElement);
 
         if (this.savedServerIds != null) {
             JsonArray savedServerIds = new JsonArray();

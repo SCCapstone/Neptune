@@ -71,15 +71,46 @@ public class DeviceActivity extends AppCompatActivity {
         //CheckBox chkSyncNotifications = findViewById(R.id.notificationsCheckbox);
         CheckBox chkClipboardSharing = findViewById(R.id.chkClipboardSharingEnabled);
         chkClipboardSharing.setChecked(server.clipboardSettings.enabled == true);
+        Button btnSendClipboard = findViewById(R.id.btnSendClipboard);
+        btnSendClipboard.setEnabled(server.clipboardSettings.enabled);
+        Button btnReceiveClipboard = findViewById(R.id.btnReceiveClipboard);
+        btnReceiveClipboard.setEnabled(server.filesharingSettings.enabled && server.clipboardSettings.allowServerToSet);
+
+        btnSendClipboard.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                server.sendClipboard();
+            }
+        });
+        btnReceiveClipboard.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                server.requestClipboard();
+            }
+        });
+
+
+
+        // File sharing
         CheckBox chkFileSharingEnabled = findViewById(R.id.chkFileSharingEnabled);
-        chkFileSharingEnabled.setChecked(server.fileSharingEnabled == true);
+        chkFileSharingEnabled.setChecked(server.filesharingSettings.enabled == true);
+        Button btnSendFile = findViewById(R.id.btnSendFile);
+        btnSendFile.setEnabled(server.filesharingSettings.enabled);
 
         View.OnClickListener checkBoxListener = new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 server.syncNotifications = notificationsCheckbox.isChecked();
                 server.clipboardSettings.enabled = chkClipboardSharing.isChecked();
-                server.fileSharingEnabled = chkFileSharingEnabled.isChecked();
+                Button btnSendClipboard = findViewById(R.id.btnSendClipboard);
+                btnSendClipboard.setEnabled(server.clipboardSettings.enabled);
+                Button btnReceiveClipboard = findViewById(R.id.btnReceiveClipboard);
+                btnReceiveClipboard.setEnabled(server.filesharingSettings.enabled && server.clipboardSettings.allowServerToSet);
+
+
+                server.filesharingSettings.enabled = chkFileSharingEnabled.isChecked();
+                Button btnSendFile = findViewById(R.id.btnSendFile);
+                btnSendFile.setEnabled(server.filesharingSettings.enabled);
             }
         };
 

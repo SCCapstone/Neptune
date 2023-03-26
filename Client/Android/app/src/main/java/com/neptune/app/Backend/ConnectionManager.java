@@ -705,10 +705,15 @@ public class ConnectionManager {
 
             @Override
             public void onMessage(@NonNull WebSocket webSocket, @NonNull String message) {
-                super.onMessage(webSocket, message);
-                Log.d(TAG, "WebSocket message: " + message);
-                handleWebsocketMessage(message);
-                setPollServerForRequests(true);
+                try {
+                    super.onMessage(webSocket, message);
+                    Log.d(TAG, "WebSocket message: " + message);
+                    handleWebsocketMessage(message);
+                    setPollServerForRequests(true);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error handling websocket message!");
+                    Log.e(TAG, e.getMessage());
+                }
             }
 
             @Override
@@ -1131,6 +1136,15 @@ public class ConnectionManager {
         }
 
         return -1;
+    }
+
+    public String getSocketUUID() {
+        return this.socketUUID;
+    }
+
+    public void disconnect() {
+        Log.i(TAG, "Disconnecting");
+        webSocketClient.close(1001, "disconnect");
     }
 
     public void destroy(boolean force) {

@@ -41,10 +41,26 @@ public class NotificationManager {
     /**
      * Activates the notification on this device (simulates a click).
      * @param id Id of the notification to activate.
+     * @param actionId Name of a button activated.
+     * @param actionText Text typed into the notification text box.
+     */
+    public void activateNotification(int id, String actionId, String actionText) {
+        if (notifications.containsKey(id)) {
+            NeptuneNotification notification = notifications.get(id);
+            if (notification != null)
+                notification.activate(actionId, actionText);
+        }
+    }
+    /**
+     * Activates the notification on this device (simulates a click).
+     * @param id Id of the notification to activate.
      */
     public void activateNotification(int id) {
-        if (notifications.containsKey(id))
-            notifications.get(id).activate();
+        if (notifications.containsKey(id)) {
+            NeptuneNotification notification = notifications.get(id);
+            if (notification != null)
+                notification.activate();
+        }
     }
 
     /**
@@ -52,8 +68,11 @@ public class NotificationManager {
      * @param id Id of the notification to dismiss.
      */
     public void dismissNotification(int id) {
-        if (notifications.containsKey(id))
-            notifications.get(id).dismiss();
+        if (notifications.containsKey(id)) {
+            NeptuneNotification notification = notifications.get(id);
+            if (notification != null)
+                notification.dismiss();
+        }
     }
 
 

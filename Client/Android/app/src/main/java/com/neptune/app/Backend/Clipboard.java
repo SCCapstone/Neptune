@@ -2,15 +2,19 @@ package com.neptune.app.Backend;
 import android.content.ClipData;
 import android.content.ClipDescription;
 import android.content.ClipboardManager;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.provider.MediaStore;
 import android.util.Log;
 
 import androidx.core.content.FileProvider;
 
 import com.google.gson.JsonObject;
+import com.neptune.app.BuildConfig;
 import com.neptune.app.MainActivity;
 
 import java.io.File;
@@ -18,6 +22,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,7 +31,7 @@ public class Clipboard {
 
     public static JsonObject getClipboard() {
         ClipboardManager clipboard = (ClipboardManager) MainActivity.Context.getSystemService(Context.CLIPBOARD_SERVICE);
-        if (clipboard.hasPrimaryClip()) {
+        if (clipboard.hasPrimaryClip() || clipboard.getPrimaryClip() != null) {
             ClipData clipData = clipboard.getPrimaryClip();
             //ClipDescription clipDescription = clipData.getDescription();
             JsonObject json = new JsonObject();
@@ -124,6 +129,15 @@ public class Clipboard {
     }
 
 
+    /**
+     * Sets the clipboard to provided text. Text must follow this format: "data:text/plain;base64, ..."
+     *
+     * Data must be in this format: {@code data:(mimeType);(encoding), (encoded data)}.
+     * Where {@code (mimeType)} is text/plain,
+     * {@code (encoding)} is either base64 or hex,
+     * and {@code encoded data} is the text encoded as {@code (encoding)}.
+     * @param dataString "data:text/html;base64 ..."
+     */
     public static void setClipboardText(String dataString) {
         DataParts data;
         try {
@@ -156,6 +170,17 @@ public class Clipboard {
         clipboard.setPrimaryClip(clip);
     }
 
+    /**
+     * Sets the clipboard's HTML data to the provided data.
+     * This must be paired with the plain text!
+     *
+     * Data must be in this format: {@code data:(mimeType);(encoding), (encoded data)}.
+     * Where {@code (mimeType)} is a text mimetype (either text/plain or text/html),
+     * {@code (encoding)} is either base64 or hex,
+     * and {@code encoded data} is the text (html/text) encoded as {@code (encoding)}.
+     * @param dataString "data:text/html;base64 ..."
+     * @param textDataString "data:text/plain;base64 ..."
+     */
     public static void setClipboardHTML(String dataString, String textDataString) {
         DataParts data;
         DataParts textData;
@@ -247,11 +272,17 @@ public class Clipboard {
             }
 
             FileOutputStream outputStream = new FileOutputStream(imageFile);
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream); // Compress image
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream); // Compress image
             outputStream.close();
-            uri = FileProvider.getUriForFile(MainActivity.Context, MainActivity.Context.getPackageName() + ".fileprovider", imageFile);
+            uri = FileProvider.getUriForFile(MainActivity.Context,BuildConfig.APPLICATION_ID + ".provider", imageFile);
 
             if (uri != null) {
+                ContentValues values = new ContentValues(2);
+                values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+                values.put(MediaStore.Images.Media.DATA, uri.toString());
+
+                ContentResolver theContent = MainActivity.Context.getContentResolver();
+                theContent.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
                 ClipData clipData = ClipData.newUri(MainActivity.Context.getContentResolver(), "Neptune-Server: Image", uri);
                 ClipboardManager clipboard = (ClipboardManager) MainActivity.Context.getSystemService(Context.CLIPBOARD_SERVICE);
                 clipboard.setPrimaryClip(clipData);
@@ -260,5 +291,48 @@ public class Clipboard {
             Log.e(TAG, "Unable to set clipboard image due to IOException.");
             e.printStackTrace();
         }
+    }
+
+
+    /**
+     * Sets the clipboard to the Json data provided. Can have three keys: "Image", "HTML", and "Text".
+     * If there is HTML data there MUST be text data as well.
+     *
+     * Each key must follow the data format.
+     *
+     * Data must be in this format: {@code data:(mimeType);(encoding), (encoded data)}.
+     * Where {@code (mimeType)} is the data mimetype,
+     * {@code (encoding)} is either base64 or hex,
+     * and {@code encoded data} is the data encoded as {@code (encoding)}.
+     * @param clipboardData Data to set the clipboard to.
+     */
+    public static boolean setClipboard(JsonObject clipboardData) {
+        boolean noErrors = true;
+
+        if (clipboardData.has("Image")) {
+            try {
+                setClipboardImage(clipboardData.get("Image").getAsString());
+            } catch (Exception ignored) {
+                noErrors = false;
+            }
+        }
+
+        if (clipboardData.has("HTML") && clipboardData.has("Text")) {
+            try {
+                setClipboardHTML(clipboardData.get("HTML").getAsString(), clipboardData.get("Text").getAsString());
+            } catch (Exception ignored) {
+                noErrors = false;
+            }
+        }
+
+        if (clipboardData.has("Text")) {
+            try {
+                setClipboardText(clipboardData.get("Text").getAsString());
+            } catch (Exception ignored) {
+                noErrors = false;
+            }
+        }
+
+        return noErrors;
     }
 }

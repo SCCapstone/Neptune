@@ -9,7 +9,6 @@
  * 		The client device object for server (client being the other guy)
  */
 
-const ConfigItem = require('./ConfigItem.js');
 const ConnectionManager = require('./ConnectionManager.js');
 const NotificationManager = require('./NotificationManager.js');
 const IPAddress = require('./IPAddress.js');
@@ -23,7 +22,6 @@ var NeptuneConfig = global.Neptune.config;
 
 
 const ClientConfig = require('./ClientConfig.js');
-const { timeStamp } = require('node:console');
 const Clipboard = require('./Clipboard.js');
 
 
@@ -167,6 +165,9 @@ class Client extends ClientConfig {
 			this.delete();
 			this.#connectionManager.sendRequest("/api/v1/server/unpair", {});
 
+		}  else if (command == "/api/v1/server/disconnect") {
+			this.#connectionManager.disconnect();
+
 		} else if (command == "/api/v1/client/battery/info") {
 			if (data["level"] !== undefined)
 				this.batteryLevel = data["level"]
@@ -184,7 +185,7 @@ class Client extends ClientConfig {
 			this.#connectionManager.sendRequest("/api/v1/server/ack", {});
 
 
-		} else if (command == "/api/v1/server/sendNotification" || command == "/api/v1/server/updateNotification") {
+		} else if (command == "/api/v1/server/notifications/send" || command == "/api/v1/server/notifications/update") {
 			if (this.notificationSettings.enabled !== true)
 				return;
 
@@ -198,15 +199,16 @@ class Client extends ClientConfig {
 			}
 			this.#connectionManager.sendRequest("/api/v1/server/ack", {});
 
-		// Config
-		} else if (command == "/api/v1/server/configuration/set") {
-			this.log.debug("Updating client config using: " + data);
+		// Configuration
+		} else if (command == "/api/v1/server/configuration/set" || command == "/api/v1/client/configuration/data") {
+			this.log.silly("Updating client config using: " + data);
 			
 			// Set things we care to update
 			if (typeof data["notificationSettings"] === "object") {
 				this.notificationSettings.enabled = (data["notificationSettings"].enabled === false)? false : true;
 			}
 
+			// Clipboard
 			if (typeof data["clipboardSettings"] === "object") {
 				if (data["clipboardSettings"].enabled === false) // Only allow client to disable it
 					this.clipboardSettings.enabled = false;
@@ -218,8 +220,6 @@ class Client extends ClientConfig {
 			if (typeof data["fileSharingSettings"] === "object") {
 				if (data["fileSharingSettings"].enabled === false)
 					this.fileSharingSettings.enabled = false;
-
-				this.fileSharingSettings.clientBrowsable = (data["fileSharingSettings"].clientBrowsable === true)? true : false;
 			}
 
 			if (typeof data["friendlyName"] === "string")
@@ -231,84 +231,72 @@ class Client extends ClientConfig {
 
 			//this.fromJSON(data);
 		} else if (command == "/api/v1/server/configuration/get") {
-			this.#connectionManager.sendRequest("/api/v1/server/configuration/data", {
-				friendlyName: NeptuneConfig.friendlyName,
-				notificationSettings: {
-					enabled: this.notificationSettings.enabled
-				},
-				clipboardSettings: {
-					enabled: this.clipboardSettings.enabled,
-					allowClientToSet: this.clipboardSettings.allowClientToSet,
-					allowClientToGet: this.clipboardSettings.allowClientToGet,
-					synchronizeClipboardToClient: this.clipboardSettings.autoSendToClient,
-				},
-				fileSharingSettings: {
-					enabled: this.fileSharingSettings.enabled,
-					autoReceiveFromClient: this.fileSharingSettings.autoReceiveFromClient,
-					serverBrowsable: this.fileSharingSettings.serverBrowsable,
-				}
-			});
+			this.syncConfiguration(true);
 
-		} else if (command == "/api/v1/server/clipboard/set") {
+
+		// Clipboard
+		} else if (command == "/api/v1/server/clipboard/set" || command == "/api/v1/client/clipboard/data") {
+			let isReponse = command === "/api/v1/client/clipboard/data"; // Response from client, that is
+
 			if (this.clipboardSettings.enabled) {
-				if (this.clipboardSettings.allowClientToSet) {
-					let setClipboardStatus = Clipboard.setStandardizedClipboardData(data["data"]).then((success) => {
-						this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", { status: "success" });
+				if (this.clipboardSettings.allowClientToSet || isReponse) { // Allowed to set?
+					this.clipboardModificationsLocked = true; // DO NOT SEND WHAT WE JUST GOT! RACE CONDITION!
+					this.log.silly(data);
+					Clipboard.setStandardizedClipboardData(data).then((success) => {
+						if (success)
+							this.#connectionManager.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "success" });
+						else
+							this.#connectionManager.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "failed" });
 					}).catch((err) => {
-						this.log.error("Error retrieving clipboard data using Clipboard class. Falling back to QT.")
+						this.log.error("Error retrieving clipboard data using Clipboard class. Falling back to QT?")
 						this.log.debug(err);
 
-						this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", {
-							status: "failed",
-							errorMessage: "Unknown server error"
-						});
+						if (!isReponse) {
+							this.#connectionManager.sendRequest("/api/v1/server/clipboard/uploadStatus", {
+								status: "failed",
+								errorMessage: "Unknown server error"
+							});
+						}
 					});
-				} else
-					this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", { status: "setBlocked" });
-			} else
-				this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", { status: "clipboardSharingOff" });
+
+					if (isReponse) {
+						let maybeThis = this;
+						setTimeout(() => { maybeThis.clipboardModificationsLocked = false }, 1000);
+					}
+				} else {
+					if (!isReponse)
+						this.#connectionManager.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "setBlocked" });
+				}
+			} else {
+				if (!isReponse)
+					this.#connectionManager.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "clipboardSharingOff" });
+			}
 
 		} else if (command == "/api/v1/server/clipboard/get") {
 			if (this.clipboardSettings.enabled) {
 				if (this.clipboardSettings.allowClientToGet) {
-					let clipboardDataPromise = Clipboard.getStandardizedClipboardData();
-					clipboardDataPromise.then((clipboardData) => {
-						this.#connectionManager.sendRequest("/api/v1/server/data", {
-							data: data,
-							status: "okay",
-						});
-					}).catch((err) => {
-						try {
-							this.log.error("Error retrieving clipboard data using Clipboard class. Falling back to QT.")
-							this.log.error(err);
-
-							let clipboard = NodeGUI.QApplication.clipboard();
-							let data = {};
-							let text = clipboard.text();
-							if (text != undefined && text != "") {
-								data.Text = "data:text/plain;base64, " + Buffer.from(text).toString('base64');
-							}
-							// add picture support
-
-							this.#connectionManager.sendRequest("/api/v1/server/data", {
-								data: data,
-								status: "simple",
-								errorMessage: "Main clipboard retrieval failed, using fallback method (simple data mode)."
-							});
-						} catch (simpleModeError) {
-							this.log.error("Error retrieving clipboard data using QT.")
-							this.log.error(err);
-							this.#connectionManager.sendRequest("/api/v1/server/data", {
-								data: {},
-								status: "failed",
-								errorMessage: "Unknown server error."
-							});
-						} 
-					})
+					this.log.debug("Client requested clipboard data, sending.");
+					this.sendClipboard(true);
 				} else
-					this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", { status: "getBlocked" });
+					this.#connectionManager.sendRequest("/api/v1/server/data", { status: "getBlocked" });
 			} else
-				this.#connectionManager.sendRequest("/api/v1/server/uploadStatus", { status: "clipboardSharingOff" });
+				this.#connectionManager.sendRequest("/api/v1/server/data", { status: "clipboardSharingOff" });
+		} else if (command == "/api/v1/client/clipboard/uploadStatus") {
+			this.clipboardModificationsLocked = false;
+
+		} else if (command == "/api/v1/server/filesharing/upload") {
+			// Client is uploading a file.
+			if (this.fileSharingSettings.enabled && this.fileSharingSettings.allowClientToUpload) {
+				let saveToDirectory = this.fileSharingSettings.receivedFilesDirectory !== undefined? this.fileSharingSettings.receivedFilesDirectory : "./receivedFiles/"
+				let fileUUID = global.Neptune.filesharing.newClientUpload(this, saveToDirectory);
+
+				this.log.debug("Client request file upload, new fileUUID: " + fileUUID);
+				this.sendRequest("/api/v1/server/filesharing/upload/fileUUID", {
+					fileUUID: fileUUID,
+					requestId: data.requestId
+				});
+			}
+
 		}
 	}
 
@@ -334,6 +322,22 @@ class Client extends ClientConfig {
 
 
 	/**
+	 * Returns the conInitUUID
+	 * @return {string}
+	 */
+	getConInitUUID() {
+		return this.#connectionManager.getConInitUUID();
+	}
+	/**
+	 * Returns the socketUUID
+	 * @return {string}
+	 */
+	getSocketUUID() {
+		return this.#connectionManager.getSocketUUID();
+	}
+
+
+	/**
 	 * For connection manager
 	 * 
 	 */
@@ -343,36 +347,122 @@ class Client extends ClientConfig {
 
 
 	/**
+	 * @typedef {object} NotificationActionParameters
+	 * @property {string} id - Id of the action
+	 * @property {string} [text] - Optional text input (if action is a text box)
+	 */
+	/**
+	 * @typedef {object} UpdateNotificationData
+	 * @property {string} action - Activated or dismissed.
+	 * @property {NotificationActionParameters} [actionParameters] - Data related to user input.
+	 */
+
+	/**
 	 * This will send the Notification ??
-	 * @param {Notification} notification 
+	 * @param {Notification} notification - Notification to update
+	 * @param {UpdateNotificationData} metaData - Actions preformed on notification
 	 * @return {boolean}
 	 */
-	sendNotification(notification) {
+	updateNotification(notification, metaData) {
 		// not sure to be honest
+		if (!(notification instanceof Notification))
+			throw new TypeError("notification expected instance of Notification got " + (typeof notification).toString());
+
+		if (metaData === undefined) {
+			metaData = {
+				action: "dismiss",
+				actionParameters: {}
+			}
+		}
+
+		let notificationActionData = {
+			applicationName: notification.data.applicationName,
+			applicationPackage: notification.data.applicationPackage,
+			notificationId: notification.data.notificationId,
+			action: metaData.action === undefined? "dismiss" : metaData.action,
+			actionParameters: metaData.actionParameters,
+		};
+
+		this.#connectionManager.sendRequest("/api/v1/client/notifications/update", notificationActionData)
 	}
 
 	/**
-	 * Send data to the client's clipboard
-	 * @param {object} object 
-	 * @return {boolean}
+	 * Send out clipboard over to the client.
+	 * @return {void}
 	 */
-	sendClipboard(object) {
+	sendClipboard(isResponse) {
+		Clipboard.getStandardizedClipboardData().then(clipboardData => {
+			try {
+				this.#connectionManager.sendRequest("/api/v1/client/clipboard/set", clipboardData)
+			} catch (e) {}
+		});
+
+		let apiUrl = "/api/v1/client/clipboard/set"
+		if (isResponse)
+			apiUrl = "/api/v1/server/clipboard/data";
+
+		if (this.clipboardSettings.enabled) {
+			if (this.clipboardSettings.allowClientToGet || isResponse) {
+				Clipboard.getStandardizedClipboardData().then((clipboardData) => {
+					this.#connectionManager.sendRequest(apiUrl, {
+						data: clipboardData,
+						status: "okay",
+					});
+				}).catch((err) => {
+					try {
+						this.log.error("Error retrieving clipboard data using Clipboard class. Falling back to QT.")
+						this.log.error(err);
+
+						// let clipboard = NodeGUI.QApplication.clipboard();
+						// let data = {};
+						// let text = clipboard.text();
+						// if (text != undefined && text != "") {
+						// 	data.Text = "data:text/plain;base64, " + Buffer.from(text).toString('base64');
+						// }
+						// add picture support
+
+						this.#connectionManager.sendRequest("/api/v1/server/data", {
+							data: data,
+							status: "failed",
+							errorMessage: "Main clipboard retrieval failed, using fallback method (simple data mode)."
+						});
+					} catch (simpleModeError) {
+						this.log.error("Error retrieving clipboard data using QT.")
+						this.log.error(err);
+						this.#connectionManager.sendRequest("/api/v1/server/data", {
+							data: {},
+							status: "failed",
+							errorMessage: "Unknown server error."
+						});
+					} 
+				});
+			}
+		}
 	}
+
 	/**
-	 * Get the client's clipboard
-	 * @return {object}
+	 * Get the client's clipboard. Is should be noted, this only _requests_ the clipboard data. Clipboard data will be processed by the request handler.
+	 * @return {void}
 	 */
 	getClipboard() {
-		return "";
+		this.sendRequest("/api/v1/client/clipboard/get", {});
 	}
 
 	/**
-	 * Send a file to the client
-	 * @param {string} string 
+	 * Get the client's battery info. Is should be noted, this only _requests_ the battery data. Battery data will be processed by the request handler.
+	 * @return {void}
+	 */
+	getBattery() {
+		this.sendRequest("/api/v1/client/battery/get", {});
+	}
+
+	/**
+	 * Request that the client downloads a file.
+	 * @param {string} filePath - File to send
 	 * @return {boolean}
 	 */
-	sendFile(string) {
-		throw new Error("Not implemented.");
+	sendFile(filePath) {
+		
 	}
 
 
@@ -381,22 +471,16 @@ class Client extends ClientConfig {
 	 * @param {import('./Notification.js')} notification Notification received
 	 */
 	receiveNotification(notification) {
-		notification.on("dismissed", (notifierMetadata)=> {
-			this.#connectionManager.sendRequest("/api/v1/client/updateNotification", [{
-				applicationName: notification.data.applicationName,
-				applicationPackage: notification.data.applicationPackage,
-				notificationId: notification.data.notificationId,
-				action: "dismiss"
-			}]);
+		notification.on("dismissed", (metaData)=> {
+			if (metaData === undefined) { metaData = {}; }
+			metaData.action = "dismiss";
+			this.updateNotification(notification, metaData);
 		});
-		notification.on('activate', (notifierMetadata)=> {
+		notification.on('activate', (metaData)=> {
 			// activate the notification on the client device
-			this.#connectionManager.sendRequest("/api/v1/client/updateNotification", [{
-				applicationName: notification.data.applicationName,
-				applicationPackage: notification.data.applicationPackage,
-				notificationId: notification.data.notificationId,
-				action: "activate"
-			}]);
+			if (metaData === undefined) { metaData = {}; }
+			metaData.action = "activate";
+			this.updateNotification(notification, metaData);
 		});
 		this.#notificationManager.newNotification(notification);
 		notification.push();
@@ -437,21 +521,27 @@ class Client extends ClientConfig {
 
 	/**
 	 * Send configuration settings to the client device. Sync the config.
+	 * @param {boolean} [isResponse=false] - Whether this is in response to the get configuration request.
 	 */
-	syncConfiguration() {
-		this.sendRequest("/api/v1/client/configuration/set", {
+	syncConfiguration(isResponse) {
+		let apiUrl = "/api/v1/client/configuration/set";
+		if (isResponse)
+			apiUrl = "/api/v1/server/configuration/data";
+		this.#connectionManager.sendRequest(apiUrl, {
 			friendlyName: NeptuneConfig.friendlyName,
 			notificationSettings: {
 				enabled: this.notificationSettings.enabled
 			},
 			clipboardSettings: {
 				enabled: this.clipboardSettings.enabled,
-				autoSendToClient: this.clipboardSettings.autoSendToClient,
+				allowClientToSet: this.clipboardSettings.allowClientToSet,
+				allowClientToGet: this.clipboardSettings.allowClientToGet,
+				synchronizeClipboardToClient: this.clipboardSettings.synchronizeClipboardToClient,
 			},
 			fileSharingSettings: {
 				enabled: this.fileSharingSettings.enabled,
-				autoReceiveFromClient: this.fileSharingSettings.autoReceiveFromClient,
-				serverBrowsable: this.fileSharingSettings.serverBrowsable,
+				allowClientToUpload: this.fileSharingSettings.allowClientToUpload,
+				allowClientToDownload: this.fileSharingSettings.allowClientToDownload
 			}
 		});
 	}
@@ -478,6 +568,10 @@ class Client extends ClientConfig {
 		client.saveSync();
 	}
 
+
+	destroyConnectionManager() {
+		this.#connectionManager.destroy();
+	}
 
 	delete() {
 		global.Neptune.clientManager.dropClient(this);

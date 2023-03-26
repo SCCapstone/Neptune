@@ -73,13 +73,20 @@ public class NeptuneNotification {
         this.id = notification.getId();
     }
 
-    public void activate() {
+    public void activate(String actionId, String actionText) {
         try {
+            // actionId and actionText _can_ be null!
+            // be sure to check for that. (and if they're just empty?)
+
             statusBarNotification.getNotification().contentIntent.send();
         } catch (PendingIntent.CanceledException e) {
             e.printStackTrace();
         }
     }
+
+    public void activate(String actionId) { activate(actionId, null); }
+    public void activate() { activate(null, null); }
+
 
     public void dismiss() {
         NotificationManagerCompat.from(MainActivity.Context).cancel(id);
@@ -97,6 +104,11 @@ public class NeptuneNotification {
     }
 
     public JsonObject toJson() {
+        // add image data (if the notification has one). Images should be encoded via base64 (use NeptuneCrypto for this)
+        // add action buttons (buttons on the notifications).
+        // add text box
+        // add progress bar (not too pressed on this)
+
         JsonObject contentsObject = new JsonObject();
         contentsObject.addProperty("text", text);
         if (subtext != null)

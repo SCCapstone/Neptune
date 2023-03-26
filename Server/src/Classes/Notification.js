@@ -160,12 +160,12 @@ class Notification extends EventEmitter {
     push() {
         let logger = this.#log;
         let maybeThis = this;
-        let pushNotification = function() {
+        let pushNotification = function() { // Using notifier
             try {
                 // send the notification
                 maybeThis.#notifierNotification = Notifier.notify({
                     title: maybeThis.data.title,
-                    message: maybeThis.data.contents.text, // data.contents.subtext + "\n" +
+                    message: maybeThis.data.contents.text.length == 0? " " : maybeThis.data.contents.text, // data.contents.subtext + "\n" +
                     id: maybeThis.data.notificationId,
                 }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
                     if (err) {
@@ -213,6 +213,9 @@ class Notification extends EventEmitter {
 
                 let func = this.#IPCActivation;
                 let actuallyThis = this;
+                if (global.NeptuneRunnerIPC._events['notify-client_' + this.clientId + ":" + this.data.notificationId] !== undefined)
+                    delete global.NeptuneRunnerIPC._events['notify-client_' + this.clientId + ":" + this.data.notificationId];
+
                 if (global.NeptuneRunnerIPC._events['notify-client_' + this.clientId + ":" + this.data.notificationId] === undefined) {
                     global.NeptuneRunnerIPC.once('notify-client_' + this.clientId + ":" + this.data.notificationId, (data) => {
                         func(actuallyThis, data);
@@ -227,6 +230,17 @@ class Notification extends EventEmitter {
         }
     }
 
+    #IPCActivation(notification, ipcData) {
+        /** @type {import('./NeptuneRunner.js').PipeDataReceivedEventArgs} */
+        let data = ipcData;
+        if (data.Command == "notify-activated") {
+            notification.activate();
+        } else if (data.Command == "notify-dismissed") {
+            notification.dismiss();
+        }
+    }
+
+
     /**
      * The notification was activated (clicked). Causes class to emit 'activate'
      * @param {string} [data] - User input from the notification
@@ -236,11 +250,17 @@ class Notification extends EventEmitter {
         this.emit("activate", data);
     }
 
+    /**
+     * Tells the client to dismiss this notification.
+     */
     dismiss() {
         // Simulate a dismiss (swiped away)
         this.emit("dismissed");
     }
 
+    /**
+     * Deletes the notification from this computer.
+     */
     delete() {
         //?
         this.emit('dismissed');
@@ -256,15 +276,6 @@ class Notification extends EventEmitter {
         }
     }
 
-    #IPCActivation(notification, ipcData) {
-        /** @type {import('./NeptuneRunner.js').PipeDataReceivedEventArgs} */
-        let data = ipcData;
-        if (data.Command == "notify-activated") {
-            notification.activate();
-        } else if (data.Command == "notify-dismissed") {
-            notification.dismiss();
-        }
-    }
 
     /**
      * Updates the notification data and the toast notification on the OS side.
@@ -278,5 +289,7 @@ class Notification extends EventEmitter {
         this.push();
     }
 }
+
+
 
 module.exports = Notification;

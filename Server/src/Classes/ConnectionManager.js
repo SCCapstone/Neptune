@@ -63,7 +63,8 @@ class ConnectionManager extends EventEmitter {
 	 */
 	#secret
 
-	#conInitUUID
+	#conInitUUID;
+	#socketUUID;
 
 	/**
      * @type {import('./LogMan').Logger}
@@ -96,6 +97,7 @@ class ConnectionManager extends EventEmitter {
 		this.#client = client;
 		this.#secret = sharedSecret;
 		this.#conInitUUID = miscData.conInitUUID;
+		this.#socketUUID = miscData.socketUUID;
 		this.#encryptionParameters = {
 			cipherAlgorithm: miscData.encryptionParameters.cipherAlgorithm,
 			hashAlgorithm: miscData.encryptionParameters.hashAlgorithm
@@ -110,6 +112,20 @@ class ConnectionManager extends EventEmitter {
 		this.#setupWebsocketListeners();
 	}
 
+	/**
+	 * Returns the conInitUUID
+	 * @return {string}
+	 */
+	getConInitUUID() {
+		return this.#conInitUUID;
+	}
+	/**
+	 * Returns the socketUUID
+	 * @return {string}
+	 */
+	getSocketUUID() {
+		return this.#socketUUID;
+	}
 
 	
 	/**
@@ -166,11 +182,17 @@ class ConnectionManager extends EventEmitter {
 		this.client.pairKey = undefined;
 	}
 	
+
+
+	disconnect() {
+		this.#webSocket.close(1001, "disconnect");
+	}
 	/**
 	 * @param {boolean} force
 	 * @return {void}
 	 */
 	destroy(force) {
+		this.#webSocket.close(1001, "destroy");
 		this.removeAllListeners();
 	}
 		
