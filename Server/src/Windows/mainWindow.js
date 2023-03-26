@@ -565,7 +565,9 @@ class thisTest extends NeptuneWindow {
 			this.actionPreferences.setText("Preferences");
 			this.actionPreferences.addEventListener('triggered', () => {
 				// Open setting window
-				console.log("Blah! No preference window... :(");
+				//console.log("Blah! No preference window... :(");
+				let preferencePage = this.newChildWindow('preferencePage');
+				preferencePage.show();
 			});
 
 			this.actionToggleConsoleVisibility = new NodeGUI.QAction(this.MainWindow);
