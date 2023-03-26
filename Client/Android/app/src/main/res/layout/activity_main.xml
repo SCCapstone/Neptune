@@ -8,13 +8,31 @@
 
     <Button
         android:id="@+id/addDev"
-        android:layout_width="388dp"
-        android:layout_height="50dp"
+        android:layout_width="318dp"
+        android:layout_height="48dp"
         android:layout_marginTop="16dp"
         android:text="Add new device"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.172"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageView
+        android:id="@+id/editClientName"
+        android:layout_width="39dp"
+        android:layout_height="39dp"
+        android:layout_marginStart="1dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="18dp"
+        android:clickable="true"
+        app:layout_constraintBottom_toTopOf="@id/mainScroller"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toEndOf="@+id/addDev"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="1.0"
+        app:srcCompat="@drawable/change_name_pencil_logo"
+        tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
 
     <ScrollView
         android:id="@+id/mainScroller"

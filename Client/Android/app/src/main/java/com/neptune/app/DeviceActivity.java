@@ -6,22 +6,29 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.DialogFragment;
 
 import android.app.Activity;
+import android.content.Context;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.TextView;
 import android.content.Intent;
 import android.view.View;
+import android.widget.Toast;
 
 import com.google.gson.JsonParseException;
 import com.neptune.app.Backend.ConnectionManager;
 import com.neptune.app.Backend.Server;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 
@@ -35,10 +42,17 @@ public class DeviceActivity extends AppCompatActivity {
     private TextView notificationsTextView;
     private TextView clipboardTextView;
     private TextView fileTextView;
-    private CheckBox notificationsCheckbox;
+    private CheckBox notificationsCheckBox;
+    private CheckBox clipboardCheckBox;
+    private CheckBox fileCheckBox;
+    private Button sendFile;
+    private Button sendClipboard;
+    private Button receiveClipboard;
+    private Server server;
 
 
     private boolean currentlySyncing = false;
+    private int requestCodeMultiple = R.integer.LAUNCH_FILE_PICKER;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +66,7 @@ public class DeviceActivity extends AppCompatActivity {
 
         //Grabs the server ID passed on from MainActivity so that it can be used in DeviceActivity and passed on to other activities.
         String serverId = getIntent().getStringExtra("ID");
-        Server server = MainActivity.serverManager.getServer(UUID.fromString(serverId));
+        server = MainActivity.serverManager.getServer(UUID.fromString(serverId));
 
         //Setting various TextViews based on the friendly name of the device connected.
         String serverFriendlyName = getIntent().getStringExtra("FRIENDLY_NAME");
@@ -60,15 +74,15 @@ public class DeviceActivity extends AppCompatActivity {
         notificationsTextView.setText("Send notifications to " + server.friendlyName + ".");
 
         clipboardTextView = findViewById(R.id.clipboardTextView);
-        clipboardTextView.setText("Allow " + server.friendlyName + " to read and write clipboard data.");
+        clipboardTextView.setText("Allow " + server.friendlyName + " to send and receive clipboard data.");
 
         fileTextView = findViewById(R.id.fileTextView);
-        fileTextView.setText("Allow " + server.friendlyName + " to send files.");
+        fileTextView.setText("Allow " + server.friendlyName + " to receive files.");
 
-        notificationsCheckbox = findViewById(R.id.notificationsCheckbox);
-        notificationsCheckbox.setChecked(server.syncNotifications);
+        notificationsCheckBox = findViewById(R.id.notificationsCheckbox);
+        notificationsCheckBox.setChecked(server.syncNotifications);
 
-        //CheckBox chkSyncNotifications = findViewById(R.id.notificationsCheckbox);
+        /*CheckBox chkSyncNotifications = findViewById(R.id.notificationsCheckbox);
         CheckBox chkClipboardSharing = findViewById(R.id.chkClipboardSharingEnabled);
         chkClipboardSharing.setChecked(server.clipboardSettings.enabled == true);
         Button btnSendClipboard = findViewById(R.id.btnSendClipboard);
@@ -116,7 +130,113 @@ public class DeviceActivity extends AppCompatActivity {
 
         notificationsCheckbox.setOnClickListener(checkBoxListener);
         chkClipboardSharing.setOnClickListener(checkBoxListener);
-        chkFileSharingEnabled.setOnClickListener(checkBoxListener);
+        chkFileSharingEnabled.setOnClickListener(checkBoxListener);*/
+
+        /*Sets up the checkbox for saving the user's preference regarding sending notifications. It saves whether the user wants to
+         * sync notifications or not. It will save the new setting whenever the checkbox is selected or unselected.
+         */
+        notificationsCheckBox = findViewById(R.id.notificationsCheckbox);
+        notificationsCheckBox.setChecked(server.syncNotifications);
+        notificationsCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if(b) {
+                    notificationsCheckBox.setChecked(true);
+                    server.syncNotifications = true;
+                } else {
+                    notificationsCheckBox.setChecked(false);
+                    server.syncNotifications = false;
+                }
+
+                try {
+                    server.save();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        /*Sets up the clipboard buttons and checkbox. The buttons will be enabled and the checkbox will be selected
+         * if the user has clipboard sharing enabled and unselected and disabled if clipboard sharing is disabled.
+         * When the checkbox is changed, it will change the settings for the client and disable/enable and select/unselect the
+         * buttons and checkbox, respectively.
+         */
+        sendClipboard = findViewById(R.id.btnSendClipboard);
+        receiveClipboard = findViewById(R.id.btnReceiveClipboard);
+        clipboardCheckBox = findViewById(R.id.chkClipboardSharingEnabled);
+        clipboardCheckBox.setChecked(server.clipboardSettings.enabled);
+        clipboardCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if(b) {
+                    clipboardCheckBox.setChecked(true);
+                    server.clipboardSettings.enabled = true;
+                    sendClipboard.setEnabled(true);
+                    receiveClipboard.setEnabled(true);
+                } else {
+                    clipboardCheckBox.setChecked(false);
+                    server.clipboardSettings.enabled = false;
+                    sendClipboard.setEnabled(false);
+                    receiveClipboard.setEnabled(false);
+                }
+
+                try {
+                    server.save();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+//If the send clipboard button is clicked, the client will send the server their clipboard data.
+        sendClipboard.setEnabled(server.clipboardSettings.enabled);
+        sendClipboard.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                server.sendClipboard();
+            }
+        });
+
+        /* If the receive clipboard button is clicked, the client will receive any clipboard data the server has, if it has
+         * clipboard sharing enabled and there is clipboard data to receive.
+         */
+        receiveClipboard.setEnabled(server.clipboardSettings.enabled);
+        receiveClipboard.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                server.requestClipboard();
+            }
+        });
+
+        /* Sets up the button and checkbox for sending files to the server. The server's settings, and the button's status will
+         * change depending on if the checkbox is selected or unselected. It will save whenever the check has changed. The sendFile
+         * button does not have an onClickListener because the onClick event is stored in the activity_device.xml file. It calls
+         * a method, openFilePicker(View view) down below, so no onClickListener is needed.
+         */
+        sendFile = findViewById(R.id.btnSendFile);
+        sendFile.setEnabled(server.filesharingSettings.enabled);
+        fileCheckBox = findViewById(R.id.chkFileSharingEnabled);
+        fileCheckBox.setChecked(server.filesharingSettings.enabled);
+        fileCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if(b) {
+                    fileCheckBox.setChecked(true);
+                    server.filesharingSettings.enabled = true;
+                    sendFile.setEnabled(true);
+                } else {
+                    fileCheckBox.setChecked(false);
+                    server.filesharingSettings.enabled = false;
+                    sendFile.setEnabled(false);
+                }
+
+                try {
+                    server.save();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
 
         //Sets the EditText containing the IP address of the server to the correct IP Address.
         ipAddress = findViewById(R.id.editIPAddress);
@@ -247,5 +367,48 @@ public class DeviceActivity extends AppCompatActivity {
         });
 
         alertBuilder.create().show();
+    }
+
+    public void onActivityResult(int requestcode, int resultcode, Intent data) {
+        super.onActivityResult(requestcode, resultcode, data);
+        Context context = getApplicationContext();
+
+        if(requestcode == requestCodeMultiple && resultcode == Activity.RESULT_OK) {
+            if(data == null) {
+                return;
+            }
+
+            if(null != data.getClipData()) {
+                List<String> tempStrings = new ArrayList<String>();
+                for(int i=0; i<data.getClipData().getItemCount(); i++) {
+                    Uri uri = data.getClipData().getItemAt(i).getUri();
+                    tempStrings.add(uri.getPath());
+                }
+
+                try {
+                    for(int k=0; k<tempStrings.size(); k++) {
+                        Toast.makeText(context, tempStrings.get(k), Toast.LENGTH_SHORT).show();
+                        server.sendFile(tempStrings.get(k));
+                    }
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                Uri uri = data.getData();
+                Toast.makeText(context, uri.getPath(), Toast.LENGTH_SHORT).show();
+                try {
+                    server.sendFile(uri.getPath());
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    public void openFilePicker(View view) {
+        Intent filePickerIntent = new Intent(Intent.ACTION_GET_CONTENT);
+        filePickerIntent.setType("*/*");
+        filePickerIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        startActivityForResult(filePickerIntent, requestCodeMultiple);
     }
 }

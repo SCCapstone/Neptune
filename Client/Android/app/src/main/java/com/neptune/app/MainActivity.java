@@ -51,6 +51,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
     //public Config config
     private TextView devName;
+    private ImageView editClientName;
     private ImageView editName;
     private Button add;
     private AlertDialog addDialog;
@@ -58,6 +59,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     //private Button notifListTest;
     private ImageView delete;
     private TextView ip;
+    private TextView lblFriendlyName;
     private HashMap<Server, View> serversShown = new HashMap<Server, View>();
 
     @Override
@@ -154,8 +156,15 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             }
         });*/
 
-        TextView lblFriendlyName = findViewById(R.id.lblMyFriendlyName);
+        lblFriendlyName = findViewById(R.id.lblMyFriendlyName);
         lblFriendlyName.setText(ClientConfig.friendlyName);
+        editClientName = findViewById(R.id.editClientName);
+        editClientName.setOnClickListener(new ImageView.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                openDialog();
+            }
+        });
 
         TextView lblMyIP = findViewById(R.id.lblMyIP);
         try {
@@ -286,7 +295,8 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
     @Override
     public void applyTexts(String n){
-        devName.setText(n);
+        lblFriendlyName.setText(n);
+        //Add code for changing name in ClientConfig
     }
 
     @Override

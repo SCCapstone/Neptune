@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <integer name = "LAUNCH_DEVICE_ACTIVITY">2</integer>
+    <integer name="LAUNCH_FILE_PICKER">3</integer>
 </resources>
