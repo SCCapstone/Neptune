@@ -2,8 +2,10 @@ package com.neptune.app.Backend;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 import com.neptune.app.Backend.Adapters.ServerClipboardSettingsAdapter;
 import com.neptune.app.Backend.Adapters.ServerFilesharingSettingsAdapter;
 import com.neptune.app.Backend.Structs.ConnectionManagerSettings;
@@ -147,6 +149,7 @@ public class ServerConfig extends ConfigItem {
      */
     @Override
     public JsonObject toJson() {
+        Gson gson = gsonBuilder.create();
         JsonObject jsonObject = super.toJson(); // Get the version info
 
         if (serverId == null)
@@ -174,6 +177,14 @@ public class ServerConfig extends ConfigItem {
         }
 
         jsonObject.addProperty("syncNotifications", this.syncNotifications);
+
+        if (clipboardSettings == null) clipboardSettings = new ServerClipboardSettings();
+        JsonElement clipboardSettingsElement = JsonParser.parseString(gson.toJson(this.clipboardSettings, ServerClipboardSettings.class)).getAsJsonObject();
+        jsonObject.add("clipboardSettings", clipboardSettingsElement);
+
+        if (filesharingSettings == null) filesharingSettings = new ServerFilesharingSettings();
+        JsonElement filesharingSettingsElement = JsonParser.parseString(gson.toJson(this.filesharingSettings, ServerFilesharingSettings.class)).getAsJsonObject();
+        jsonObject.add("filesharingSettings", filesharingSettingsElement);
 
         return jsonObject;
     }
