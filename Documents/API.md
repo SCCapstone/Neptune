@@ -533,7 +533,7 @@ Convert to base64, see the clipboard for an example of the expected format.
 
 
 
-### Sending notifications to the server {needs updating: both sides}:
+### Sending notifications to the server {needs updating: server}:
 Used to send one or more notifications to the server. Update, create or remove.
 
 Server endpoint: `/api/v1/server/notifications/send` -> (no response)
@@ -550,38 +550,54 @@ POST Data:
     "notificationIcon": "base64:image", // Base64 representation of the notification icon
 
     "title": "Testing", // Title of the notification
-    "type": "text", // Notification type (text, image, inline, chronometer)
+    "type": "text", // Notification type (standard, timer, progress, media, call)
 
     "contents": { // Content of the notification
         "text": "Just a basic notification", // The text description
         "subtext": "Beep bop", // Subtext
         "image": "base64:image", // Image in base64
-        "timerData": {}, // Data related to timer
-        "progress": {
-            "max": 100, // Maximum value
-            "min": 0, // Minimum value
-            "current": 50 // Current position
-            "description": "blah blah this may not actually exist." // Data associated with the progress bar, such as a title or something
-        },
+        
         "actions": [ // Buttons or textboxes, things the user can interact with
             {
                 "id": "action_read", // The 'name' of the action
-                "text": "Mark as Read", // The text displayed on the button
-                "type": "button" // Button OR textbox
+                "type": "button", // Button OR textbox OR combobox
+                
+                "contents": "Mark as Read", // The contents (title/text/name) of the button
             },
             {
                 "id": "textbox", // The 'name' of the action
-                "text": "", // The text already typed
+                "type": "textbox", // Button OR textbox OR combobox
+
                 "hintText": "Type a message...", // Unique to text box, the "hint"
-                "type": "textbox" // Button OR textbox
+                "allowGeneratedReplies": true // Allow those generated smart replies
+                "contents": "", // The text already typed (may not be accessible, pretend this does not exist)
+            },
+            {
+                "id": "textbox", // The 'name' of the action
+                "type": "combobox", // Button OR textbox OR combobox
+
+                "choices": [ // Choices the user gets
+                    "Option 1",
+                    "This option"
+                ], 
+                "hintText": "Type a message...", // The hint of the combobox
             }
-        ]
+        ],
+
+        "timerData": {
+            "countingDown": true  // Whether the chronometer is counting down (true) or up (false) (default true)
+        }, // Data related to timer
+        "progress": {
+            "value": 50, // Current position
+            "max": 100, // Maximum value
+            "isIndeterminate": false,
+        }
     },
 
     "onlyAlertOnce": true, // only like the sound, vibrate and ticker to be played if the notification is not already showing.
-    "priority": 0, // #setImportance
+    "priority": 0, // Can be "max", "high", "default", "low", and "min"
     "timestamp": "2040-04-23T18:25:43.511Z", // When this item was displayed
-    "isActive": true // Display this.
+    "isSilent": true // Display this / is silent
  }   
 ]
 ```

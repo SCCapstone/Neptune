@@ -58,6 +58,10 @@ public class ClientConfigEncryptionAdapter extends TypeAdapter<ClientConfigEncry
                     if (token == JsonToken.NUMBER)
                         clientConfigEncryption.newKeyLength = reader.nextInt();
                     break;
+
+                default:
+                    reader.nextNull();
+                    break;
             }
         }
 

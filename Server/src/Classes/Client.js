@@ -132,12 +132,12 @@ class Client extends ClientConfig {
 	 */
 	#handleCommand(command, data) {
 		if (command == "/api/v1/echo") {
-			this.#connectionManager.sendRequest("/api/v1/echoed", data);
+			this.sendRequest("/api/v1/echoed", data);
 
 		} else if (command == "/api/v1/server/ping") {
 			let receivedAt = new Date(data["timestamp"]);
 			let timestamp = new Date();
-			this.#connectionManager.sendRequest("/api/v1/client/pong", {
+			this.sendRequest("/api/v1/client/pong", {
 				receivedAt: data["timestamp"],
 				timestamp: timestamp.toISOString()
 			});
@@ -163,7 +163,7 @@ class Client extends ClientConfig {
 			this.pairId = "";
 			this.pairKey = "";
 			this.delete();
-			this.#connectionManager.sendRequest("/api/v1/server/unpair", {});
+			this.sendRequest("/api/v1/server/unpair", {});
 
 		}  else if (command == "/api/v1/server/disconnect") {
 			this.#connectionManager.disconnect();
@@ -182,7 +182,7 @@ class Client extends ClientConfig {
 			let chargeMessage = (this.batteryChargerType!="discharging")? "charging via " + this.batteryChargerType + timeRemainingMsg : "discharging";
 			this.log.debug("Received battery data from client. Client is at " + this.batteryLevel + "% and is " + chargeMessage + ". Temperature: " + this.batteryTemperature);
 
-			this.#connectionManager.sendRequest("/api/v1/server/ack", {});
+			this.sendRequest("/api/v1/server/ack", {});
 
 
 		} else if (command == "/api/v1/server/notifications/send" || command == "/api/v1/server/notifications/update") {
@@ -197,7 +197,7 @@ class Client extends ClientConfig {
 				// invalid data.. should be an array but whatever
 				this.receiveNotification(new Notification(this, data));
 			}
-			this.#connectionManager.sendRequest("/api/v1/server/ack", {});
+			this.sendRequest("/api/v1/server/ack", {});
 
 		// Configuration
 		} else if (command == "/api/v1/server/configuration/set" || command == "/api/v1/client/configuration/data") {
@@ -227,7 +227,7 @@ class Client extends ClientConfig {
 
 			this.save();
 
-			this.#connectionManager.sendRequest("/api/v1/server/ack", {});
+			this.sendRequest("/api/v1/server/ack", {});
 
 			//this.fromJSON(data);
 		} else if (command == "/api/v1/server/configuration/get") {
@@ -244,15 +244,15 @@ class Client extends ClientConfig {
 					this.log.silly(data);
 					Clipboard.setStandardizedClipboardData(data).then((success) => {
 						if (success)
-							this.#connectionManager.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "success" });
+							this.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "success" });
 						else
-							this.#connectionManager.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "failed" });
+							this.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "failed" });
 					}).catch((err) => {
 						this.log.error("Error retrieving clipboard data using Clipboard class. Falling back to QT?")
 						this.log.debug(err);
 
 						if (!isReponse) {
-							this.#connectionManager.sendRequest("/api/v1/server/clipboard/uploadStatus", {
+							this.sendRequest("/api/v1/server/clipboard/uploadStatus", {
 								status: "failed",
 								errorMessage: "Unknown server error"
 							});
@@ -265,11 +265,11 @@ class Client extends ClientConfig {
 					}
 				} else {
 					if (!isReponse)
-						this.#connectionManager.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "setBlocked" });
+						this.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "setBlocked" });
 				}
 			} else {
 				if (!isReponse)
-					this.#connectionManager.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "clipboardSharingOff" });
+					this.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "clipboardSharingOff" });
 			}
 
 		} else if (command == "/api/v1/server/clipboard/get") {
@@ -278,9 +278,9 @@ class Client extends ClientConfig {
 					this.log.debug("Client requested clipboard data, sending.");
 					this.sendClipboard(true);
 				} else
-					this.#connectionManager.sendRequest("/api/v1/server/data", { status: "getBlocked" });
+					this.sendRequest("/api/v1/server/data", { status: "getBlocked" });
 			} else
-				this.#connectionManager.sendRequest("/api/v1/server/data", { status: "clipboardSharingOff" });
+				this.sendRequest("/api/v1/server/data", { status: "clipboardSharingOff" });
 		} else if (command == "/api/v1/client/clipboard/uploadStatus") {
 			this.clipboardModificationsLocked = false;
 
@@ -383,7 +383,7 @@ class Client extends ClientConfig {
 			actionParameters: metaData.actionParameters,
 		};
 
-		this.#connectionManager.sendRequest("/api/v1/client/notifications/update", notificationActionData)
+		this.sendRequest("/api/v1/client/notifications/update", notificationActionData)
 	}
 
 	/**
@@ -393,7 +393,7 @@ class Client extends ClientConfig {
 	sendClipboard(isResponse) {
 		Clipboard.getStandardizedClipboardData().then(clipboardData => {
 			try {
-				this.#connectionManager.sendRequest("/api/v1/client/clipboard/set", clipboardData)
+				this.sendRequest("/api/v1/client/clipboard/set", clipboardData)
 			} catch (e) {}
 		});
 
@@ -404,7 +404,7 @@ class Client extends ClientConfig {
 		if (this.clipboardSettings.enabled) {
 			if (this.clipboardSettings.allowClientToGet || isResponse) {
 				Clipboard.getStandardizedClipboardData().then((clipboardData) => {
-					this.#connectionManager.sendRequest(apiUrl, {
+					this.sendRequest(apiUrl, {
 						data: clipboardData,
 						status: "okay",
 					});
@@ -421,7 +421,7 @@ class Client extends ClientConfig {
 						// }
 						// add picture support
 
-						this.#connectionManager.sendRequest("/api/v1/server/data", {
+						this.sendRequest("/api/v1/server/data", {
 							data: data,
 							status: "failed",
 							errorMessage: "Main clipboard retrieval failed, using fallback method (simple data mode)."
@@ -429,7 +429,7 @@ class Client extends ClientConfig {
 					} catch (simpleModeError) {
 						this.log.error("Error retrieving clipboard data using QT.")
 						this.log.error(err);
-						this.#connectionManager.sendRequest("/api/v1/server/data", {
+						this.sendRequest("/api/v1/server/data", {
 							data: {},
 							status: "failed",
 							errorMessage: "Unknown server error."
@@ -527,7 +527,8 @@ class Client extends ClientConfig {
 		let apiUrl = "/api/v1/client/configuration/set";
 		if (isResponse)
 			apiUrl = "/api/v1/server/configuration/data";
-		this.#connectionManager.sendRequest(apiUrl, {
+
+		this.sendRequest(apiUrl, {
 			friendlyName: NeptuneConfig.friendlyName,
 			notificationSettings: {
 				enabled: this.notificationSettings.enabled
@@ -554,6 +555,8 @@ class Client extends ClientConfig {
 		if (this.isPaired) {
 			this.log.info("Unpairing");
 			this.#connectionManager.unpair();
+			this._pairId = undefined;
+			this._pairKey = undefined;
 			this.delete();
 			return true;
 		} else
@@ -574,13 +577,15 @@ class Client extends ClientConfig {
 	}
 
 	delete() {
-		global.Neptune.clientManager.dropClient(this);
 		try {
 			this.unpair();
 			this.#connectionManager.destroy(true);
 			this.#notificationManager.destroy(true);
-		} catch (err) {}
+		} catch (err) {
+			this.log.error(err);
+		}
 		finally {
+			global.Neptune.clientManager.dropClient(this);
 			super.delete();
 			this.log.warn("Deleted");
 		}

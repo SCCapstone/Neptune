@@ -21,7 +21,6 @@ import com.neptune.app.MainActivity;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FilePermission;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -336,7 +335,7 @@ public class Server extends ServerConfig {
             }
 
             if (connectionManager.getHasNegotiated()) {
-                if (!notificationBlacklistApps.contains(notification.appPackageName)) {
+                if (!notificationBlacklistApps.contains(notification.applicationPackageName)) {
                     JsonObject notificationData = notification.toJson();
                     if (notificationData.has("action") && action != SendNotificationAction.CREATE) {
                         notificationData.remove("action");
@@ -429,16 +428,16 @@ public class Server extends ServerConfig {
      * @param filePath
      * @throws FileNotFoundException
      */
-    public void sendFile(String filePath) throws FileNotFoundException {
+    public void sendFile(String filePath) throws FileNotFoundException, SecurityException {
         if (!filesharingSettings.enabled) {
             return;
         }
 
         File file = new File(filePath);
         if (!file.exists() || !file.isFile())
-            throw new FileNotFoundException("File at \"" + filePath + "\" does not exist");
+            throw new FileNotFoundException("File at \"" + filePath + "\" does not exist.");
         if (!file.canRead())
-            throw new SecurityException("Cannot read file at " + filePath);
+            throw new SecurityException("Cannot read file at " + filePath + ".");
 
         String requestId = UUID.randomUUID().toString();
         if (fileRequestIdsToFilePaths == null)

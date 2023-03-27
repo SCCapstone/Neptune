@@ -1,4 +1,5 @@
 package com.neptune.app.Backend;
+import android.app.Notification;
 import android.content.ClipData;
 import android.content.ClipDescription;
 import android.content.ClipboardManager;
@@ -17,6 +18,7 @@ import com.google.gson.JsonObject;
 import com.neptune.app.BuildConfig;
 import com.neptune.app.MainActivity;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -73,12 +75,22 @@ public class Clipboard {
                             continue; // Skip, already added
 
                         try {
-                            InputStream inputStream = MainActivity.Context.getContentResolver().openInputStream(uri);
-                            byte[] bytes = new byte[inputStream.available()];
-                            inputStream.read(bytes); // Read image bytes
-                            String encodedData = NeptuneCrypto.convertBytesToBase64(bytes); // Image -> base64
-                            json.addProperty("Image", "data:" + mimeType + ";base64, " + encodedData); // Add data
-                            inputStream.close();
+                            byte[] bytes; // Image bytes
+                            try (InputStream inputStream = MainActivity.Context.getContentResolver().openInputStream(uri)) {
+                                try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+                                    byte[] buffer = new byte[4096];
+                                    int bytesRead;
+                                    while ((bytesRead = inputStream.read(buffer)) != -1) {
+                                        outputStream.write(buffer, 0, bytesRead); // Reads image into buffer
+                                    }
+                                    bytes = outputStream.toByteArray(); // Buffer to bytes
+                                }
+                            }
+
+                            if (bytes != null && bytes.length > 0) {
+                                String encodedData = "data:" + mimeType + ";base64, " + NeptuneCrypto.convertBytesToBase64(bytes); // Image -> base64
+                                json.addProperty("Image", encodedData);
+                            }
                         } catch (Exception e) {
                             Log.e(TAG, "Failed to add image data");
                             e.printStackTrace();

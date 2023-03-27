@@ -178,8 +178,7 @@ class ConnectionManager extends EventEmitter {
 
 	}
 	unpair() {
-		this.client.pairId = undefined;
-		this.client.pairKey = undefined;
+		this.sendRequest("/api/v1/server/unpair", {});
 	}
 	
 

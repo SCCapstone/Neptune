@@ -69,8 +69,6 @@ class thisTest extends NeptuneWindow {
 	actionToggleAllowClientToUpload;
 	/** @type {NodeGUI.QAction} */
 	actionSend_file;
-	/** @type {NodeGUI.QAction} */
-	actionBrowse_for_file;
 
 	/** @type {NodeGUI.QAction} */
 	actionDelete_client;
@@ -275,7 +273,6 @@ class thisTest extends NeptuneWindow {
 
 			this.actionToggleAllowClientToUpload.setEnabled(enabled === true);
 			this.actionSend_file.setEnabled(enabled === true);
-			this.actionBrowse_for_file.setEnabled(enabled === true);
 		}
 	}
 	// Enable/disable clipboard settings if clipboard sync is enabled/disabled
@@ -501,10 +498,6 @@ class thisTest extends NeptuneWindow {
 			this.actionSend_file.setObjectName("actionSend_file");
 			this.actionSend_file.setEnabled(false);
 			this.actionSend_file.setText("Send file");
-			this.actionBrowse_for_file = new NodeGUI.QAction(this.MainWindow);
-			this.actionBrowse_for_file.setObjectName("actionBrowse_for_file");
-			this.actionBrowse_for_file.setEnabled(false);
-			this.actionBrowse_for_file.setText("Browse for file");
 
 			this.actionDelete_client = new NodeGUI.QAction(this.MainWindow);
 			this.actionDelete_client.setObjectName("actionDelete_client");
@@ -662,7 +655,6 @@ class thisTest extends NeptuneWindow {
 			this.menuClient_settings.addAction(this.actionToggleFileSharing);
 			this.menuClient_settings.addAction(this.actionToggleAllowClientToUpload);
 			this.menuClient_settings.addAction(this.actionSend_file);
-			this.menuClient_settings.addAction(this.actionBrowse_for_file);
 			this.menuClient_settings.addSeparator();
 			this.menuClient_settings.addAction(this.actionDelete_client);
 			this.menuClient_settings.addSeparator();

@@ -150,7 +150,12 @@ class Notification extends EventEmitter {
         this.#log.debug("New notification created. Title: " + data.title + " .. type: " + data.type + " .. text: " + data.contents.text);
 
         this.data = data;
-        this.#id = data.notificationId;        
+        if (this.data.contents === null) {
+            this.data.contents = {
+                text: " ",
+            }
+        }
+        this.#id = data.notificationId;
     }
 
     /**
@@ -158,14 +163,24 @@ class Notification extends EventEmitter {
      * @return {void}
      */
     push() {
+        if (this.data.action == "delete") {
+            this.delete();
+        }
+
         let logger = this.#log;
         let maybeThis = this;
         let pushNotification = function() { // Using notifier
             try {
                 // send the notification
+                let text = maybeThis.data.contents.text + maybeThis.data.contents.subtext
+                if (text === undefined)
+                    text = " "
+                if (text.length == 0)
+                    text = " "
+
                 maybeThis.#notifierNotification = Notifier.notify({
                     title: maybeThis.data.title,
-                    message: maybeThis.data.contents.text.length == 0? " " : maybeThis.data.contents.text, // data.contents.subtext + "\n" +
+                    message: text,
                     id: maybeThis.data.notificationId,
                 }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
                     if (err) {

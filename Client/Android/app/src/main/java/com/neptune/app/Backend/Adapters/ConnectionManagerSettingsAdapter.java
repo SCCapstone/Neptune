@@ -65,6 +65,10 @@ public class ConnectionManagerSettingsAdapter extends TypeAdapter<ConnectionMana
                     if (token == JsonToken.STRING)
                         connectionManagerSettings.pingIntervalTimeUnit = TimeUnitConverter.fromString(reader.nextString());
                     break;
+
+                default:
+                    reader.nextNull();
+                    break;
             }
         }
 

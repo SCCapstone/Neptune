@@ -1,16 +1,15 @@
 package com.neptune.app.Backend;
 
-import android.app.Notification;
+import androidx.annotation.NonNull;
 
 import com.neptune.app.MainActivity;
 
 import java.util.HashMap;
-import java.util.Map;
 
 
 public class NotificationManager {
 
-    private HashMap<Integer, NeptuneNotification> notifications = new HashMap<Integer, NeptuneNotification>();
+    private final HashMap<Integer, NeptuneNotification> notifications = new HashMap<>();
 
     public NotificationManager() {}
 
@@ -20,7 +19,7 @@ public class NotificationManager {
      * After the notification is added/updated, we push the notification using <see>pushNotification()</see>
      * @param notification Notification to add and push out.
      */
-    public void setNotification(NeptuneNotification notification) {
+    public void setNotification(@NonNull NeptuneNotification notification) {
         if (notifications.containsKey(notification.id)) {
             notifications.remove(notification.id);
         }
@@ -34,7 +33,9 @@ public class NotificationManager {
      */
     public void pushNotification(int id) {
         if (notifications.containsKey(id)) {
-            MainActivity.serverManager.processNotification(notifications.get(id));
+            NeptuneNotification notification = notifications.get(id);
+            if (notification != null)
+                MainActivity.serverManager.processNotification(notification);
         }
     }
 
@@ -81,7 +82,9 @@ public class NotificationManager {
      * @param id Id of the notification to delete.
      */
     public void deleteNotification(int id) {
-        if (notifications.containsKey(id))
-            MainActivity.serverManager.processNotification(notifications.get(id), Server.SendNotificationAction.DELETE);
+        if (notifications.containsKey(id)) {
+            if (notifications.get(id) != null)
+                MainActivity.serverManager.processNotification(notifications.get(id), Server.SendNotificationAction.DELETE);
+        }
     }
 }

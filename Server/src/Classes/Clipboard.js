@@ -362,6 +362,7 @@ foreach ($format in $dataObject.GetFormats()) {
 				$type = "plain"
 				if ($format -eq "RichText" -or $format.StartsWith("Rich Text")) {
 					$type = "rtf"
+					$format = "RichText"
 				} elseif ($format -eq "HTML Format") {
 					$type = "html"
 					$encoder = [System.Text.Encoding]::ASCII

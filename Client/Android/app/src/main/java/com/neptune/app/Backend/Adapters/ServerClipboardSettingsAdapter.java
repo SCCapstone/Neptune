@@ -66,6 +66,10 @@ public class ServerClipboardSettingsAdapter extends TypeAdapter<ServerClipboardS
                     if (token == JsonToken.BOOLEAN)
                         myObject.synchronizeClipboardToServer = reader.nextBoolean();
                     break;
+
+                default:
+                    reader.nextNull();
+                    break;
             }
         }
 

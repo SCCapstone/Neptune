@@ -45,6 +45,11 @@ class ExampleAdapter extends TypeAdapter<ExampleAdapter> {
                     if (token == JsonToken.STRING)
                         jsonKeyValue = reader.nextString();
                     break;
+
+
+                default: // Consume token, move on
+                    reader.nextNull();
+                    break;
             }
         }
 

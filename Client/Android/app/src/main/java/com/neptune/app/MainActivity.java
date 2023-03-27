@@ -408,6 +408,11 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             if (server != null)
                 server.delete();
             runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            if (server != null)
+                server.delete();
+            runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
         }
     }
 

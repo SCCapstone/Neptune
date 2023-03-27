@@ -78,7 +78,7 @@ public class ServerManager {
                     Log.e("ServerManager", "loadServers: failed to load server " + serverId + " as the server config file does not exist.");
                     removeTheseIds.add(serverId);
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 // Remove ID
                 Log.e("ServerManager", "loadServers: failed to load server: " + serverId, e);
                 removeTheseIds.add(serverId);

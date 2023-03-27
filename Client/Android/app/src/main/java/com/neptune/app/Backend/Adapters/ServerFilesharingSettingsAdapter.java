@@ -80,8 +80,12 @@ public class ServerFilesharingSettingsAdapter extends TypeAdapter<ServerFileshar
 
                 case "receivedFilesDirectory":
                     token = reader.peek();
-                    if (token == JsonToken.BOOLEAN)
+                    if (token == JsonToken.STRING)
                         myObject.receivedFilesDirectory = reader.nextString();
+                    break;
+
+                default:
+                    reader.nextNull();
                     break;
             }
         }

@@ -6,9 +6,9 @@ public class ServerFilesharingSettings {
     // If file sharing is allowed between the two devices.
     public boolean enabled = false;
 
-    // Whether client can upload any files. This toggles the ability to receive files from the client.
+    // Whether server can upload any files. This toggles the ability to receive files from the server.
     public boolean allowServerToUpload = true;
-    // Whether client can download files (that we send it). This toggles the ability to send files to the client.
+    // Whether server can download files (that we send it). This toggles the ability to send files to the server.
     public boolean allowServerToDownload = true;
 
     // Whether to ask the user to confirm receiving a file from the server. If false, file are automatically downloaded.

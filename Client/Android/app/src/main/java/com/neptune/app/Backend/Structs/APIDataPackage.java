@@ -1,5 +1,7 @@
 package com.neptune.app.Backend.Structs;
 
+import androidx.annotation.NonNull;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -133,6 +135,7 @@ public class APIDataPackage {
         throw new InvalidJsonDataType("Data is not a Json boolean.");
     }
 
+    @NonNull
     @Override
     public String toString() {
         return this.getOriginalPacket().toString();
