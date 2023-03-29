@@ -20,8 +20,15 @@ import com.neptune.app.MainActivity;
 
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -185,6 +192,8 @@ public class Server extends ServerConfig {
                         // download file from "/api/v1/server/socket/" + connectionManager.getSocketUUID() + "/filesharing/" + fileUUID + "/download"
                         // you'll have to send a POST request with json data, the json data must include the authentication code under the name "authenticationCode"
                         // see api doc.
+                        downloadFile("/api/v1/server/socket/\" + connectionManager.getSocketUUID() + \"/filesharing/\" + fileUUID + \"/download", "authenticationCode");
+                        Log.i(TAG, "authenticationCode: " + authenticationCode);
                     }
 
                 } else if (command.equals("/api/v1/server/filesharing/upload/fileUUID") && apiDataPackage.isJsonObject()) {
@@ -448,6 +457,95 @@ public class Server extends ServerConfig {
         uploadRequest.addProperty("requestId", requestId);
         uploadRequest.addProperty("filename", file.getName());
         this.connectionManager.sendRequestAsync("/api/v1/server/filesharing/upload/newFileUUID", uploadRequest);
+    }
+
+    //Downloads the file from the server
+    public void downloadFile(String fileUUID, String authenticationCode) {
+        try {
+            URL url = new URL("/api/v1/server/socket/socketUUID/filesharing/{{fileUUID}}");
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setDoOutput(true);
+
+            String postData = "{ \"authenticationCode\": \"" + authenticationCode + "\" }";
+            OutputStream os = connection.getOutputStream();
+            os.write(postData.getBytes());
+            os.flush();
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                String fileName = "";
+                String disposition = connection.getHeaderField("Content-Disposition");
+                String contentType = connection.getContentType();
+                int contentLength = connection.getContentLength();
+
+                if (disposition != null) {
+                    int index = disposition.indexOf("filename=");
+                    if (index > 0) {
+                        fileName = disposition.substring(index + 10, disposition.length() - 1);
+                    }
+                } else {
+                    fileName = fileUUID;
+                }
+
+                InputStream is = connection.getInputStream();
+                FileOutputStream fos = new FileOutputStream(fileName);
+
+                int bytesRead = -1;
+                byte[] buffer = new byte[4096];
+                while ((bytesRead = is.read(buffer)) != -1) {
+                    fos.write(buffer, 0, bytesRead);
+                }
+
+                fos.close();
+                is.close();
+                Log.i(TAG,"File downloaded successfully.");
+            } else {
+                Log.e(TAG,"Server returned HTTP response code: " + responseCode);
+            }
+
+            connection.disconnect();
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Uploads the file from the client to the server
+    public void uploadFile(String fileUUID, String authenticationCode, String filePath) {
+        try {
+            URL url = new URL("/api/v1/server/socket/socketUUID/filesharing/{{fileUUID}}");
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Content-Disposition", "attachment; filename=\"" + fileUUID + "\"");
+            connection.setRequestProperty("Authentication-Code", authenticationCode);
+            connection.setDoOutput(true);
+
+            File file = new File(filePath);
+            FileInputStream inputStream = new FileInputStream(file);
+            byte[] buffer = new byte[4096];
+            int bytesRead = -1;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                connection.getOutputStream().write(buffer, 0, bytesRead);
+            }
+            inputStream.close();
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                Log.i(TAG,"File uploaded successfully.");
+            } else {
+                Log.e(TAG,"Server returned HTTP response code: " + responseCode);
+            }
+
+            connection.disconnect();
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public double ping() {
