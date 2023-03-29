@@ -105,6 +105,23 @@ class LogMan extends EventEmitter {
 	 */
 	consoleSufix = "\x1b[0m";
 
+	/**
+	 * The maximum number of characters we'll print to the console each message.
+	 * 
+	 * @type {int}
+	 */
+	consoleMessageCharacterLimit = 1000;
+
+	/**
+	 * This is the string appended on to a message that we've fit to the consoleMessageCharacterLimit.
+	 * 
+	 * That is, if your message is too long we'll truncate it fit within your limit and add this string to the end to signal the string was truncated.
+	 * 
+	 * @type {string}
+	 */
+	consoleMessageCharacterLimitString = " ...|";
+
+
 
 	/**
 	 * New line character in log file
@@ -224,6 +241,24 @@ class LogMan extends EventEmitter {
 	 * @type {string}
 	 */
 	fileSufix = "";
+
+	/**
+	 * The maximum number of characters written out each log message to the file.
+	 * 
+	 * @type {int} 
+	 */
+	fileMessageCharacterLimit = 7500;
+
+	/**
+	 * This is the string appended on to a message that we've fit to the fileMessageCharacterLimit.
+	 * 
+	 * That is, if your message is too long we'll truncate it fit within your limit and add this string to the end to signal the string was truncated.
+	 * 
+	 * @type {string}
+	 */
+	fileMessageCharacterLimitString = " ...|";
+
+
 
 	/**
 	 * String in front of messages written to the file
@@ -464,14 +499,24 @@ class LogMan extends EventEmitter {
 		consolePrefix = consolePrefix.replace("%time%", time)
 		consolePrefix = consolePrefix.replace("%logName%", this.#logName);
 
-		var message = ((sectionName!==undefined)? ("[" + sectionName + "]") : "") + "[" + level + "] " + msg;				// Only display section name if defined
-		var messageFile = "[" + level + "]" + ((sectionName!==undefined)? ("[" + sectionName + "] ") : " ") + msg; 	// Only display section name if defined
+		var consoleMessage = ((sectionName!==undefined)? ("[" + sectionName + "]") : "") + "[" + level + "] " + msg;				// Only display section name if defined
+		var fileMessage = "[" + level + "]" + ((sectionName!==undefined)? ("[" + sectionName + "] ") : " ") + msg; 	// Only display section name if defined
 		// File: [Debug][Section] msg... || console: [Section][Debug] msg ...
 
 		var consoleSufix = "";
 		if (this.consoleSufixes[l] !== undefined)
 			consoleSufix += this.consoleSufixes[l].toString();
+
 		consoleSufix += this.consoleSufix.toString();
+
+		let maxConsoleLenght = (this.consoleMessageCharacterLimit !== undefined? this.consoleMessageCharacterLimit : 1000);
+		let truncateString = this.consoleMessageCharacterLimitString !== undefined? this.consoleMessageCharacterLimitString : " ...|";
+		if (consoleMessage.length > maxConsoleLenght) {
+			consoleMessage = consoleMessage.substring(0, maxConsoleLenght-(truncateString.length)); // Limit the number of characters
+			consoleMessage += truncateString;
+		}
+
+		consoleMessage = consolePrefix + consoleMessage + consoleSufix;
 
 		if (this.outputToConsole == true && outputToConsole === true) {
 			if (this.consoleBeepOnLevel[l] === true) {
@@ -479,11 +524,11 @@ class LogMan extends EventEmitter {
 			}
 			if (this.consoleDisplayLevel[l] === true) { // Output?
 				if (l == "critical" || l == "error")
-					console.error(consolePrefix + message + consoleSufix);
+					console.error(consoleMessage);
 				else if (l == "warn")
-					console.warn(consolePrefix + message + consoleSufix);
+					console.warn(consoleMessage);
 				else
-					console.log(consolePrefix + message + consoleSufix);
+					console.log(consoleMessage);
 			}
 		}
 
@@ -501,8 +546,18 @@ class LogMan extends EventEmitter {
 				if (this.fileSufixes[l] !== undefined)
 					fileSufix += this.fileSufixes[l].toString();
 				fileSufix += this.fileSufix.toString();
+
 				// the regex strips any ansi stuff
-				this.#logFile.write(filePrefix + messageFile.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "") + fileSufix + this.fileLineTerminator);
+				fileMessage = fileMessage.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, ""); // Strip ANSI
+
+				let maxFileMessageLenght = (this.fileMessageCharacterLimit !== undefined? this.fileMessageCharacterLimit : 1000);
+				let truncateString = this.fileMessageCharacterLimitString !== undefined? this.fileMessageCharacterLimitString : " ...|";
+				if (fileMessage.length > maxFileMessageLenght) {
+					fileMessage = fileMessage.substring(0, maxFileMessageLenght-(truncateString.length)); // Limit the number of characters
+					fileMessage += truncateString;
+				}
+
+				this.#logFile.write(filePrefix + fileMessage + fileSufix + this.fileLineTerminator);
 			}
 		}
 

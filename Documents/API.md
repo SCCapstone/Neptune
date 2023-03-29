@@ -569,7 +569,7 @@ POST Data:
                 "type": "textbox", // Button OR textbox OR combobox
 
                 "hintText": "Type a message...", // Unique to text box, the "hint"
-                "allowGeneratedReplies": true // Allow those generated smart replies
+                "allowGeneratedReplies": true, // Allow those generated smart replies
                 "contents": "", // The text already typed (may not be accessible, pretend this does not exist)
             },
             {
@@ -579,8 +579,7 @@ POST Data:
                 "choices": [ // Choices the user gets
                     "Option 1",
                     "This option"
-                ], 
-                "hintText": "Type a message...", // The hint of the combobox
+                ],
             }
         ],
 
@@ -595,7 +594,7 @@ POST Data:
     },
 
     "onlyAlertOnce": true, // only like the sound, vibrate and ticker to be played if the notification is not already showing.
-    "priority": 0, // Can be "max", "high", "default", "low", and "min"
+    "priority": "default", // Can be "max", "high", "default", "low", and "min"
     "timestamp": "2040-04-23T18:25:43.511Z", // When this item was displayed
     "isSilent": true // Display this / is silent
  }   

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using Windows.Data.Json;
 
 namespace NeptuneRunner {
     public class PipeDataReceivedEventArgs : EventArgs {
@@ -35,6 +36,15 @@ namespace NeptuneRunner {
             }
 
             return result;
+        }
+
+        public JsonObject DecodeBase64String(string data) {
+            int base64StartIndex = data.IndexOf("base64,") + "base64,".Length;
+            string base64Data = data.Substring(base64StartIndex).Trim();
+            byte[] jsonDataBytes = Convert.FromBase64String(base64Data);
+            string jsonString = Encoding.UTF8.GetString(jsonDataBytes);
+            dynamic deserializedObject = JsonObject.Parse(jsonString);
+            return deserializedObject;
         }
     }
 

@@ -58,6 +58,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -70,6 +71,8 @@
     <Compile Include="ConsoleHelper.cs" />
     <Compile Include="InterprocessCommunication.cs" />
     <Compile Include="NeptuneNotification.cs" />
+    <Compile Include="NeptuneNotificationAction.cs" />
+    <Compile Include="NeptuneNotificationContents.cs" />
     <Compile Include="Notifications\Notification.cs" />
     <Compile Include="Notifications\Propvariant.cs" />
     <Compile Include="Notifications\ShellHelpers.cs" />
@@ -77,6 +80,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TaskBar.cs" />
+    <Compile Include="TestNotificationClass.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

@@ -149,6 +149,26 @@ class NeptuneRunnerIPC extends EventEmitter {
         });
     }
 
+
+    flattenObject(obj, prefix = "", delimiter = "|", result = {}) {
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                const newKey = prefix ? `${prefix}${delimiter}${key}` : key;
+                const value = obj[key];
+
+                if (value !== null && value !== undefined) {
+                    if (typeof value === "object" && !Array.isArray(value)) {
+                        flattenObject(value, newKey, delimiter, result);
+                    } else {
+                        result[newKey] = value;
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+
     sendData(command, data) {
         //if (process.platform !== "win32")
         //    return;
@@ -157,13 +177,17 @@ class NeptuneRunnerIPC extends EventEmitter {
             this.pipe.write(command);
             return;
         } else if (typeof command === "string" && typeof data === "object") {
+            // Flatten the incoming object, (no child objects!)
+            let flattenedData = this.flattenObject(data);
+
+
             let dataString = '\x02' + command + "\x1f\x1e";
-            let keys = Object.keys(data);
+            let keys = Object.keys(flattenedData);
             for (var i = 0; i<keys.length; i++) {
                 dataString += keys[i];
                 dataString += '\x1f';
-                if (data[keys[i]] !== undefined) {
-                    dataString += data[keys[i]];
+                if (flattenedData[keys[i]] !== undefined) {
+                    dataString += flattenedData[keys[i]];
                 }
                 dataString += '\x1e';
             }

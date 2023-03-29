@@ -10,9 +10,13 @@ using Windows.UI.Notifications;
 using Windows.Foundation;
 using NeptuneRunner.Notifications;
 using System.Windows.Forms;
+using Windows.Data.Json;
 
 namespace NeptuneRunner {
     internal class Program {
+        // We output the received pipe data to the console, this is the maximum number of characters to print.
+        private const int MaximumCharactersOnPipeDataOutput = 350;
+
         // Whether we'll process notifications activates via COM
         public static bool AllowCOMActivation = true;
         public static Dictionary<string, NeptuneNotification> ActiveNotifications = new Dictionary<string, NeptuneNotification>();
@@ -78,7 +82,7 @@ namespace NeptuneRunner {
 
         private static void CheckCanSendNotifications() {
             if (ToastNotifier == null)
-               return;
+                return;
 
             bool allowed = false;
             string reason = "";
@@ -346,99 +350,122 @@ namespace NeptuneRunner {
         }
 
         private static void IPC_DataReceived(object sender, PipeDataReceivedEventArgs e) {
+            if (ShuttingDown)
+                return;
+
             try {
-                if (!ShuttingDown) {
-                    Console.WriteLine("[Pipe-Server]: " + e.Data);
-                    Dictionary<string, string> dataKeyValues = e.ToDictionary();
+                // Outputs the first X characters.
+                string output = e.Data;
+                if (output.Length > MaximumCharactersOnPipeDataOutput) {
+                    output = output.Substring(0, MaximumCharactersOnPipeDataOutput - 3) + " ...";
+                }
+                Console.WriteLine("[Pipe-Server]: " + output);
+                Dictionary<string, string> dataKeyValues = e.ToDictionary();
 
-                    if (dataKeyValues.ContainsKey("fixwin")) {
-                        // new window command
-                        dataKeyValues.TryGetValue("hwnd", out string value);
-                        UInt32 hwndInt;
-                        UInt32.TryParse(value, out hwndInt);
-                        IntPtr hwnd = new IntPtr(hwndInt);
-                        if (hwnd != IntPtr.Zero)
-                            TaskBar.SetupLaunchee(hwnd);
-                    } else if (dataKeyValues.ContainsKey("hideconsolewindow")) {
-                        ConsoleHelper.HideConsole();
+                if (dataKeyValues.ContainsKey("fixwin")) {
+                    if (!dataKeyValues.ContainsKey("hwnd"))
+                        return;
 
-                    } else if (dataKeyValues.ContainsKey("showconsolewindow")) {
-                        ConsoleHelper.ShowConsole();
+                    // new window command
+                    string value = dataKeyValues["hwnd"];
+                    UInt32 hwndInt;
+                    UInt32.TryParse(value, out hwndInt);
+                    IntPtr hwnd = new IntPtr(hwndInt);
+                    if (hwnd != IntPtr.Zero)
+                        TaskBar.SetupLaunchee(hwnd);
+                } else if (dataKeyValues.ContainsKey("hideconsolewindow")) {
+                    ConsoleHelper.HideConsole();
 
-                    } else if (dataKeyValues.ContainsKey("notify-push")) {
-                        if (dataKeyValues.ContainsKey("title") && dataKeyValues.ContainsKey("id") && dataKeyValues.ContainsKey("text")) {
-                            bool updateOnly = false;
-                            NeptuneNotification notification = null;
-                            string activeNotificationsKey = dataKeyValues["clientId"] + "_" + dataKeyValues["id"];
+                } else if (dataKeyValues.ContainsKey("showconsolewindow")) {
+                    ConsoleHelper.ShowConsole();
 
-                            if (!dataKeyValues.ContainsKey("createNew") && ActiveNotifications.ContainsKey(activeNotificationsKey)) {
-                                notification = ActiveNotifications[activeNotificationsKey];
-                                updateOnly = true;
-                            }
-
-
-                            if (notification == null || !updateOnly)
-                                notification = new NeptuneNotification(dataKeyValues["id"], dataKeyValues["title"], dataKeyValues["text"]);
-                            else {
-                                if (dataKeyValues.ContainsKey("action")) {
-                                    if (dataKeyValues["action"] == "delete") {
-                                        notification.Delete();
-                                        return;
-                                    }
-                                }
-                                notification.Title = dataKeyValues["title"];
-                                notification.Text = dataKeyValues["text"];
-                            }
-
-                            if (dataKeyValues.ContainsKey("attribution"))
-                                notification.Attribution = dataKeyValues["attribution"];
-
-                            if (dataKeyValues.ContainsKey("clientId"))
-                                notification.ClientId = dataKeyValues["clientId"];
-                            if (dataKeyValues.ContainsKey("clientName"))
-                                notification.ClientName = dataKeyValues["clientName"];
-
-                            if (dataKeyValues.ContainsKey("applicationName"))
-                                notification.ApplicationName = dataKeyValues["applicationName"];
-                            if (dataKeyValues.ContainsKey("timestamp"))
-                                DateTime.TryParse(dataKeyValues["timestamp"], null, System.Globalization.DateTimeStyles.RoundtripKind, out notification.TimeStamp);
-                            if (dataKeyValues.ContainsKey("silent"))
-                                notification.Silent = dataKeyValues["silent"] == "true";
-
-                            notification.Activated += Notification_Activated;
-                            notification.Failed += Notification_Failed;
-                            notification.Dismissed += Notification_Dismissed;
+                } else if (dataKeyValues.ContainsKey("notify-push")) {
+                    if (!dataKeyValues.ContainsKey("title") || !dataKeyValues.ContainsKey("id") || !dataKeyValues.ContainsKey("text")) {
+                        return;
+                    }
 
 
-                            if (ActiveNotifications.ContainsKey(activeNotificationsKey))
-                                ActiveNotifications.Remove(activeNotificationsKey);
-                            ActiveNotifications.Add(dataKeyValues["clientId"] + "_" + dataKeyValues["id"], notification);
+                    // Needs updating to support new API specs
 
-                            if (!updateOnly) {
-                                notification.Push();
-                            } else {
-                                NotificationUpdateResult result = notification.Update();
-                                if (result == NotificationUpdateResult.Failed || result == NotificationUpdateResult.NotificationNotFound) {
-                                    notification.Delete();
-                                    notification.Silent = true;
-                                    notification.Push();
-                                }
+                    bool updateOnly = false;
+                    NeptuneNotification notification = null;
+                    string activeNotificationsKey = dataKeyValues["clientId"] + "_" + dataKeyValues["id"];
+
+                    if (!dataKeyValues.ContainsKey("createNew") && ActiveNotifications.ContainsKey(activeNotificationsKey)) {
+                        notification = ActiveNotifications[activeNotificationsKey];
+                        updateOnly = true;
+                    }
+
+
+                    if (notification == null || !updateOnly)
+                        notification = new NeptuneNotification(dataKeyValues["id"], dataKeyValues["title"], dataKeyValues["text"]);
+                    else {
+                        if (dataKeyValues.ContainsKey("action")) {
+                            if (dataKeyValues["action"] == "delete") {
+                                notification.Delete();
+                                return;
                             }
                         }
-                    } else if (dataKeyValues.ContainsKey("notify-delete")) {
-                        if (dataKeyValues.ContainsKey("title") && dataKeyValues.ContainsKey("id")) {
-                            if (ActiveNotifications.ContainsKey(dataKeyValues["clientId"] + "_" + dataKeyValues["id"])) {
-                                ActiveNotifications[dataKeyValues["clientId"] + "_" + dataKeyValues["id"]].Delete();
-                            }
+                        notification.Title = dataKeyValues["title"];
+                        notification.Contents.Text = dataKeyValues["text"];
+                    }
+
+
+                    if (dataKeyValues.ContainsKey("clientId"))
+                        notification.ClientId = dataKeyValues["clientId"];
+                    if (dataKeyValues.ContainsKey("clientName"))
+                        notification.ClientName = dataKeyValues["clientName"];
+
+                    if (dataKeyValues.ContainsKey("applicationName"))
+                        notification.ApplicationName = dataKeyValues["applicationName"];
+                    if (dataKeyValues.ContainsKey("timestamp"))
+                        DateTime.TryParse(dataKeyValues["timestamp"], null, System.Globalization.DateTimeStyles.RoundtripKind, out notification.TimeStamp);
+                    if (dataKeyValues.ContainsKey("silent"))
+                        notification.IsSilent = dataKeyValues["silent"] == "true";
+
+                    if (dataKeyValues.ContainsKey("contents")) {
+                        JsonObject contents = e.DecodeBase64String(dataKeyValues["contents"]);
+                        notification.Contents.LoadFromJsonObject(contents);
+                    }
+
+                    if (!notification.ActivatedHasListeners())
+                        notification.Activated += Notification_Activated;
+                    if (!notification.DismissedHasListeners())
+                        notification.Dismissed += Notification_Dismissed;
+                    if (!notification.FailedHasListeners())
+                        notification.Failed += Notification_Failed;
+
+
+                    if (ActiveNotifications.ContainsKey(activeNotificationsKey))
+                        ActiveNotifications.Remove(activeNotificationsKey);
+                    ActiveNotifications.Add(dataKeyValues["clientId"] + "_" + dataKeyValues["id"], notification);
+
+                    if (!updateOnly) {
+                        notification.Push();
+                    } else {
+                        NotificationUpdateResult result = notification.Update();
+                        if (result == NotificationUpdateResult.Failed || result == NotificationUpdateResult.NotificationNotFound) {
+                            notification.Delete();
+                            notification.IsSilent = true;
+                            notification.Push();
                         }
                     }
+
+                } else if (dataKeyValues.ContainsKey("notify-delete")) {
+                    if (!dataKeyValues.ContainsKey("title") || !dataKeyValues.ContainsKey("id")) {
+                        return;
+                    }
+                    if (ActiveNotifications.ContainsKey(dataKeyValues["clientId"] + "_" + dataKeyValues["id"])) {
+                        ActiveNotifications[dataKeyValues["clientId"] + "_" + dataKeyValues["id"]].Delete();
+                    }
+
                 }
             } catch (Exception) { } //meh
         }
 
         private static void Notification_Dismissed(ToastNotification sender, ToastDismissedEventArgs args) {
             if (args.Reason != ToastDismissalReason.TimedOut) {
-                ActiveNotifications.Remove(sender.Tag + "_" + sender.Group);
+                ActiveNotifications.Remove(sender.Group + "_" + sender.Tag);
             }
 
             if (args.Reason == ToastDismissalReason.UserCanceled) {
@@ -448,13 +475,17 @@ namespace NeptuneRunner {
                     { "reason", "user" }
                 };
                 IPCDataQueue.Enqueue(IPC.KeyValuePairsToDataString("notify-dismissed", data));
+
+                try {
+                    ToastNotificationManager.GetDefault().History.Remove(sender.Tag, sender.Group, TaskBar.ApplicationId); // If it's dismissed...it's dismissed.
+                } catch (Exception) { }
             }
         }
 
         private static void Notification_Failed(ToastNotification sender, ToastFailedEventArgs args) {
             string reason = "";
             string moreDetails = "";
-            switch (Program.ToastNotifier.Setting) {
+            switch (ToastNotifier.Setting) {
                 case NotificationSetting.Enabled:
                     Console.Error.WriteLine("Notification failed to send." + Environment.NewLine
                         + "Unknown error: " + args.ErrorCode.Message);
@@ -487,30 +518,63 @@ namespace NeptuneRunner {
                 { "failureReason", reason },
                 { "failureMoreDetails", moreDetails }
             };
+            
+            ActiveNotifications.Remove(sender.Group + "_" + sender.Tag);
             IPCDataQueue.Enqueue(IPC.KeyValuePairsToDataString("notify-failed", data));
         }
 
         private static void Notification_Activated(ToastNotification sender, object args) {
-            Dictionary<string, string> data = new Dictionary<string, string>(2) {
+            ToastActivatedEventArgs toastArgs = (ToastActivatedEventArgs)args;
+            string buttonId = toastArgs.Arguments;
+            string userInputText = "";
+            string comboBoxSelectedItem = "";
+
+            var userInput = toastArgs.UserInput;
+
+            if (userInput.ContainsKey("textInput")) {
+                userInputText = userInput["textInput"] as string;
+            }
+
+            if (userInput.ContainsKey("comboBox")) {
+                comboBoxSelectedItem = userInput["comboBox"] as string;
+            }
+
+            // Add data for actions
+            Dictionary<string, string> data = new Dictionary<string, string>(5)
+            {
                 { "id", sender.Tag },
                 { "clientId", sender.Group },
             };
-            //IPCDataQueue.Enqueue(IPC.KeyValuePairsToDataString("notify-activated", data));
+
+            if (!string.IsNullOrEmpty(buttonId) && buttonId.Split('=').Length == 2)
+                data.Add("buttonId", buttonId.Split('=')[1]);
+            if (!string.IsNullOrEmpty(userInputText))
+                data.Add("textboxText", userInputText);
+            if (!string.IsNullOrEmpty(comboBoxSelectedItem))
+                data.Add("comboBoxSelectedItem", comboBoxSelectedItem);
+
+            ActiveNotifications.Remove(sender.Group + "_" + sender.Tag);
+            IPCDataQueue.Enqueue(IPC.KeyValuePairsToDataString("notify-activated", data));
         }
 
         private static void ToastNotificationManagerCompat_OnActivated(ToastNotificationActivatedEventArgsCompat e) {
+            // Update this
             ToastArguments args = ToastArguments.Parse(e.Argument);
             Dictionary<string, string> data = new Dictionary<string, string>(args.Count);
             foreach (KeyValuePair<string, string> valuePair in args) {
                 data[valuePair.Key] = valuePair.Value;
             }
 
-            foreach (string input in e.UserInput.Keys) {
-                data.Add("userInput:" + input, e.UserInput[input].ToString());
+            if (args.Contains("action") && args["action"].Split('=').Length == 2) {
+                string buttonId = args["action"].Split('=')[1];
+                data.Add("buttonId", buttonId);
             }
+            if (e.UserInput.ContainsKey("textInput"))
+                data.Add("textboxText", e.UserInput["textInput"] as string);
+            if (e.UserInput.ContainsKey("comboBox"))
+                data.Add("comboBoxSelectedItem", e.UserInput["comboBox"] as string);
 
             IPCDataQueue.Enqueue(IPC.KeyValuePairsToDataString("notify-activated", data));
-
             Console.WriteLine("[NeptuneRunner]: Toast activated. Args: " + e.Argument);
         }
 

@@ -94,26 +94,57 @@ class Notification extends EventEmitter {
 
 
     /**
-     * Notification actions (cancel, mark as read, etc)
-     * @typedef {object} NotificationAction
-     * @property {string} id - 'Name' of the action
-     * @property {string} text - Text displayed on the button or is inside the textbox
-     * @property {boolean} isTextbox - Type of action is a textbox
-     * @property {string} textboxHint - The hint for the textbox
+     * @typedef {Object} NotificationAction
+     * @property {string} id - The 'name' of the action
+     * @property {string} type - Button, textbox, or combobox
+     * @property {string} [contents] - The contents (title/text/name) of the button
+     * @property {string} [hintText] - Unique to text box and combobox, the "hint"
+     * @property {boolean} [allowGeneratedReplies] - Allow those generated smart replies (for textbox only)
+     * @property {string[]} [choices] - Choices the user gets (for combobox only)
      */
 
     /**
-     * Text based notification
-     * @typedef {object} TextNotification
-     * @property {string} text - The main contents of the notification (body)
-     * @property {string} subtext - This is additional data shown on notifications next to the application name ([icon] MyCoolApp - SubText)
-     * @property {NotificationAction[]} actions - Available actions (mark as read, cancel, etc) 
+     * @typedef {Object} TimerData
+     * @property {boolean} countingDown - Whether the chronometer is counting down (true) or up (false)
+     */
+
+    /**
+     * @typedef {Object} Progress
+     * @property {number} value - Current position
+     * @property {number} max - Maximum value
+     * @property {boolean} isIndeterminate - Indeterminate state of the progress bar
+     */
+
+    /**
+     * @typedef {Object} Contents
+     * @property {string} text - The text description
+     * @property {string} subtext - Subtext
+     * @property {string} image - Image in base64
+     * @property {NotificationAction[]} actions - Buttons or textboxes, things the user can interact with
+     * @property {TimerData} timerData - Data related to timer
+     * @property {Progress} progress - Progress data
+     */
+
+    /**
+     * @typedef {Object} NotificationData
+     * @property {string} action - What to do with this data, how to process (create, remove, update)
+     * @property {string} applicationName - The app that created the notification
+     * @property {string} applicationPackage - The package name of that application
+     * @property {number} notificationId - Notification ID provided by Android, used to refer to this notification on either end
+     * @property {string} notificationIcon - Base64 representation of the notification icon
+     * @property {string} title - Title of the notification
+     * @property {string} type - Notification type (standard, timer, progress, media, call)
+     * @property {Contents} contents - Content of the notification
+     * @property {boolean} onlyAlertOnce - Only play the sound, vibrate, and ticker if the notification is not already showing
+     * @property {string} priority - Can be "max", "high", "default", "low", and "min"
+     * @property {string} timestamp - When this item was displayed
+     * @property {boolean} isSilent - Display this / is silent
      */
 
 
     /**
      * Data provided by the client
-     * @typedef {object} NotificationData
+     * @typedef {object} NotificationDataLegacy
      * @property {string} action - What the do with this data, how to process (create, remove, update)
      * @property {string} applicationName - The app that created the notification (it's friendly name)
      * @property {string} applicationPackage - The package name of the application that created the notification
@@ -157,6 +188,8 @@ class Notification extends EventEmitter {
         }
         this.#id = data.notificationId;
     }
+
+
 
     /**
      * Pushes the notification out to the OS
@@ -208,22 +241,33 @@ class Notification extends EventEmitter {
 
             try {
                 let data = {
+                    action: this.data.action,
+                    id: this.data.notificationId,
+
                     clientId: this.#client.clientId,
                     clientName: this.#client.friendlyName,
-                    id: this.data.notificationId,
-                    action: this.data.action,
                     applicationName: this.data.applicationName,
-                    //notificationIcon: this.data.notificationIcon,
+                    
+                    notificationIcon: this.data.notificationIcon,
                     title: this.data.title,
-                    timestamp: this.data.timestamp,
-                    silent: this.data.isActive,
-                }
-                if (this.data.type == "text") {
-                    data.text = this.data.contents.text; // data.contents.subtext + "\n" +
-                    data.attribution = this.data.contents.subtext;
+                    type: this.data.type,
 
+                    onlyAlertOnce: this.data.onlyAlertOnce,
+                    priority: this.data.priority,
+                    timestamp: this.data.timestamp,
+                    isSilent: this.data.isActive,
                 }
+
+                data.text = this.data.contents.text;
+                data.subtext = this.data.contents.subtext;
+
+
                 this.#log.silly(data);
+
+                let contentsJsonString = JSON.stringify(this.data.contents);
+                let contentsBase64Data = Buffer.from(contentsJsonString, 'utf8').toString('base64');
+                let contentsDataString = `data:text/json;base64, ${contentsBase64Data}`;
+                data.contents = contentsDataString;
                 global.NeptuneRunnerIPC.sendData("notify-push", data);
 
                 let func = this.#IPCActivation;
@@ -245,20 +289,48 @@ class Notification extends EventEmitter {
         }
     }
 
+    /**
+     * Processes IPC activation (NeptuneRunner)
+     * @param {Notification} notification
+     * @param {import('./NeptuneRunner.js').PipeDataReceivedEventArgs} ipcData
+     */
     #IPCActivation(notification, ipcData) {
-        /** @type {import('./NeptuneRunner.js').PipeDataReceivedEventArgs} */
-        let data = ipcData;
+        let data = ipcData.toDictionary();
+
+        let actionString = data.Command == "notify-activated"? "activated" : "dismissed";
+        let dataPackage = {
+            action: actionString,
+            actionParameters: {
+                id: data.buttonId,
+                text: data.textboxText,
+                comboBoxChoice: data.comboBoxSelectedItem
+            }
+        }
+
         if (data.Command == "notify-activated") {
-            notification.activate();
+            notification.activate(dataPackage);
         } else if (data.Command == "notify-dismissed") {
-            notification.dismiss();
+            notification.dismiss(dataPackage);
         }
     }
 
 
     /**
+     * @typedef {object} NotificationActionParameters
+     * @property {string} [id] - Id of the button clicked
+     * @property {string} [text] - Optional text input (if action is a text box)
+     * @property {string} [comboBoxChoice] - Optional selected choice of the combo box.
+     */
+    /**
+     * @typedef {object} UpdateNotificationData
+     * @property {string} action - Activated or dismissed.
+     * @property {NotificationActionParameters} [actionParameters] - Data related to user input.
+     */
+
+
+    /**
      * The notification was activated (clicked). Causes class to emit 'activate'
-     * @param {string} [data] - User input from the notification
+     * @param {UpdateNotificationData} [data] - User input from the notification
      */
     activate(data) {
         this.#log.info("Activated! Data: " + data);
