@@ -1,15 +1,17 @@
 <resources>
     <string name="app_name">Neptune Client</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+
     <string name="instructionsExplanation">The following shows a list of instructions to follow to enable the reading of notifications.</string>
-    <string name="step1">1. Open the Settings App.</string>
-    <string name="step2">2. Click on &quot;Apps &amp; Notifications&quot;.</string>
-    <string name="step3">3. Click the &quot;Advanced&quot; drop down.</string>
-    <string name="step4">4. Click &quot;Special app access&quot;.</string>
-    <string name="step5">5. Click &quot;Notification access&quot;.</string>
-    <string name="step6">6. Click &quot;Neptune Client&quot;</string>
-    <string name="step7">7. Click the &quot;Allow notification access&quot; switch.</string>
-    <string name="step8">8. After enabling the setting, restart Neptune Client.</string>
-    <string name="openSettings">Open Settings</string>
+    <string name="notification_permission_step1">1. Open the Settings App</string>
+    <string name="notification_permission_step2">2. Search for "special app access"</string>
+    <string name="notification_permission_step3">3. Click "device &amp; app notifications"</string>
+    <string name="notification_permission_step4">4. Click &quot;Neptune Client&quot;</string>
+    <string name="notification_permission_step5">5. Enable the &quot;Allow notification access&quot; switch.</string>
+    <string name="notification_permission_step6">6. After enabling the setting, restart Neptune Client.</string>
+
+
+    <string name="notification_permission_title">Notification Access Required</string>
+    <string name="notification_permission_description">This app requires access to your notifications in order to function properly. To grant access, please enable the notification access permission for this app in the settings.</string>
+    <string name="open_settings">Open Settings</string>
 </resources>

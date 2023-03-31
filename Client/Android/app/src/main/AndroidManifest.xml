@@ -35,6 +35,9 @@
             android:name=".NotificationsActivity"
             android:exported="false"
             android:label = "Change synced notifications"/>
+        <activity android:name=".PermissionsActivity"
+            android:exported="false"
+            android:label="Permissions required"/>
         <activity
             android:name=".DeviceActivity"
             android:exported="false"

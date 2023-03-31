@@ -1,102 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".PermissionsActivity">
+    android:layout_height="match_parent">
 
     <TextView
-        android:id="@+id/permissionsExplanation"
+        android:id="@+id/title_textview"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/instructionsExplanation"
-        android:textSize="20sp"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:text="@string/notification_permission_title"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <LinearLayout
-        android:id="@+id/linearLayout"
-        android:layout_width="409dp"
-        android:layout_height="match_parent"
-        android:layout_marginStart="1dp"
-        android:layout_marginTop="50dp"
-        android:layout_marginEnd="1dp"
-        android:layout_marginBottom="300dp"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        android:padding="16dp"/>
+
+    <TextView
+        android:id="@+id/description_textview"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/notification_permission_description"
+        android:textSize="18sp"
+        app:layout_constraintTop_toBottomOf="@+id/title_textview"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/permissionsExplanation">
-
-        <TextView
-            android:id="@+id/step1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/step1"
-            android:textSize="20sp" />
-
-        <TextView
-            android:id="@+id/step2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/step2"
-            android:textSize="20sp" />
-
-        <TextView
-            android:id="@+id/step3"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/step3"
-            android:textSize="20sp" />
-
-        <TextView
-            android:id="@+id/step4"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/step4"
-            android:textSize="20sp" />
-
-        <TextView
-            android:id="@+id/step5"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/step5"
-            android:textSize="20sp" />
-
-        <TextView
-            android:id="@+id/step6"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/step6"
-            android:textSize="20sp" />
-
-        <TextView
-            android:id="@+id/step7"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/step7"
-            android:textSize="20sp" />
-
-        <TextView
-            android:id="@+id/step8"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/step8"
-            android:textSize="20sp" />
-    </LinearLayout>
+        app:layout_constraintEnd_toEndOf="parent"
+        android:padding="16dp"/>
 
     <Button
         android:id="@+id/openSettings"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="@string/open_settings"
+        android:textSize="18sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/description_textview" />
+
+    <ScrollView
+        android:id="@+id/scrollView2"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="16dp"
         android:layout_marginTop="128dp"
-        android:text="@string/openSettings"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/linearLayout"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintTop_toBottomOf="@+id/openSettings">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/step1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/notification_permission_step1"
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/step2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/notification_permission_step2"
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/step3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/notification_permission_step3"
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/step4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/notification_permission_step4"
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/step5"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/notification_permission_step5"
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/step6"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/notification_permission_step6"
+                android:textSize="20sp" />
+        </LinearLayout>
+    </ScrollView>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

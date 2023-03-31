@@ -55,7 +55,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     private TextView lblFriendlyName;
     private final HashMap<Server, View> serversShown = new HashMap<>();
 
-    public boolean isNotificationServiceEnabled() {
+    public static boolean isNotificationServiceEnabled() {
         String enabledNotificationListeners = Settings.Secure.getString(Context.getContentResolver(), "enabled_notification_listeners");
 
         String packageName = Context.getPackageName();
