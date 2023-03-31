@@ -109,8 +109,13 @@ class Client extends ClientConfig {
 	 */
 	setupConnectionManager(secret, miscData) {
 		if (this.#connectionManager !== undefined) {
-			this.#connectionManager.removeAllListeners();
-			this.#connectionManager.destroy(); // Close that one!
+			try {
+				this.#connectionManager.removeAllListeners();
+				this.#connectionManager.destroy(); // Close that one!
+			} catch (e) {}
+			finally {
+				this.#connectionManager = undefined;
+			}
 		}
 		
 		this.#connectionManager = new ConnectionManager(this, secret, miscData);
@@ -364,6 +369,8 @@ class Client extends ClientConfig {
 	 * @return {boolean}
 	 */
 	updateNotification(notification, metaData) {
+		this.log.silly("Updating notification: " + notification.id);
+
 		// not sure to be honest
 		if (!(notification instanceof Notification))
 			throw new TypeError("notification expected instance of Notification got " + (typeof notification).toString());
@@ -471,16 +478,17 @@ class Client extends ClientConfig {
 	 * @param {import('./Notification.js')} notification Notification received
 	 */
 	receiveNotification(notification) {
-		notification.on("dismissed", (metaData)=> {
+		let maybeThis = this;
+		notification.on("dismissed", (metaData) => {
 			if (metaData === undefined) { metaData = {}; }
 			metaData.action = "dismiss";
-			this.updateNotification(notification, metaData);
+			maybeThis.updateNotification(notification, metaData);
 		});
-		notification.on('activate', (metaData)=> {
+		notification.on('activate', (metaData) => {
 			// activate the notification on the client device
 			if (metaData === undefined) { metaData = {}; }
 			metaData.action = "activate";
-			this.updateNotification(notification, metaData);
+			maybeThis.updateNotification(notification, metaData);
 		});
 		this.#notificationManager.newNotification(notification);
 		notification.push();

@@ -2,8 +2,11 @@ package com.neptune.app.Backend;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.Person;
 import android.app.RemoteInput;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -11,18 +14,22 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.os.SystemClock;
 import android.service.notification.StatusBarNotification;
 import android.text.format.DateUtils;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.core.graphics.drawable.IconCompat;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -42,7 +49,7 @@ public class NeptuneNotification {
 
     private final StatusBarNotification statusBarNotification;
 
-    public int id;
+    public String id;
     public String applicationName;
     public String applicationPackageName;
 
@@ -135,49 +142,107 @@ public class NeptuneNotification {
 
 
 
-        this.id = statusBarNotification.getId();
+        this.id = statusBarNotification.getKey();
     }
 
-    public void activate(String actionId, String actionText) {
+    public void activate(JsonObject actionParameters) {
         try {
-            // actionId and actionText _can_ be null!
-            // be sure to check for that. (and if they're just empty?)
-            if (actionId != null && actionText != null) {
-                Bundle extras = this.statusBarNotification.getNotification().extras;
+            Notification notification = statusBarNotification.getNotification();
 
+            String buttonId = null;
+            String textContent = null;
+            String comboBoxChoice = null;
+
+            if (actionParameters.has("id"))
+                buttonId = NeptuneCrypto.convertBase64ToString(actionParameters.get("id").getAsString());
+            if (actionParameters.has("text"))
+                textContent = NeptuneCrypto.convertBase64ToString(actionParameters.get("text").getAsString());
+            if (actionParameters.has("comboBoxChoice"))
+                comboBoxChoice = NeptuneCrypto.convertBase64ToString(actionParameters.get("comboBoxChoice").getAsString());
+
+            boolean firedIntent = false;
+            if (buttonId != null || textContent != null || comboBoxChoice != null) {
                 try {
-                    int id = Integer.parseInt(actionId);
-                    if (extras.containsKey(Notification.EXTRA_COMPACT_ACTIONS)) {
-                        Notification.Action[] actions = (Notification.Action[]) extras.get(Notification.EXTRA_COMPACT_ACTIONS);
+                    if (notification.actions != null) {
+                        // Loop through the Notification.Action array and extract the button data
+                        for (int i = 0; i < notification.actions.length; i++) {
+                            // Check if the action has a RemoteInput (text box / combo box)
+                            RemoteInput[] remoteInputs = notification.actions[i].getRemoteInputs();
+                            if (remoteInputs != null && remoteInputs.length > 0 && (textContent != null || comboBoxChoice != null)) {
+                                for (RemoteInput remoteInput : remoteInputs) {
+                                    if (remoteInput == null)
+                                        continue;
 
-                        // Check if the actionId is within the bounds of the actions array
-                        if (id >= 0 && id < actions.length) {
-                            // Get the PendingIntent of the selected action
-                            PendingIntent actionIntent = actions[id].actionIntent;
+                                    Bundle inputBundle = new Bundle();
+                                    if (remoteInput.getAllowFreeFormInput() && textContent != null) {
+                                        // Text box
+                                        inputBundle.putCharSequence(remoteInput.getResultKey(), textContent);
+                                    } else if (textContent != null) {
+                                        // Predefined choices input
+                                        inputBundle.putCharSequence(remoteInput.getResultKey(), comboBoxChoice);
+                                    } else {
+                                        break;
+                                    }
 
-                            // Activate the action by calling its PendingIntent
-                            actionIntent.send();
+                                    // Create a new Intent with the input data
+                                    Intent fillInIntent = new Intent();
+                                    RemoteInput.addResultsToIntent(remoteInputs, fillInIntent, inputBundle);
+
+                                    // Trigger action with the input
+                                    if (notification.actions[i].actionIntent != null) {
+                                        notification.actions[i].actionIntent.send(context, 0, fillInIntent);
+                                        firedIntent = true;
+                                    }
+                                }
+                            } else {
+                                // check if the right button
+                                if (notification.actions[i].title.equals(buttonId) && !firedIntent && !buttonId.equalsIgnoreCase("reply")) {
+                                    // Click this button (action)
+                                    if (notification.actions[i].actionIntent != null) {
+                                        try {
+                                            notification.actions[i].actionIntent.send();
+                                            firedIntent = true;
+                                        } catch (PendingIntent.CanceledException e) {
+                                            // ??
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
-
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
+            } else {
+                // No buttonId, textContent, or comboBoxChoice, so "tap" the notification body
+                if (notification.contentIntent != null && !firedIntent) {
+                    notification.contentIntent.send();
+                }
             }
-
-            statusBarNotification.getNotification().contentIntent.send();
         } catch (PendingIntent.CanceledException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public void activate(String actionId) { activate(actionId, null); }
-    public void activate() { activate(null, null); }
+
+    public void activate() {
+        activate(null);
+    }
 
 
     public void dismiss() {
-        NotificationManagerCompat.from(this.context).cancel(id);
+        Intent intent = new Intent(context, NotificationListenerService.class);
+        intent.setAction(NotificationListenerService.ACTION_REMOVE_NOTIFICATION);
+        intent.putExtra(NotificationListenerService.EXTRA_NOTIFICATION_KEY, statusBarNotification.getKey());
+        context.startService(intent);
     }
+
+
+
+
 
     /**
      * Internal helper method to convert a drawable to a bitmap and then encoding that bitmap into a base64 data string.
@@ -196,6 +261,74 @@ public class NeptuneNotification {
         } catch (Exception ignored) {}
         return null;
     }
+
+    /**
+     * Jsonify a message.
+     * @param message Message data
+     * @return Message data, but as a JsonObject.
+     */
+    @NonNull
+    private JsonObject processNotificationMessage(Notification.MessagingStyle.Message message) {
+        JsonObject messageObject = new JsonObject();
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+
+                Person sender = message.getSenderPerson();
+
+
+                if (sender != null) {
+                    messageObject.addProperty("name", sender.getName().toString());
+
+                    Icon personIcon = sender.getIcon();
+                    if (personIcon != null) {
+                        Drawable personDrawable = personIcon.loadDrawable(this.context);
+                        String personString = encodeDrawableToDataString(personDrawable);
+                        if (personString != null) {
+                            messageObject.addProperty("icon", personString);
+                        }
+                    }
+                }
+
+            } else {
+                // No sender information
+                messageObject.addProperty("name", "Unknown");
+            }
+
+            messageObject.addProperty("text", message.getText().toString());
+
+
+            // Extract image from Uri attachment
+            Uri messageUri = null;
+
+            messageUri = message.getDataUri();
+            String mimeType = message.getDataMimeType();
+            if (messageUri != null && mimeType != null) {
+                if (messageUri.getScheme().equals(ContentResolver.SCHEME_CONTENT) ||
+                        messageUri.getScheme().equals(ContentResolver.SCHEME_FILE)) {
+                    Bitmap imageBitmap = null;
+                    try {
+                        imageBitmap = BitmapFactory.decodeStream(
+                                this.context.getContentResolver().openInputStream(messageUri));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    if (imageBitmap != null) {
+                        byte[] imageBitmapBytes = new byte[0];
+                        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+                            imageBitmap.compress(Bitmap.CompressFormat.JPEG, 75, byteArrayOutputStream);
+                            imageBitmapBytes = byteArrayOutputStream.toByteArray();
+                        } catch (Exception ignored) {
+                        }
+                        if (imageBitmapBytes.length > 0) {
+                            messageObject.addProperty("image", "data:image/jpeg;base64, " + NeptuneCrypto.convertBytesToBase64(imageBitmapBytes));
+                        }
+                    }
+                }
+            }
+        }
+        return messageObject;
+    }
+
 
     public JsonObject toJson() {
         // add image data (if the notification has one). Images should be encoded via base64 (use NeptuneCrypto for this)
@@ -220,7 +353,7 @@ public class NeptuneNotification {
         try {
             // This gets the icon and converts it to a base64 data stream
             Icon icon = notification.getSmallIcon();
-            Drawable iconDrawable = icon.loadDrawable(this.context);
+            Drawable iconDrawable = icon.loadDrawable(MainActivity.Context);
             String iconString = encodeDrawableToDataString(iconDrawable);
             if (iconString != null)
                 jsonObject.addProperty("notificationIcon", iconString);
@@ -275,6 +408,7 @@ public class NeptuneNotification {
                 (notification.category != null && (notification.category.equals(Notification.CATEGORY_PROGRESS)
                     || notification.category.equals(Notification.CATEGORY_STATUS)))) {
             jsonObject.addProperty("type", "progress");
+
             JsonObject progressData = new JsonObject();
             progressData.addProperty("value", extras.getInt(Notification.EXTRA_PROGRESS));
 
@@ -285,7 +419,7 @@ public class NeptuneNotification {
                 progressData.addProperty("isIndeterminate", extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false));
 
             // Add progress data to a parent JsonObject
-            jsonObject.add("progress", progressData);
+            contentsObject.add("progress", progressData);
         }
 
         // Phone call
@@ -298,25 +432,92 @@ public class NeptuneNotification {
             jsonObject.addProperty("type", "media");
         }
 
+
+        JsonArray conversationDataArray = new JsonArray();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (extras.containsKey(Notification.EXTRA_MESSAGES)) {
+                Parcelable[] messagesParcelable = extras.getParcelableArray(Notification.EXTRA_MESSAGES);
+                List<Notification.MessagingStyle.Message> messages = Notification.MessagingStyle.Message.getMessagesFromBundleArray(messagesParcelable);
+                if (messages != null && messages.size() > 0) {
+                    for (Notification.MessagingStyle.Message message : messages) {
+                        JsonObject messageObject = processNotificationMessage(message);
+                        if (messageObject != null)
+                            conversationDataArray.add(messageObject);
+                    }
+                }
+            }
+
+            if (statusBarNotification.getNotification().extras.containsKey(Notification.EXTRA_REMOTE_INPUT_HISTORY)) {
+                // Input history
+                CharSequence[] remoteInputHistory = statusBarNotification.getNotification().extras.getCharSequenceArray(NotificationCompat.EXTRA_REMOTE_INPUT_HISTORY);
+                if (remoteInputHistory != null) {
+                    for (int i = remoteInputHistory.length-1; i >= 0; i--) {
+                        CharSequence remoteInputText = remoteInputHistory[i];
+                        JsonObject messageObject = new JsonObject();
+
+                        if (remoteInputText.toString().split(":").length >= 2) {
+                            String[] data = remoteInputText.toString().split(":");
+                            messageObject.addProperty("name", data[0]);
+                            messageObject.addProperty("text", data[1]);
+                        } else {
+                            messageObject.addProperty("name", "You");
+                            messageObject.addProperty("text", remoteInputText.toString());
+                        }
+
+                        conversationDataArray.add(messageObject);
+                    }
+                }
+            }
+        } else {
+            if (extras.containsKey(NotificationCompat.EXTRA_TEXT_LINES)) {
+                CharSequence[] textLines = extras.getCharSequenceArray(NotificationCompat.EXTRA_TEXT_LINES);
+                if (textLines != null && textLines.length > 0) {
+                    String senderName = null;
+                    String messageText = null;
+                    for (CharSequence textLine : textLines) {
+                        String line = textLine.toString().trim();
+                        if (line.startsWith("• ")) {
+                            // This is a message text line
+                            messageText = line.substring(2);
+                        } else if (line.contains(": ")) {
+                            // This is a sender name and message text line
+                            String[] parts = line.split(": ", 2);
+                            senderName = parts[0];
+                            messageText = parts[1];
+                        }
+                    }
+                    if (senderName != null && messageText != null) {
+                        JsonObject conversationData = new JsonObject();
+                        conversationData.addProperty("name", senderName);
+                        conversationData.addProperty("text", messageText);
+                        conversationDataArray.add(conversationData);
+                    }
+                }
+            }
+        }
+        if (conversationDataArray.size() > 0) {
+            jsonObject.addProperty("type", "conversation");
+            contentsObject.add("conversationData", conversationDataArray);
+        }
+
+
+
         // Actions (buttons, text box)
-        // Needs work!
         JsonArray actionsArray = new JsonArray();
         PendingIntent contentIntent = notification.contentIntent;
-        if (extras.containsKey(Notification.EXTRA_COMPACT_ACTIONS)) {
+        if (notification.actions != null) {
             try {
-                // Get the Notification.Action array from the extras
-                Notification.Action[] actions = (Notification.Action[]) extras.get(Notification.EXTRA_COMPACT_ACTIONS);
 
                 // Loop through the Notification.Action array and extract the button data
-                for (int i = 0; i < actions.length; i++) {
+                for (int i = 0; i < notification.actions.length; i++) {
                     JsonObject action = new JsonObject();
                     action.addProperty("id", String.valueOf(i)); // Action id
                     action.addProperty("type", "button");
-                    action.addProperty("contents", actions[i].title.toString());
+                    action.addProperty("contents", notification.actions[i].title.toString());
                     actionsArray.add(action);
 
                     // Check if the action has a RemoteInput (text box / combo box)
-                    RemoteInput[] remoteInputs = actions[i].getRemoteInputs();
+                    RemoteInput[] remoteInputs = notification.actions[i].getRemoteInputs();
                     if (remoteInputs != null && remoteInputs.length > 0) {
                         for (RemoteInput remoteInput : remoteInputs) {
                             if (remoteInput == null)
@@ -326,12 +527,12 @@ public class NeptuneNotification {
                             inputAction.addProperty("id", remoteInput.getResultKey());
                             if (remoteInput.getAllowFreeFormInput()) {
                                 // Text box
-                                inputAction.addProperty("type", "text");
+                                inputAction.addProperty("type", "textbox");
                                 inputAction.addProperty("hint", remoteInput.getLabel().toString());
 
                                 // Automated responses allowed?
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                    inputAction.addProperty("allowGeneratedReplies", actions[i].getAllowGeneratedReplies());
+                                    inputAction.addProperty("allowGeneratedReplies", notification.actions[i].getAllowGeneratedReplies());
                                 }
                             } else {
                                 // Predefined choices input
@@ -351,6 +552,8 @@ public class NeptuneNotification {
                         }
                     }
                 }
+
+                contentsObject.add("actions", actionsArray);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -396,6 +599,9 @@ public class NeptuneNotification {
 
         // Silent?
         jsonObject.addProperty("isActive", !isSilent);
+
+        if (!jsonObject.has("type"))
+            jsonObject.addProperty("type", "standard");
 
         return jsonObject;
     }

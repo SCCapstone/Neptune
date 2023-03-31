@@ -34,9 +34,9 @@ public class ConfigurationManager {
      * @param item
      * @return
      */
-    public boolean removeConfigItemFromCache(ConfigItem item) {
+    public void removeConfigItemFromCache(ConfigItem item) {
         if (isDestroying || !this.cachedItems.containsKey(item.getFileName()))
-            return true;
+            return;
 
         Log.i(TAG, "Removing: " + item.getFileName());
 
@@ -44,11 +44,11 @@ public class ConfigurationManager {
         for (Map.Entry<String,ConfigItem> config : this.cachedItems.entrySet()) {
             if (filePath.equalsIgnoreCase(config.getValue().getFileName())) {
                 this.cachedItems.remove(config.getKey());
-                return true;
+                return;
             }
         }
 
-        return false;
+        return;
     }
 
     /**

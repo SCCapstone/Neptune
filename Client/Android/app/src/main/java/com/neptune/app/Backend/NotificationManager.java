@@ -2,6 +2,7 @@ package com.neptune.app.Backend;
 
 import androidx.annotation.NonNull;
 
+import com.google.gson.JsonObject;
 import com.neptune.app.MainActivity;
 
 import java.util.HashMap;
@@ -9,7 +10,7 @@ import java.util.HashMap;
 
 public class NotificationManager {
 
-    private final HashMap<Integer, NeptuneNotification> notifications = new HashMap<>();
+    private final HashMap<String, NeptuneNotification> notifications = new HashMap<>();
 
     public NotificationManager() {}
 
@@ -31,7 +32,7 @@ public class NotificationManager {
      * Pushes a notification to all servers.
      * @param id Id of the notification to push to servers.
      */
-    public void pushNotification(int id) {
+    public void pushNotification(String id) {
         if (notifications.containsKey(id)) {
             NeptuneNotification notification = notifications.get(id);
             if (notification != null)
@@ -42,14 +43,13 @@ public class NotificationManager {
     /**
      * Activates the notification on this device (simulates a click).
      * @param id Id of the notification to activate.
-     * @param actionId Name of a button activated.
-     * @param actionText Text typed into the notification text box.
+     * @param actionParameters Details about activating the notification. Includes "id" (button that was clicked's text), "text" (text input) and "comboBoxChoice".
      */
-    public void activateNotification(int id, String actionId, String actionText) {
+    public void activateNotification(String id, JsonObject actionParameters) {
         if (notifications.containsKey(id)) {
             NeptuneNotification notification = notifications.get(id);
             if (notification != null)
-                notification.activate(actionId, actionText);
+                notification.activate(actionParameters);
         }
     }
     /**
@@ -68,7 +68,7 @@ public class NotificationManager {
      * Dismisses or deletes a notification on this device (simulates a swipe on the notification).
      * @param id Id of the notification to dismiss.
      */
-    public void dismissNotification(int id) {
+    public void dismissNotification(String id) {
         if (notifications.containsKey(id)) {
             NeptuneNotification notification = notifications.get(id);
             if (notification != null)
@@ -81,7 +81,7 @@ public class NotificationManager {
      * Tells the server to delete a notification.
      * @param id Id of the notification to delete.
      */
-    public void deleteNotification(int id) {
+    public void deleteNotification(String id) {
         if (notifications.containsKey(id)) {
             if (notifications.get(id) != null)
                 MainActivity.serverManager.processNotification(notifications.get(id), Server.SendNotificationAction.DELETE);

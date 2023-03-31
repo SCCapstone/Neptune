@@ -118,9 +118,7 @@ public class ConfigItem {
             throw e;
 
         } finally {
-            String contents = contentsBuilder.toString();
-            return contents;
-
+            return contentsBuilder.toString();
         }
     }
 

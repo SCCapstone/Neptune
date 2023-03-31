@@ -99,7 +99,7 @@ class NeptuneConfig extends ConfigItem {
 	 * Friendly device name
 	 * @type {string}
 	 */
-	friendlyName = os.hostname();
+	friendlyName = "MyServer";
 
 
 	/**

@@ -15,13 +15,29 @@ public class RenameDialog extends AppCompatDialogFragment {
     private EditText editName;
     private RenameDialogListener listener;
 
+    private String title = "Change client name";
+    private String hintText = "Client name";
+
+    public RenameDialog() {
+        super();
+    }
+
+    public RenameDialog(String title, String hintText) {
+        super();
+        this.title = title;
+        this.hintText = hintText;
+    }
+
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         LayoutInflater inflater = getActivity().getLayoutInflater();
         View view = inflater.inflate(R.layout.rename_dialog, null);
 
-        builder.setView(view).setTitle("Change server device name").setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+        editName = view.findViewById(R.id.editDevName);
+        editName.setText(hintText);
+
+        builder.setView(view).setTitle(title).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
 
@@ -33,8 +49,6 @@ public class RenameDialog extends AppCompatDialogFragment {
                 listener.applyTexts(device);
             }
         });
-
-        editName = view.findViewById(R.id.editDevName);
 
         return builder.create();
     }

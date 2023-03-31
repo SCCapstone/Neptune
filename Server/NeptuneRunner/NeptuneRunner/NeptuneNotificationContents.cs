@@ -23,6 +23,8 @@ namespace NeptuneRunner {
         /// </summary>
         public NeptuneNotificationAction[] Actions;
 
+        public NeptuneNotificationConversationData[] ConversationData;
+
         /// <summary>
         /// Data related to timer
         /// </summary>
@@ -51,6 +53,50 @@ namespace NeptuneRunner {
                     _parent.SetImageUri(data["image"].GetString());
                 }
 
+
+
+                // Conversation data
+                if (data.ContainsKey("conversationData") && data["conversationData"].ValueType == JsonValueType.Array) {
+                    var conversationDataList = new List<NeptuneNotificationConversationData>();
+
+                    JsonArray conversationDataArray = data["conversationData"].GetArray();
+
+                    foreach (var conversationDataJsonValue in conversationDataArray) {
+                        if (conversationDataJsonValue.ValueType != JsonValueType.Object) {
+                            continue;
+                        }
+
+                        var conversationData = new NeptuneNotificationConversationData();
+
+                        JsonObject conversationDataJsonObject = conversationDataJsonValue.GetObject();
+
+                        // Set name and message fields
+                        if (conversationDataJsonObject.ContainsKey("name") && conversationDataJsonObject["name"].ValueType == JsonValueType.String)
+                            conversationData.Name = conversationDataJsonObject["name"].GetString();
+
+                        if (conversationDataJsonObject.ContainsKey("text") && conversationDataJsonObject["text"].ValueType == JsonValueType.String)
+                            conversationData.Text = conversationDataJsonObject["text"].GetString();
+
+                        // Set icon field
+                        if (conversationDataJsonObject.ContainsKey("icon") && conversationDataJsonObject["icon"].ValueType == JsonValueType.String) {
+                            string iconData = conversationDataJsonObject["icon"].GetString();
+                            _parent.SetConversationIcon(iconData, conversationData);
+                        }
+
+                        // Set image field
+                        if (conversationDataJsonObject.ContainsKey("image") && conversationDataJsonObject["image"].ValueType == JsonValueType.String) {
+                            string imageData = conversationDataJsonObject["image"].GetString();
+                            _parent.SetConversationImage(imageData, conversationData);
+                        }
+
+                        conversationDataList.Add(conversationData);
+                    }
+
+                    ConversationData = conversationDataList.ToArray();
+                }
+
+
+                // Actions
                 if (data.ContainsKey("actions") && data["actions"].ValueType == JsonValueType.Array) {
                     var actions = new List<NeptuneNotificationAction>();
 
@@ -129,11 +175,45 @@ namespace NeptuneRunner {
                     if (progressJsonObject.ContainsKey("isIndeterminate")) {
                         ProgressBarData.IsIndeterminate = progressJsonObject["isIndeterminate"].GetBoolean();
                     }
+
+                    if (ProgressBarData.Max == 0 && ProgressBarData.Value == 0) {
+                        //_parent.Type = NeptuneNotificationType.Standard;
+                    } else {
+                        ProgressBarData.Status = Text;
+                        _parent.Type = NeptuneNotificationType.Progress;
+                    }
                 }
             } catch (Exception e) {
                 Console.WriteLine(e);
             }
         }
+    }
+
+    /// <summary>
+    /// Represents a message in a conversation.
+    /// </summary>
+    public class NeptuneNotificationConversationData {
+        public Guid ImageGuid = Guid.NewGuid();
+
+        /// <summary>
+        /// Gets or sets the name of the message sender.
+        /// </summary>
+        public string Name;
+
+        /// <summary>
+        /// Gets or sets the icon of the message sender in base64-encoded JPEG format.
+        /// </summary>
+        public Uri Icon;
+
+        /// <summary>
+        /// Gets or sets the contents of the message.
+        /// </summary>
+        public string Text;
+
+        /// <summary>
+        /// Gets or sets the image attached to the message in base64-encoded format.
+        /// </summary>
+        public Uri Image;
     }
 
     public class NeptuneNotificationTimerData {
@@ -174,7 +254,8 @@ namespace NeptuneRunner {
         /// </summary>
         /// <returns>The percentage of the given value relative to the maximum value.</returns>
         public double GetPrecentage() {
-            return Math.Min(Max, Value) / Math.Max(Max, Value);
+            if (Value == Max) return 1;
+            return (double)Math.Min(Max, Value) / Math.Max(Max, Value);
         }
 
         /// <summary>
@@ -186,11 +267,11 @@ namespace NeptuneRunner {
         /// <returns>An AdaptiveProgressBar object.</returns>
         public AdaptiveProgressBar BuildProgressBar(string status = "", string title = null, string valueString = null) {
             double progress = GetPrecentage();
-            AdaptiveProgressBarValue progressBarValue = AdaptiveProgressBarValue.FromValue(progress);
-            progressBarValue.IsIndeterminate = IsIndeterminate;
+            BindableProgressBarValue progressBarValue = new BindableProgressBarValue("progressValue");
+            //progressBarValue.IsIndeterminate = IsIndeterminate;
 
             AdaptiveProgressBar progressBar = new AdaptiveProgressBar() {
-                Value = progressBarValue.Value,
+                Value = progressBarValue,
                 Status = !string.IsNullOrEmpty(Status) ? Status : status,
             };
 

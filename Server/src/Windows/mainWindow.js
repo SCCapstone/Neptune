@@ -624,12 +624,12 @@ class thisTest extends NeptuneWindow {
 							{
 								"id": "btnLeft",
 								"type": "button",
-								"contents": "Left button"
+								"contents": "Reply"
 							},
 							{
 								"id": "btnRight",
 								"type": "button",
-								"contents": "Right button"
+								"contents": "Button"
 							},
 							{
 								"id": "textbox", // The 'name' of the action

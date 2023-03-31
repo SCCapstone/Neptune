@@ -33,8 +33,6 @@ import java.util.UUID;
 
 
 public class DeviceActivity extends AppCompatActivity {
-    //public Button connect;
-    //public Button temp;
     public ConnectionManager cm;
     private Button delete;
     private Button btnSave;
@@ -297,59 +295,6 @@ public class DeviceActivity extends AppCompatActivity {
                 }
             }
         });
-
-        /*connect = (Button) findViewById(R.id.connec);
-        connect.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                cm.initiateConnection();
-            }
-        });
-
-        temp = (Button) findViewById(R.id.tba);
-        temp.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-            }
-        });*/
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-    }
-
-    public void onDialogPositiveClick(DialogFragment rename) {
-
-    }
-
-    public void onDialogNegativeClick(DialogFragment rename) {
-
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle bundle) {
-        super.onSaveInstanceState(bundle);
-    }
-
-    public void showDeleteDialog() {
-
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
     }
 
     @Override

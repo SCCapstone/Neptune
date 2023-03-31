@@ -13,6 +13,8 @@ using Windows.Foundation;
 using Windows.UI.Notifications;
 using System.Drawing;
 using System.Drawing.Imaging;
+using Windows.Media.Core;
+using System.Runtime.InteropServices;
 
 namespace NeptuneRunner {
     public class NeptuneNotification {
@@ -26,6 +28,14 @@ namespace NeptuneRunner {
         /// </summary>
         private bool _hasBeenDisplayed = false;
 
+        /// <summary>
+        /// Used when updating progress bar data, do not touch.
+        /// </summary>
+        private uint _updateIncrementor = 1;
+        /// <summary>
+        /// Last time the <see cref="Update()"/> method was called. Enforces a 1 second rate limit.
+        /// </summary>
+        private DateTime _lastUpdateTime = DateTime.MinValue;
 
         /// <summary>
         /// The toast's tag (id).
@@ -95,19 +105,12 @@ namespace NeptuneRunner {
         private Uri _imageUri;
 
 
-        /// <summary>
-        /// If <see cref="Type"/> is a timer, this is the direction of the timer.
-        /// </summary>
-        public bool TimerCountingDown = true;
-
-        public string ProgressValue;
-        public string ProgressMax;
-        public bool ProgressIsIndeterminate;
-
         public bool OnlyAlertOnce = false;
         public string Priority;
         public DateTime TimeStamp;
         public bool IsSilent = false; // Notification pushed to action center
+
+
 
         // Private holders
         public List<ToastButton> Buttons = new List<ToastButton>();
@@ -196,8 +199,9 @@ namespace NeptuneRunner {
                 Directory.CreateDirectory(tempDirectory);
 
                 // Save the image
-                string filename = string.IsNullOrEmpty(Id) ? id : Id + "_" + id;
-                string imagePath = Path.Combine(tempDirectory, $"{filename}.{fileType}");
+                id = string.IsNullOrEmpty(Id) ? id : Id + "_" + id;
+                string sanitizedId = string.Join("_", id.Split(Path.GetInvalidFileNameChars()));
+                string imagePath = Path.Combine(tempDirectory, $"{sanitizedId}.{fileType}");
                 ImageFormat imageFormat = ImageFormat.Bmp;
                 switch (fileType.ToLower()) {
                     case "jpg":
@@ -275,6 +279,35 @@ namespace NeptuneRunner {
                 _imageUri = SaveImageFromDataString(dataString, "image");
             } catch (Exception) { }
         }
+
+
+        /// <summary>
+        /// Saves the image of a person in a conversation and sets the <see cref="NeptuneNotificationConversationData.Icon"/> Uri to the saved image
+        /// given the image data (<paramref name="dataString"/>) and conversation data (<paramref name="conversationData"/>).
+        /// </summary>
+        /// <param name="dataString">Encoded image data in the format of <c>data:image/*;base64, data...</c>.</param>
+        /// <param name="conversationData"></param>
+        public void SetConversationIcon(string dataString, NeptuneNotificationConversationData conversationData) {
+            try {
+                if (conversationData != null && !string.IsNullOrEmpty(conversationData.Name)) {
+                    conversationData.Icon = SaveImageFromDataString(dataString, conversationData.Name);
+                }
+            } catch (Exception) { }
+        }
+
+        /// <summary>
+        /// Saves the image of a message in a conversation and sets the <see cref="NeptuneNotificationConversationData.Icon"/> Uri to the saved image
+        /// given the image data (<paramref name="dataString"/>) and conversation data (<paramref name="conversationData"/>).
+        /// </summary>
+        /// <param name="dataString">Encoded image data in the format of <c>data:image/*;base64, data...</c>.</param>
+        /// <param name="conversationData"></param>
+        public void SetConversationImage(string dataString, NeptuneNotificationConversationData conversationData) {
+            try {
+                if (conversationData != null && !string.IsNullOrEmpty(conversationData.Name)) {
+                    conversationData.Icon = SaveImageFromDataString(dataString, conversationData.ImageGuid.ToString());
+                }
+            } catch (Exception) { }
+        }
         #endregion
 
         /// <summary>
@@ -309,7 +342,7 @@ namespace NeptuneRunner {
 
         #region Toast methods
         public void AddButton(string id, string text, bool forTextbox) {
-            ToastButton button = new ToastButton(text, "action=" + id);
+            ToastButton button = new ToastButton(text, "action=" + text);
             if (forTextbox && TextBox != null) {
                 button.TextBoxId = TextBox.Id;
             }
@@ -353,16 +386,63 @@ namespace NeptuneRunner {
             builder.AddArgument("clientId", ClientId);
             builder.AddArgument("id", Id);
 
-            builder.AddText(Title, AdaptiveTextStyle.Title);
+            /*if (!string.IsNullOrEmpty(ApplicationPackageName) && !string.IsNullOrEmpty(ApplicationName) && ApplicationName != ApplicationPackageName)
+                builder.AddHeader(ApplicationPackageName, ApplicationName, ApplicationPackageName);*/
+            builder.AddHeader(ClientId, ClientName, "");
 
-            if (_imageUri != null) {
-                if (File.Exists(_imageUri.LocalPath))
-                    builder.AddInlineImage(_imageUri);
-            }
+            // Set the notification icon
+            bool iconSet = false;
+            bool addedImage = false; // Add only ONE image!
 
-            if (!string.IsNullOrWhiteSpace(Contents.Text))
+            if (!string.IsNullOrWhiteSpace(Title))
+                builder.AddText(Title, hintMaxLines: 1);
+            if (!string.IsNullOrWhiteSpace(Contents.Text)
+                    && Contents.ConversationData == null
+                    && (Type != NeptuneNotificationType.Progress || Contents.ProgressBarData.GetPrecentage() == 1))
                 builder.AddText(Contents.Text, AdaptiveTextStyle.Caption);
 
+
+            // Add message data to the toast
+            if (Contents.ConversationData != null) {
+                List<string> messages = new List<string>();
+                bool setUserIcon = false; // Set the icon on the FIRST instance of an icon.
+
+                foreach (var conversation in Contents.ConversationData) {
+                    if (conversation == null || string.IsNullOrEmpty(conversation.Text))
+                        continue; // No message to add ...
+
+                    string message = conversation.Text;
+
+                    if (conversation.Name != null) { // Add person's name?
+                        if (conversation.Icon != null && conversation.Icon.IsFile && !setUserIcon) { // Profile picture set?
+                            if (File.Exists(conversation.Icon.LocalPath)) { // Is actually saved to disk?
+                                // Add profile picture (override icon)
+                                builder.AddAppLogoOverride(conversation.Icon, ToastGenericAppLogoCrop.Circle, conversation.Name + "'s profile picture.");
+
+                                setUserIcon = iconSet = true;
+                            }
+                        }
+
+                        message = conversation.Name + ": " + message;
+
+                        messages.Add(message);
+                    }
+
+                    if (conversation.Image != null && conversation.Image.IsFile && !addedImage) {
+                        builder.AddInlineImage(conversation.Image);
+                        addedImage = true;
+                    }
+                }
+
+                int startIndex = 0;
+                if (messages.Count > 3)
+                    startIndex = messages.Count - 2;
+                try {
+                    for (int i = startIndex; i < messages.Count; i++) {
+                        builder.AddText(messages[i]);
+                    }
+                } catch (Exception) { }
+            }
 
             // Add actions
             if (Contents.Actions != null) {
@@ -370,8 +450,16 @@ namespace NeptuneRunner {
             }
 
             if (Buttons != null) {
+                bool setReplyButton = false;
                 for (int i = 0; i < Buttons.Count && i <= 5; i++) {
-                    builder.AddButton(Buttons[i]);
+                    if (Buttons[i] != null) {
+                        bool containsReplyWord = Regex.IsMatch(Buttons[i].Content, @"\b(reply|send|respond)\b", RegexOptions.IgnoreCase);
+                        if (!setReplyButton && containsReplyWord && TextBox != null) {
+                            Buttons[i].TextBoxId = TextBox.Id;
+                            setReplyButton = true;
+                        }
+                        builder.AddButton(Buttons[i]);
+                    }
                 }
             }
             if (TextBox != null) {
@@ -396,15 +484,14 @@ namespace NeptuneRunner {
             }
 
             // Progress bar?
-            if (Type == NeptuneNotificationType.Progress) {
+            if (Type == NeptuneNotificationType.Progress && Contents.ProgressBarData.GetPrecentage() != 1) {
                 AdaptiveProgressBar progressBar = Contents.ProgressBarData.BuildProgressBar();
-                builder.AddProgressBar(progressBar.Title, Contents.ProgressBarData.GetPrecentage(), Contents.ProgressBarData.IsIndeterminate, progressBar.ValueStringOverride, progressBar.Status);
+                builder.AddVisualChild(progressBar);
             }
 
-            if (string.IsNullOrEmpty(ApplicationName))
-                builder.AddAttributionText(ClientName);
-            else
-                builder.AddAttributionText(ClientName + ": " + ApplicationName);
+            if (!string.IsNullOrEmpty(ApplicationName)) {
+                builder.AddAttributionText(ApplicationName + (!string.IsNullOrEmpty(Contents.Subtext)? ": " + Contents.Subtext : ""));
+            }
 
             if (TimeStamp != DateTime.MinValue)
                 builder.AddCustomTimeStamp(TimeStamp);
@@ -421,6 +508,20 @@ namespace NeptuneRunner {
             }
 
 
+            // Add the application icon
+            if (!iconSet && IconUri != null && IconUri.IsFile) { // Profile picture set?
+                if (File.Exists(IconUri.LocalPath)) { // Is actually saved to disk?
+                                                      // Add profile picture (override icon)
+                    builder.AddAppLogoOverride(IconUri, ToastGenericAppLogoCrop.Circle, "Icon for " + ApplicationName);
+                }
+            }
+
+            // Add notification image
+            if (_imageUri != null && !addedImage) {
+                if (File.Exists(_imageUri.LocalPath))
+                    builder.AddInlineImage(_imageUri);
+            }
+
             return builder.GetXml();
         }
 
@@ -434,7 +535,9 @@ namespace NeptuneRunner {
             };
 
             toast.Dismissed += (ToastNotification sender, ToastDismissedEventArgs args) => {
-                Dismissed.Invoke(sender, args);
+                Program.Notification_Dismissed(sender, args);
+                string aaaa = this.Id;
+                //Dismissed.Invoke(sender, args);
             };
 
             toast.Failed += (ToastNotification sender, ToastFailedEventArgs args) => {
@@ -470,6 +573,12 @@ namespace NeptuneRunner {
                     toast.SuppressPopup = true; // Already displayed, only do that once
             }
 
+            if (Type == NeptuneNotificationType.Progress) {
+                // Set progress value
+                toast.Data = new NotificationData();
+                toast.Data.Values["progressValue"] = Contents.ProgressBarData.GetPrecentage().ToString();
+            }
+
             toast.ExpiresOnReboot = true;
             return toast;
         }
@@ -498,8 +607,9 @@ namespace NeptuneRunner {
         }
 
         public async void Push() {
+            ToastNotification toast = null;
             try {
-                ToastNotification toast = GetToastNotification();
+                toast = GetToastNotification();
                 var notifier = Program.ToastNotifier;
                 if (ClientName != null && ClientName != "") {
                     try {
@@ -521,20 +631,61 @@ namespace NeptuneRunner {
                     }
                 } else
                     Program.ToastNotifier.Show(toast);
-            } catch (Exception) { }
+            } catch (Exception e) {
+                if (e.Message == "The notification has already been posted.\r\n\r\nThe notification has already been posted.\r\n") {
+                    if (toast != null) {
+                        try {
+                            Program.ToastNotifier.Update(toast.Data, Id, ClientId);
+                        } catch (Exception ee) {
+                            string breakPointaa = ee.Message;
+                        }
+                    }
+                }
+                string breakPointa = e.Message;
+            }
         }
 
         public NotificationUpdateResult Update() {
             try {
-                return Program.ToastNotifier.Update(GetToastNotification().Data, Id);
-            } catch (Exception) {
+
+                if (Type == NeptuneNotificationType.Progress) {
+                    if (Contents.ProgressBarData.GetPrecentage() == 1) {
+                        // Done!
+                        ToastNotificationManager.GetDefault().History.Remove(Id, ClientId, TaskBar.ApplicationId);
+                        return NotificationUpdateResult.Succeeded;
+                    } else {
+                        var data = new NotificationData {
+                            SequenceNumber = _updateIncrementor,
+                        };
+                        _updateIncrementor++;
+
+                        data.Values["progressValue"] = Contents.ProgressBarData.GetPrecentage().ToString();
+                        return Program.ToastNotifier.Update(data, Id, ClientId);
+                    }
+                } else {
+                    return Program.ToastNotifier.Update(GetToastNotification().Data, Id, ClientId);
+                }
+            } catch (Exception e) {
                 return NotificationUpdateResult.Failed;
+            }
+        }
+
+        /// <summary>
+        /// Removes any images that were saved to be displayed on this notification.
+        /// </summary>
+        public void DeleteImages() {
+            foreach (KeyValuePair<string, string> key in _imagePathsById) {
+                try {
+                    DeleteImageById(key.Key);
+                } catch (Exception) { }
             }
         }
 
         public void Delete() {
             try {
                 ToastNotificationManager.GetDefault().History.Remove(Id, ClientId, TaskBar.ApplicationId);
+
+                DeleteImages();
             } catch (Exception) { }
         }
     }

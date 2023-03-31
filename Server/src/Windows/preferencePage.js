@@ -6,7 +6,6 @@
  *
  *     Capstone Project 2022
  * 
- *     About Window
  */
 
 const NodeGUI = require("@nodegui/nodegui");
@@ -61,7 +60,12 @@ class preferencePage extends NeptuneWindow {
             statusbar.setObjectName("statusbat");
             this.setStatusBar(statusbar);
 
-            applyButton.addEventListener('clicked', (checked) => global.Neptune.config.friendlyName = newNameInput.text());
+            applyButton.addEventListener('clicked', (checked) => {
+                global.Neptune.config.friendlyName = newNameInput.text();
+                global.Neptune.clientManager.getClients().forEach(client => {
+                    client.syncConfiguration();
+                });
+            });
             closeWindowButton.addEventListener('clicked',  (checked) => this.close());
         }
         catch (e) {

@@ -550,7 +550,7 @@ POST Data:
     "notificationIcon": "base64:image", // Base64 representation of the notification icon
 
     "title": "Testing", // Title of the notification
-    "type": "text", // Notification type (standard, timer, progress, media, call)
+    "type": "text", // Notification type (standard, timer, progress, media, call, conversation)
 
     "contents": { // Content of the notification
         "text": "Just a basic notification", // The text description
@@ -582,6 +582,15 @@ POST Data:
                 ],
             }
         ],
+
+        "conversationData": [
+            {
+                "name": "Beeg Yoshi",
+                "icon": "data:image/jpeg;base64, abcdef...", // User's picture
+                "message": "ahh you know, just sitting here.", // Contents of the message
+                "image": "data:image/jpeg;base64, abcdef..." // Image in the message
+            },
+        ]
 
         "timerData": {
             "countingDown": true  // Whether the chronometer is counting down (true) or up (false) (default true)

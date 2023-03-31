@@ -228,24 +228,21 @@ public class Server extends ServerConfig {
                     if (apiDataPackage.isJsonObject()) {
                         JsonObject data = apiDataPackage.jsonObject();
                         String applicationPackage = data.get("applicationPackage").getAsString();
-                        int notificationId = data.get("notificationId").getAsInt();
+                        String notificationId = data.get("notificationId").getAsString();
 
                         // Whether we're activating the notification (clicking it) or dismissing it
                         boolean activateNotification = (data.get("action").getAsString().equalsIgnoreCase("activate"));
 
                         String actionId = null; // If an input (button/text box) was activated (clicked), this would be the name of said input
                         String actionText = null; // If there was any text entered into the notification (pass this to the notification)
+                        JsonObject actionParameters = new JsonObject();
                         if (data.has("actionParameters")) {
-                            JsonObject actionParameters = data.get("actionParameters").getAsJsonObject();
-                            if (actionParameters.has("actionId"))
-                                actionId = actionParameters.get("actionId").getAsString();
-                            if (actionParameters.has("actionText"))
-                                actionText = actionParameters.get("actionText").getAsString();
+                            actionParameters = data.get("actionParameters").getAsJsonObject();
                         }
 
                         if (activateNotification) {
                             // Click the notification / button (if actionId present and valid)
-                            MainActivity.notificationManager.activateNotification(notificationId, actionId, actionText);
+                            MainActivity.notificationManager.activateNotification(notificationId, actionParameters);
 
                         } else {
                             // Dismiss the notification
@@ -392,6 +389,8 @@ public class Server extends ServerConfig {
         data.add("notificationSettings", notificationSettings);
         data.add("clipboardSettings", clipboardSettings);
         data.add("fileSharingSettings", fileSharingSettings);
+
+        data.addProperty("friendlyName", MainActivity.ClientConfig.friendlyName);
 
         String apiUrl = "/api/v1/server/configuration/set";
         if (isResponse)
@@ -554,15 +553,17 @@ public class Server extends ServerConfig {
 
 
     public void unpair() {
-        if (pairKey != null) {
-            if (!pairKey.isEmpty()) {
-                JsonObject data = new JsonObject();
-                data.addProperty("pairId", this.pairId.toString());
-                data.addProperty("clientId", MainActivity.ClientConfig.clientId.toString());
-                this.connectionManager.sendRequestAsync("/api/v1/server/unpair", data);
+        try {
+            if (pairKey != null) {
+                if (!pairKey.isEmpty()) {
+                    JsonObject data = new JsonObject();
+                    data.addProperty("pairId", this.pairId.toString());
+                    data.addProperty("clientId", MainActivity.ClientConfig.clientId.toString());
+                    this.connectionManager.sendRequestAsync("/api/v1/server/unpair", data);
+                }
             }
-        }
-        this.connectionManager.destroy(true);
+        } catch (Exception ignored) {}
+        try { this.connectionManager.destroy(true); } catch (Exception ignored) {}
         this.delete();
     }
 

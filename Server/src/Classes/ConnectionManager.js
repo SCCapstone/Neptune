@@ -191,7 +191,8 @@ class ConnectionManager extends EventEmitter {
 	 * @return {void}
 	 */
 	destroy(force) {
-		this.#webSocket.close(1001, "destroy");
+		if (this.#webSocket !== undefined)
+			this.#webSocket.close(1001, "destroy");
 		this.removeAllListeners();
 	}
 		

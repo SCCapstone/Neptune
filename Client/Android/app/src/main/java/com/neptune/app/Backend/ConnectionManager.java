@@ -211,6 +211,14 @@ public class ConnectionManager {
             Response response = HTTPClient.newCall(postRequest).execute();
             Log.d(TAG, "Firing off HTTP request.");
             Log.i("Connection-Manager", "Got code: " + response.code());
+            if (response.code() == 401) {
+                connected = false;
+                hasNegotiated = false;
+                initiateConnection();
+
+                response = HTTPClient.newCall(postRequest).execute();
+            }
+
             lastCommunicatedTime = new Date();
             return response;
         } catch (FailedToPair | IOException e) {
@@ -369,8 +377,9 @@ public class ConnectionManager {
                     if (responseBody.trim().isEmpty())
                         responseBody = "{}";
                 }
+                response.close();
             }
-            response.close();
+
             JsonObject jsonBody = JsonParser.parseString(responseBody).getAsJsonObject();
             return new JsonResponse(jsonBody, response);
 
@@ -668,12 +677,17 @@ public class ConnectionManager {
                 Log.e(TAG, "WebSocket disconnected, code:>reason: " + code + reason);
 
                 // Start polling thread/service ?
-                setPollServerForRequests(false);
+                setPollServerForRequests(true);
                 webSocketConnected = false;
 
-                if (reason.equalsIgnoreCase("InvalidSocketUUID") || reason.equalsIgnoreCase("InvalidClient")) {
+                if (reason.equalsIgnoreCase("invalidsocketuuid") || reason.equalsIgnoreCase("invalidclient")) {
                     hasNegotiated = false;
+                    connected = false;
                     initiateConnection();
+                }
+                if (reason.equalsIgnoreCase("reconnecting")) {
+                    // reconnect???
+                    createWebSocketClient(false);
                 }
             }
 
@@ -701,6 +715,8 @@ public class ConnectionManager {
                 // Start polling thread/service
                 setPollServerForRequests(true);
                 webSocketConnected = false;
+                if (response != null)
+                    response.close();
             }
 
             @Override
@@ -740,28 +756,13 @@ public class ConnectionManager {
                 }
 
                 webSocketConnected = true;
+                if (response != null)
+                    response.close();
             }
         });
     }
 
     public boolean isWebSocketConnected() {
-        /*if (this.webSocketClient != null) {
-            try {
-                JsonObject pingCommand = new JsonObject();
-                pingCommand.addProperty("command", "");
-                JsonObject data = new JsonObject();
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.UK);
-                String formattedDate = sdf.format(new Date());
-                data.addProperty("timestamp", formattedDate);
-                pingCommand.add("data", data);
-
-                webSocketClient.send(pingCommand.toString());
-                return true;
-            } catch (Exception e) {
-                Log.e(TAG, "Error sending ping frame to WebSocket server", e);
-            }
-        }
-        return false;*/
         return webSocketConnected;
     }
 
@@ -841,6 +842,8 @@ public class ConnectionManager {
      * @throws FailedToPair Unable to connect, message includes readable reason as to why.
      */
     public void initiateConnectionSync() throws FailedToPair {
+        if (connecting)
+            return;
         try {
             StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build(); // ?
             StrictMode.setThreadPolicy(policy);
@@ -859,6 +862,7 @@ public class ConnectionManager {
 
             if (initiatingResponse.Response == null)
                 throw new FailedToPair("Server unreachable.");
+            initiatingResponse.Response.close();
             if (!initiatingResponseBody.has("conInitUUID")
                     || !initiatingResponseBody.has("g1")
                     || !initiatingResponseBody.has("p1")
@@ -1000,10 +1004,10 @@ public class ConnectionManager {
                 else
                     throw new FailedToPair("Server returned code " + initiationFinalResponse.code());
             }
+            initiationFinalResponse.close();
 
-            String initiationFinalResponseBodyEncrypted = initiationFinalResponseBodyString;
-            if (NeptuneCrypto.isEncrypted(initiationFinalResponseBodyEncrypted)) {
-                String decryptedResponseBody = NeptuneCrypto.decrypt(initiationFinalResponseBodyEncrypted, this.sharedSecret);
+            if (NeptuneCrypto.isEncrypted(initiationFinalResponseBodyString)) {
+                String decryptedResponseBody = NeptuneCrypto.decrypt(initiationFinalResponseBodyString, this.sharedSecret);
                 initiationFinalResponseBody = JsonParser.parseString(decryptedResponseBody).getAsJsonObject();
             } else {
                 initiationFinalResponseBody = JsonParser.parseString(initiationFinalResponseBodyString).getAsJsonObject();
@@ -1047,6 +1051,7 @@ public class ConnectionManager {
             }
 
             // we good
+            connecting = false;
             createWebSocketClient(false);
         } catch (IOException e) { // Unable to connect
             connecting = false;
@@ -1075,6 +1080,8 @@ public class ConnectionManager {
             Log.e(TAG, "Someone used the wrong padding, key spec, or algorithm (initiating connection).");
             e.printStackTrace();
             throw new FailedToPair("Client-server handshake failure, unable to select supported handshake parameters.");
+        } finally {
+            connecting = false;
         }
         connecting = false;
     }
@@ -1088,7 +1095,7 @@ public class ConnectionManager {
                 initiateConnectionSync();
 
                 // Creates WebSocket and connects to the server
-                if (!isWebSocketConnected())
+                if (!isWebSocketConnected() && !connecting && connected)
                     createWebSocketClient(false);
             } catch (FailedToPair e) {
                 e.printStackTrace();

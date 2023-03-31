@@ -101,8 +101,7 @@ public class ServerConfig extends ConfigItem {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 TemporalAccessor ta = DateTimeFormatter.ISO_INSTANT.parse(jsonObject.get("dateAdded").getAsString());
                 Instant i = Instant.from(ta);
-                Date date = Date.from(i);
-                this.dateAdded = date;
+                this.dateAdded = Date.from(i);
             } else {
                 try {
                     DateFormat df1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");

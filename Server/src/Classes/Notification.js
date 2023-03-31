@@ -247,6 +247,7 @@ class Notification extends EventEmitter {
                     clientId: this.#client.clientId,
                     clientName: this.#client.friendlyName,
                     applicationName: this.data.applicationName,
+                    applicationPackage: this.data.applicationPackage,
                     
                     notificationIcon: this.data.notificationIcon,
                     title: this.data.title,
@@ -262,12 +263,12 @@ class Notification extends EventEmitter {
                 data.subtext = this.data.contents.subtext;
 
 
-                this.#log.silly(data);
 
                 let contentsJsonString = JSON.stringify(this.data.contents);
                 let contentsBase64Data = Buffer.from(contentsJsonString, 'utf8').toString('base64');
                 let contentsDataString = `data:text/json;base64, ${contentsBase64Data}`;
                 data.contents = contentsDataString;
+                this.#log.silly(data);
                 global.NeptuneRunnerIPC.sendData("notify-push", data);
 
                 let func = this.#IPCActivation;
@@ -295,23 +296,28 @@ class Notification extends EventEmitter {
      * @param {import('./NeptuneRunner.js').PipeDataReceivedEventArgs} ipcData
      */
     #IPCActivation(notification, ipcData) {
-        let data = ipcData.toDictionary();
+        try {
+            let data = ipcData.toDictionary();
 
-        let actionString = data.Command == "notify-activated"? "activated" : "dismissed";
-        let dataPackage = {
-            action: actionString,
-            actionParameters: {
-                id: data.buttonId,
-                text: data.textboxText,
-                comboBoxChoice: data.comboBoxSelectedItem
+            let actionString = data.Command == "notify-activated"? "activated" : "dismissed";
+            let dataPackage = {
+                action: actionString,
+                actionParameters: {
+                    id: data.buttonId,
+                    text: data.textboxText,
+                    comboBoxChoice: data.comboBoxSelectedItem
+                }
             }
-        }
 
-        if (data.Command == "notify-activated") {
-            notification.activate(dataPackage);
-        } else if (data.Command == "notify-dismissed") {
-            notification.dismiss(dataPackage);
-        }
+            if (ipcData.Command == "notify-activated") {
+                notification.activate(dataPackage);
+            } else if (ipcData.Command == "notify-dismissed") {
+                notification.dismiss(dataPackage);
+            }
+        } catch (e) {
+            this.#log.error("Error on processing IPC activation data, check log for details.");
+            this.#log.error(e, false);
+        } 
     }
 
 

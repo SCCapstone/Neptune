@@ -4,21 +4,11 @@ package com.neptune.app;
 //Use either list views to make a lists of the names and edit buttons, or create a new TextView and ImageView for each new device. Depending on what you choose
 // you will have to delete the entries from the list or the entire views when removing a device.
 
-import static android.content.ContentValues.TAG;
-
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.fragment.app.DialogFragment;
-
-import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.pm.PackageManager;
+import android.content.Intent;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -31,14 +21,13 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.content.Intent;
 
-import com.google.gson.JsonParseException;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.neptune.app.Backend.ClientConfig;
 import com.neptune.app.Backend.ConfigurationManager;
-import com.neptune.app.Backend.Exceptions.FailedToPair;
 import com.neptune.app.Backend.IPAddress;
-import com.neptune.app.Backend.NeptuneKeepAlive;
 import com.neptune.app.Backend.NotificationListenerService;
 import com.neptune.app.Backend.NotificationManager;
 import com.neptune.app.Backend.Server;
@@ -47,34 +36,53 @@ import com.neptune.app.Backend.ServerManager;
 import org.json.JSONException;
 
 import java.io.IOException;
-import java.security.Permission;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.UUID;
 
-public class MainActivity extends AppCompatActivity implements RenameDialog.RenameDialogListener{
+public class MainActivity extends AppCompatActivity implements RenameDialog.RenameDialogListener {
     public static ServerManager serverManager;
     public static com.neptune.app.Backend.NotificationManager notificationManager;
     private ConfigurationManager configurationManager;
 
     public static ClientConfig ClientConfig;
 
+    @SuppressLint("StaticFieldLeak")
     public static Context Context;
 
 
-    //public Config config
-    private TextView devName;
-    private ImageView editClientName;
-    private ImageView editName;
-    private Button add;
     private AlertDialog addDialog;
     private LinearLayout addLine;
-    //private Button notifListTest;
-    private ImageView delete;
-    private TextView ip;
     private TextView lblFriendlyName;
-    private HashMap<Server, View> serversShown = new HashMap<Server, View>();
+    private final HashMap<Server, View> serversShown = new HashMap<>();
+
+    public boolean isNotificationServiceEnabled() {
+        String enabledNotificationListeners = Settings.Secure.getString(Context.getContentResolver(), "enabled_notification_listeners");
+
+        String packageName = Context.getPackageName();
+
+        if (TextUtils.isEmpty(enabledNotificationListeners)) {
+            return false;
+        }
+
+        ComponentName serviceComponent = new ComponentName(Context, NotificationListenerService.class);
+        String serviceComponentName = serviceComponent.flattenToString();
+
+        String[] listeners = enabledNotificationListeners.split("/");
+        for (String listener : listeners) {
+            if (listener.equals(serviceComponentName) || listener.equals(serviceComponent.flattenToShortString()) || listener.contains(packageName)) {
+                return true;
+            }
+        }
+
+        listeners = enabledNotificationListeners.split(":");
+        for (String listener : listeners) {
+            if (listener.equals(serviceComponentName) || listener.equals(serviceComponent.flattenToShortString()) || listener.contains(packageName)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,9 +92,9 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
         setContentView(R.layout.activity_main);
 
-        add = (Button) findViewById(R.id.addDev);
+        Button add = findViewById(R.id.addDev);
         addLine = findViewById(R.id.container);
-        //notifListTest = findViewById(R.id.notifTest);
+        //notifyListTest = findViewById(R.id.notifTest);
         buildAddDialog();
 
         // Get configurationManager
@@ -97,8 +105,8 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             notificationManager = new NotificationManager();
             serverManager = new ServerManager(ClientConfig, configurationManager);
             Server[] servers = serverManager.getServers();
-            for (int i = 0; i<servers.length; i++) {
-                addNameLine(servers[i]);
+            for (Server server : servers) {
+                addNameLine(server);
             }
             serverManager.connectToServers(); // Connects all servers up
         } catch (IOException | JSONException e) {
@@ -110,61 +118,23 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             alertBuilder.setMessage("There was an unknown error loading the client configuration file or setting up the server manager.\n" +
                     "Please report this to the developer (hopefully not you)\n\n" +
                     "error.getMessage(): " + e.getMessage());
-            alertBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    // Probably quit, or maybe recreate the config?
-                }
+            alertBuilder.setPositiveButton("Ok", (dialog, which) -> {
+                // Probably quit, or maybe recreate the config?
             });
 
             alertBuilder.create().show();
-
         }
 
-        add.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                addDialog.show();
-            }
-        });
-
-        //Part of the Notification Button
-        /*if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel("My notification", "My notification", NotificationManager.IMPORTANCE_DEFAULT);
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            manager.createNotificationChannel(channel);
-        }
-        //Notification Button
-        notifListTest.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                //startActivity(new Intent(MainActivity.this, NotificationListenerService.class));
-                //new NotificationListenerService().onCreate();
-                NotificationCompat.Builder buidler = new NotificationCompat.Builder(MainActivity.this, "My notification");
-                buidler.setContentTitle("My title");
-                buidler.setContentText("Content from Notification");
-                buidler.setSmallIcon(R.drawable.ic_launcher_background);
-                buidler.setAutoCancel(true);
-
-                NotificationManagerCompat notificationManagerCompat = NotificationManagerCompat.from(MainActivity.this);
-                notificationManagerCompat.notify(1,buidler.build());
-
-            }
-        });*/
+        add.setOnClickListener(view -> addDialog.show());
 
         lblFriendlyName = findViewById(R.id.lblMyFriendlyName);
         lblFriendlyName.setText(ClientConfig.friendlyName);
-        editClientName = findViewById(R.id.editClientName);
-        editClientName.setOnClickListener(new ImageView.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                openDialog();
-            }
-        });
+        ImageView editClientName = findViewById(R.id.editClientName);
+        editClientName.setOnClickListener(view -> openDialog());
 
         TextView lblMyIP = findViewById(R.id.lblMyIP);
         try {
-            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
             String ip = Formatter.formatIpAddress(wm.getConnectionInfo().getIpAddress());
             lblMyIP.setText("Device IP: " + ip);
         } catch (Exception err) {
@@ -175,11 +145,11 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         TextView lblVersion = findViewById(R.id.lblVersion);
         lblVersion.setText("Version: " + BuildConfig.VERSION_NAME);
 
-        startService(new Intent(this, NeptuneKeepAlive.class));
 
         if (!isNotificationServiceEnabled()) {
             startActivity(new Intent(MainActivity.this, PermissionsActivity.class));
         }
+
 
         startService(new Intent(this, NotificationListenerService.class));
     }
@@ -194,26 +164,20 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
         builder.setView(view);
         builder.setTitle("Enter name")
-                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        try {
-                            String name = nameField.getText().toString();
-                            String ipAddress = ipAddressField.getText().toString();
-                            Thread thread = new Thread(() -> addServer(name, ipAddress));
-                            thread.setName("ServerAdder-" + name);
-                            thread.start();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            showErrorMessage("Unable to add server", "Error encountered pairing with new server: " + e.getMessage());
-                        }
+                .setPositiveButton("OK", (dialog, which) -> {
+                    try {
+                        String name = nameField.getText().toString();
+                        String ipAddress = ipAddressField.getText().toString();
+                        Thread thread = new Thread(() -> addServer(name, ipAddress));
+                        thread.setName("ServerAdder-" + name);
+                        thread.start();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        showErrorMessage("Unable to add server", "Error encountered pairing with new server: " + e.getMessage());
                     }
                 })
-                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
+                .setNegativeButton("Cancel", (dialog, which) -> {
 
-                    }
                 });
 
         addDialog = builder.create();
@@ -229,57 +193,48 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
         final View view = getLayoutInflater().inflate(R.layout.name_line, null);
 
-        devName = view.findViewById(R.id.name);
-        editName = view.findViewById(R.id.editName);
-        delete = view.findViewById(R.id.delete);
-        ip = findViewById(R.id.lblMyIP);
+        //public Config config
+        TextView devName = view.findViewById(R.id.name);
+        ImageView editName = view.findViewById(R.id.editName);
+        //private Button notifListTest;
+        ImageView delete = view.findViewById(R.id.delete);
+        TextView ip = findViewById(R.id.lblMyIP);
         ip.setText(server.ipAddress.getIPAddress());
         //ip.setVisibility(View.VISIBLE);
 
         devName.setText(server.friendlyName);
-        devName.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent deviceActivity = new Intent(MainActivity.this, DeviceActivity.class);
-                String id = server.serverId.toString();
-                String friendlyName = server.friendlyName;
-                deviceActivity.putExtra("ID", id);
-                deviceActivity.putExtra("FRIENDLY_NAME", friendlyName);
-                startActivityForResult(deviceActivity, R.integer.LAUNCH_DEVICE_ACTIVITY);
-                //Will update above method, this was easier to understand/use for the time being.
-                //startActivity(deviceActivity);
-            }
+        devName.setOnClickListener(view1 -> {
+            Intent deviceActivity = new Intent(MainActivity.this, DeviceActivity.class);
+            String id = server.serverId.toString();
+            String friendlyName = server.friendlyName;
+            deviceActivity.putExtra("ID", id);
+            deviceActivity.putExtra("FRIENDLY_NAME", friendlyName);
+            startActivityForResult(deviceActivity, R.integer.LAUNCH_DEVICE_ACTIVITY);
+            //Will update above method, this was easier to understand/use for the time being.
+            //startActivity(deviceActivity);
         });
 
-        editName.setOnClickListener(new ImageView.OnClickListener(){
-            @Override
-            public void onClick(View v) {
-                new Thread(() -> {
-                    try {
-                        Log.i("MainActivity", "Syncing with " + server.friendlyName);
-                        server.setupConnectionManager();
-                        if (!server.getConnectionManager().isWebSocketConnected())
-                            server.getConnectionManager().createWebSocketClient(false);
-                        server.syncConfiguration();
-                        server.ping();
-                        server.sendBatteryInfo();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }).start();
+        editName.setOnClickListener(v -> new Thread(() -> {
+            try {
+                Log.i("MainActivity", "Syncing with " + server.friendlyName);
+                server.setupConnectionManager();
+                if (!server.getConnectionManager().isWebSocketConnected())
+                    server.getConnectionManager().createWebSocketClient(false);
+                server.syncConfiguration();
+                server.ping();
+                server.sendBatteryInfo();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        });
+        }).start());
 
         //Deletes the selected server upon clicking the related ImageView.
-        delete.setOnClickListener(new ImageView.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                try{
-                    removeServer(server, view);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    showErrorMessage("Failed to unpair server", e.getMessage());
-                }
+        delete.setOnClickListener(v -> {
+            try{
+                removeServer(server, view);
+            } catch (Exception e) {
+                e.printStackTrace();
+                showErrorMessage("Failed to unpair server", e.getMessage());
             }
         });
 
@@ -289,7 +244,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
     //Method to open the dialog box for renaming a server. May want to change name to openRenameDialog, or change the tag to a String variable with the name.
     public void openDialog(){
-        RenameDialog de = new RenameDialog();
+        RenameDialog de = new RenameDialog("Client's friendly name:", this.ClientConfig.friendlyName);
         de.show(getSupportFragmentManager(), "rename dialog");
     }
 
@@ -302,55 +257,14 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         try {
             ClientConfig.save();
             Server[] servers = serverManager.getServers();
-            for(int i=0; i<servers.length; i++) {
-                servers[i].syncConfiguration();
+            for (Server server : servers) {
+                server.syncConfiguration();
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-    }
-
-    public void onDialogPositiveClick(DialogFragment rename) {
-
-    }
-
-    public void onDialogNegativeClick(DialogFragment rename) {
-
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-    }
-
-    @Override
-    protected void onRestoreInstanceState(Bundle bundle) {
-        super.onRestoreInstanceState(bundle);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle bundle) {
-        super.onSaveInstanceState(bundle);
-    }
-
-    public void showRenameDialog() {
-
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-    }
 
     /*When a different activity returns to MainActivity, with something for it, whether that be an action or information, this method will handle it, depending
     * on what activity is sending the information. It'll handle the information in a certain way depending on what information is returned.
@@ -359,18 +273,11 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        /*A switch case here is used to check the differences between what the requestCode was. Different activities, or the same ones, can be launched for different
-        * reasons, or no reason at all. Each case will handle a different reason for opening the activity. Within each case, if the reasons can't be initially
-        * differentiated, there is additional expressions to ensure the correct response code is ran.
-        */
-        switch(requestCode) {
-            case(R.integer.LAUNCH_DEVICE_ACTIVITY) : {
-                if(resultCode == Activity.RESULT_OK) {
-                    Server s = serverManager.getServer(UUID.fromString(data.getStringExtra("DELETE_ID")));
-                    s.unpair();
-                    removeServer(s, serversShown.get(s));
-                }
-                break;
+        if (requestCode == R.integer.LAUNCH_DEVICE_ACTIVITY) {
+            if (resultCode == Activity.RESULT_OK) {
+                Server s = serverManager.getServer(UUID.fromString(data.getStringExtra("DELETE_ID")));
+                s.unpair();
+                removeServer(s, serversShown.get(s));
             }
         }
     }
@@ -402,58 +309,21 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
             Server finalServer = server;
             runOnUiThread(() -> addNameLine(finalServer));
-        } catch (JsonParseException e) {
-            e.printStackTrace();
-            if (server != null)
-                server.delete();
-            runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            if (server != null)
-                server.delete();
-            runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
-
-        } catch (FailedToPair e) {
-            e.printStackTrace();
-            if (server != null)
-                server.delete();
-            runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
             if (server != null)
                 server.delete();
             runOnUiThread(() -> showErrorMessage("Failed to pair device", e.getMessage()));
+
         }
     }
 
     //Removes the selected server from the ListView of servers on the MainActivity screen and from the list of all servers.
     public void removeServer(Server s, View v) {
-        serverManager.removeServer(s);
-        addLine.removeView(serversShown.get(s));
-        serversShown.remove(s);
-    }
-
-    //Checks if the Notification Listener Service is enabled.
-    private boolean isNotificationServiceEnabled() {
-        String enabledNotificationListeners = Settings.Secure.getString(
-                Context.getContentResolver(),
-                "enabled_notification_listeners");
-        //Log.e("AJHFKJDHSG",  enabledNotificationListeners);
-
-        String packageName = Context.getPackageName();
-
-        if (TextUtils.isEmpty(enabledNotificationListeners)) {
-            return false;
-        }
-
-        String[] listeners = enabledNotificationListeners.split("/");
-        for (String listener : listeners) {
-            if (listener.contains(packageName)) {
-                return true;
-            }
-        }
-
-        return false;
+        try {
+            serverManager.removeServer(s);
+            addLine.removeView(v);
+            serversShown.remove(s);
+        } catch (Exception ignored) {}
     }
 }

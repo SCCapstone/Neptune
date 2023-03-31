@@ -687,6 +687,16 @@ async function main() {
 			return;
 		}
 
+		// Validate no other requests
+		for (const [initUuid, initValue] of Object.entries(conInitUUIDs)) {
+			if (initValue.clientId !== undefined) {
+				if (initValue == req.body.clientId) {
+					res.status(409).end(`{ "end": "Initiation request already in progress" }`);
+					return;
+				}
+			}
+		}
+
 
 		// Generate shared secret
 		let aliceSecret = conInitObject.aliceDHObject.computeSecret(Buffer.from(req.body.b1,'base64'));

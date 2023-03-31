@@ -213,41 +213,11 @@ public class NotificationsActivity extends AppCompatActivity {
         appsLayout.addView(appsView);
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-    }
-
-    @Override
-    protected void onRestoreInstanceState(Bundle bundle) {
-        super.onRestoreInstanceState(bundle);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle bundle) {
-        super.onSaveInstanceState(bundle);
-    }
-
     //This method supports going to the previous activity. This allows users to move between activities that directly link to each other.
     @Override
     public boolean onSupportNavigateUp() {
         onBackPressed();
         return true;
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
     }
 
     public void showErrorMessage(String title, String message) {
