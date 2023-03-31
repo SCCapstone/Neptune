@@ -2,4 +2,14 @@
     <string name="app_name">Neptune Client</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="instructionsExplanation">The following shows a list of instructions to follow to enable the reading of notifications.</string>
+    <string name="step1">1. Open the Settings App.</string>
+    <string name="step2">2. Click on &quot;Apps &amp; Notifications&quot;.</string>
+    <string name="step3">3. Click the &quot;Advanced&quot; drop down.</string>
+    <string name="step4">4. Click &quot;Special app access&quot;.</string>
+    <string name="step5">5. Click &quot;Notification access&quot;.</string>
+    <string name="step6">6. Click &quot;Neptune Client&quot;</string>
+    <string name="step7">7. Click the &quot;Allow notification access&quot; switch.</string>
+    <string name="step8">8. After enabling the setting, restart Neptune Client.</string>
+    <string name="openSettings">Open Settings</string>
 </resources>

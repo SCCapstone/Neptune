@@ -4,15 +4,25 @@ package com.neptune.app;
 //Use either list views to make a lists of the names and edit buttons, or create a new TextView and ImageView for each new device. Depending on what you choose
 // you will have to delete the entries from the list or the entire views when removing a device.
 
+import static android.content.ContentValues.TAG;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.text.TextUtils;
 import android.text.format.Formatter;
 import android.util.Log;
 import android.view.View;
@@ -29,6 +39,7 @@ import com.neptune.app.Backend.ConfigurationManager;
 import com.neptune.app.Backend.Exceptions.FailedToPair;
 import com.neptune.app.Backend.IPAddress;
 import com.neptune.app.Backend.NeptuneKeepAlive;
+import com.neptune.app.Backend.NotificationListenerService;
 import com.neptune.app.Backend.NotificationManager;
 import com.neptune.app.Backend.Server;
 import com.neptune.app.Backend.ServerManager;
@@ -36,7 +47,10 @@ import com.neptune.app.Backend.ServerManager;
 import org.json.JSONException;
 
 import java.io.IOException;
+import java.security.Permission;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements RenameDialog.RenameDialogListener{
@@ -70,8 +84,6 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
         setContentView(R.layout.activity_main);
 
-        //devName = (TextView) findViewById(R.id.name);
-        //editName = (ImageView) findViewById(R.id.editDevName);
         add = (Button) findViewById(R.id.addDev);
         addLine = findViewById(R.id.container);
         //notifListTest = findViewById(R.id.notifTest);
@@ -108,22 +120,6 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             alertBuilder.create().show();
 
         }
-
-
-
-        /*devName.setOnClickListener(new TextView.OnClickListener(){
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, DeviceActivity.class));
-            }
-        });*/
-
-        /*editName.setOnClickListener(new ImageView.OnClickListener(){
-            @Override
-            public void onClick(View v) {
-                openDialog();
-            }
-        });*/
 
         add.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -181,6 +177,11 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
         startService(new Intent(this, NeptuneKeepAlive.class));
 
+        if (!isNotificationServiceEnabled()) {
+            startActivity(new Intent(MainActivity.this, PermissionsActivity.class));
+        }
+
+        startService(new Intent(this, NotificationListenerService.class));
     }
 
     //This method builds the add dialog so that when a user wants to add a server, it is able to be used.
@@ -266,7 +267,6 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
                         e.printStackTrace();
                     }
                 }).start();
-                //openDialog();
             }
         });
 
@@ -293,10 +293,21 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         de.show(getSupportFragmentManager(), "rename dialog");
     }
 
+    //Method to change the name of the client and update it in both the client and server config files.
     @Override
     public void applyTexts(String n){
         lblFriendlyName.setText(n);
         //Add code for changing name in ClientConfig
+        ClientConfig.friendlyName = n;
+        try {
+            ClientConfig.save();
+            Server[] servers = serverManager.getServers();
+            for(int i=0; i<servers.length; i++) {
+                servers[i].syncConfiguration();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -421,5 +432,28 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         serverManager.removeServer(s);
         addLine.removeView(serversShown.get(s));
         serversShown.remove(s);
+    }
+
+    //Checks if the Notification Listener Service is enabled.
+    private boolean isNotificationServiceEnabled() {
+        String enabledNotificationListeners = Settings.Secure.getString(
+                Context.getContentResolver(),
+                "enabled_notification_listeners");
+        //Log.e("AJHFKJDHSG",  enabledNotificationListeners);
+
+        String packageName = Context.getPackageName();
+
+        if (TextUtils.isEmpty(enabledNotificationListeners)) {
+            return false;
+        }
+
+        String[] listeners = enabledNotificationListeners.split("/");
+        for (String listener : listeners) {
+            if (listener.contains(packageName)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
