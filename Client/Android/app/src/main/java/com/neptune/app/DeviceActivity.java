@@ -86,56 +86,6 @@ public class DeviceActivity extends AppCompatActivity {
         notificationsCheckBox = findViewById(R.id.notificationsCheckbox);
         notificationsCheckBox.setChecked(server.syncNotifications);
 
-        /*CheckBox chkSyncNotifications = findViewById(R.id.notificationsCheckbox);
-        CheckBox chkClipboardSharing = findViewById(R.id.chkClipboardSharingEnabled);
-        chkClipboardSharing.setChecked(server.clipboardSettings.enabled == true);
-        Button btnSendClipboard = findViewById(R.id.btnSendClipboard);
-        btnSendClipboard.setEnabled(server.clipboardSettings.enabled);
-        Button btnReceiveClipboard = findViewById(R.id.btnReceiveClipboard);
-        btnReceiveClipboard.setEnabled(server.filesharingSettings.enabled && server.clipboardSettings.allowServerToSet);
-
-        btnSendClipboard.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                server.sendClipboard();
-            }
-        });
-        btnReceiveClipboard.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                server.requestClipboard();
-            }
-        });
-
-
-
-        // File sharing
-        CheckBox chkFileSharingEnabled = findViewById(R.id.chkFileSharingEnabled);
-        chkFileSharingEnabled.setChecked(server.filesharingSettings.enabled == true);
-        Button btnSendFile = findViewById(R.id.btnSendFile);
-        btnSendFile.setEnabled(server.filesharingSettings.enabled);
-
-        View.OnClickListener checkBoxListener = new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                server.syncNotifications = notificationsCheckbox.isChecked();
-                server.clipboardSettings.enabled = chkClipboardSharing.isChecked();
-                Button btnSendClipboard = findViewById(R.id.btnSendClipboard);
-                btnSendClipboard.setEnabled(server.clipboardSettings.enabled);
-                Button btnReceiveClipboard = findViewById(R.id.btnReceiveClipboard);
-                btnReceiveClipboard.setEnabled(server.filesharingSettings.enabled && server.clipboardSettings.allowServerToSet);
-
-
-                server.filesharingSettings.enabled = chkFileSharingEnabled.isChecked();
-                Button btnSendFile = findViewById(R.id.btnSendFile);
-                btnSendFile.setEnabled(server.filesharingSettings.enabled);
-            }
-        };
-
-        notificationsCheckbox.setOnClickListener(checkBoxListener);
-        chkClipboardSharing.setOnClickListener(checkBoxListener);
-        chkFileSharingEnabled.setOnClickListener(checkBoxListener);*/
-
         /*Sets up the checkbox for saving the user's preference regarding sending notifications. It saves whether the user wants to
          * sync notifications or not. It will save the new setting whenever the checkbox is selected or unselected.
          */
@@ -320,27 +270,6 @@ public class DeviceActivity extends AppCompatActivity {
         alertBuilder.create().show();
     }
 
-    @TargetApi(Build.VERSION_CODES.KITKAT)
-    public static String getRealPathFromURI_API19(Uri uri){
-        String filePath = "";
-        String wholeID = DocumentsContract.getDocumentId(uri);
-        String id = wholeID.split(":")[1];
-
-        String[] column = { MediaStore.Images.Media.DATA };
-
-        // where id is equal to
-        String sel = MediaStore.Images.Media._ID + "=?";
-
-        Cursor cursor = MainActivity.Context.getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                column, sel, new String[]{ id }, null);
-        int columnIndex = cursor.getColumnIndex(column[0]);
-        if (cursor.moveToFirst()) {
-            filePath = cursor.getString(columnIndex);
-        }
-        cursor.close();
-        return filePath;
-    }
-
     public void onActivityResult(int requestcode, int resultcode, Intent data) {
         try {
             super.onActivityResult(requestcode, resultcode, data);
@@ -360,7 +289,6 @@ public class DeviceActivity extends AppCompatActivity {
                     }
                 } else {
                     Uri uri = data.getData();
-                    String filePath = getRealPathFromURI_API19(uri);
                     if (uri != null) {
                         server.sendFile(uri);
                     }
@@ -374,7 +302,8 @@ public class DeviceActivity extends AppCompatActivity {
     public void openFilePicker(View view) {
         Intent filePickerIntent = new Intent(Intent.ACTION_GET_CONTENT);
         filePickerIntent.setType("*/*");
-        filePickerIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        filePickerIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        filePickerIntent.putExtra(Intent.EXTRA_TITLE, "Send a file to " + this.server.friendlyName + ".");
         startActivityForResult(filePickerIntent, requestCodeMultiple);
     }
 }

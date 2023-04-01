@@ -9,6 +9,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Build;
+import android.os.Environment;
 import android.provider.OpenableColumns;
 import android.util.Log;
 
@@ -182,28 +183,68 @@ public class Server extends ServerConfig {
 
                 } else if ((command.equals("/api/v1/client/configuration/set") || command.equals("/api/v1/server/configuration/data")) && apiDataPackage.isJsonObject()) {
                     // Set notification, clipboard, filesharing enabled/disabled. DO NOT SET things like allowGet or allowUpload, etc
+                    JsonObject data = apiDataPackage.jsonObject();
+                    if (data.has("notificationSettings") && data.get("notificationSettings").isJsonObject()) {
+                        JsonObject notificationSettings = data.get("notificationSettings").getAsJsonObject();
+                        if (notificationSettings.has("enabled")) {
+                            boolean serverNotificationEnabledSetting = notificationSettings.get("enabled").getAsBoolean();
+                            this.syncNotifications = serverNotificationEnabledSetting;
+                        }
+                    }
 
+                    if (data.has("clipboardSettings") && data.get("clipboardSettings").isJsonObject()) {
+                        JsonObject clipboardSettings = data.get("clipboardSettings").getAsJsonObject();
+                        if (clipboardSettings.has("enabled")) {
+                            boolean serverClipboardEnabledSetting = clipboardSettings.get("enabled").getAsBoolean();
+                            if (serverClipboardEnabledSetting == false) {
+                                this.clipboardSettings.enabled = false; // Only allow remote to disable
+                            }
+                        }
+
+                        if (clipboardSettings.has("synchronizeClipboardToClient") && clipboardSettings.get("synchronizeClipboardToClient").isJsonObject()) {
+                            // For parity
+                            this.clipboardSettings.synchronizeClipboardToClient = clipboardSettings.get("synchronizeClipboardToClient").getAsBoolean();
+                        }
+                    }
+
+                    if (data.has("fileSharingSettings") && data.get("fileSharingSettings").isJsonObject()) {
+                        JsonObject fileSharingSettings = data.get("fileSharingSettings").getAsJsonObject();
+                        if (fileSharingSettings.has("enabled")) {
+                            boolean serverFilesharingEnabledSetting = fileSharingSettings.get("enabled").getAsBoolean();
+                            if (serverFilesharingEnabledSetting == false) {
+                                this.filesharingSettings.enabled = false; // Only allow remote to disable
+                            }
+                        }
+                    }
+
+                    if (data.has("friendlyName") && data.get("friendlyName").isJsonPrimitive()) {
+                        this.friendlyName = data.get("friendlyName").getAsString();
+                    }
 
 
                 // File stuff
                 } else if (command.equals("/api/v1/client/filesharing/receive") && apiDataPackage.isJsonObject()) {
                     // Download a file! (preferably in a new thread!)
                     JsonObject data = apiDataPackage.jsonObject();
-                    if (data.has("fileUUID") && data.has("authenticationCode")) {
+                    if (data.has("fileUUID")
+                            && data.has("authenticationCode")
+                            && data.has("fileName")) {
                         String fileUUID = data.get("fileUUID").getAsString();
                         String authenticationCode = data.get("authenticationCode").getAsString();
+                        String fileName = data.get("fileName").getAsString();
 
                         // download file from "/api/v1/server/socket/" + connectionManager.getSocketUUID() + "/filesharing/" + fileUUID + "/download"
                         // you'll have to send a POST request with json data, the json data must include the authentication code under the name "authenticationCode"
                         // see api doc.
-                        downloadFile("/api/v1/server/socket/\" + connectionManager.getSocketUUID() + \"/filesharing/\" + fileUUID + \"/download", "authenticationCode");
-                        Log.i(TAG, "authenticationCode: " + authenticationCode);
+                        downloadFile(fileUUID, authenticationCode, fileName);
                     }
 
                 } else if (command.equals("/api/v1/server/filesharing/upload/fileuuid") && apiDataPackage.isJsonObject()) {
                     // We got our file UUID, upload!
                     JsonObject data = apiDataPackage.jsonObject();
-                    if (data.has("fileUUID") && data.has("requestId") && data.has("authenticationCode")
+                    if (data.has("fileUUID")
+                            && data.has("requestId")
+                            && data.has("authenticationCode")
                             && fileRequestIdsToFilePaths.containsKey(data.get("requestId").getAsString())) {
 
                         Uri filePath = fileRequestIdsToFilePaths.get(data.get("requestId").getAsString());
@@ -319,7 +360,7 @@ public class Server extends ServerConfig {
             batteryData.addProperty("temperature", temperature);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 long remandingTime = bm.computeChargeTimeRemaining();
-                if (remandingTime != -1 && remandingTime != 5000000)
+                if (remandingTime != -1 && remandingTime != 5000000) // doesn't work worth s
                     batteryData.addProperty("batteryTimeRemaining", remandingTime / 1000);
             }
 
@@ -330,6 +371,11 @@ public class Server extends ServerConfig {
         }
     }
 
+    /**
+     * Sends a notification's data out to the server. Action specifies whether the notification is new, being updated, or being deleted.
+     * @param notification Notification to send
+     * @param action Create, delete, update (update and create are treated somewhat the same)
+     */
     public void sendNotification(NeptuneNotification notification, SendNotificationAction action) {
         try {
             if (connectionManager == null) {
@@ -344,9 +390,8 @@ public class Server extends ServerConfig {
                     return;
             }
 
-            if (!this.syncNotifications) {
+            if (!this.syncNotifications)
                 return;
-            }
 
             if (connectionManager.getHasNegotiated()) {
                 if (!notificationBlacklistApps.contains(notification.applicationPackageName)) {
@@ -370,6 +415,16 @@ public class Server extends ServerConfig {
             e.printStackTrace();
         }
     }
+
+    /**
+     /**
+     * Sends a notification's data out to the server. Use this to send out new (not updated/deleted) notifications
+     * @param notification Notification to send
+     */
+    public void sendNotification(NeptuneNotification notification) {
+        this.sendNotification(notification, SendNotificationAction.CREATE);
+    }
+
 
     /**
      * Sends shared configuration information to the server.
@@ -405,10 +460,11 @@ public class Server extends ServerConfig {
             apiUrl = "/api/v1/client/configuration/data";
         this.connectionManager.sendRequestAsync(apiUrl, data);
     }
-    public void syncConfiguration() { syncConfiguration(false); }
-
-    public void sendNotification(NeptuneNotification notification) {
-        this.sendNotification(notification, SendNotificationAction.CREATE);
+    /**
+     * Sends shared configuration information to the server, such as our friendly name.
+     */
+    public void syncConfiguration() {
+        syncConfiguration(false);
     }
 
 
@@ -427,8 +483,16 @@ public class Server extends ServerConfig {
             apiUrl = "/api/v1/client/clipboard/data";
         this.connectionManager.sendRequestAsync("/api/v1/server/clipboard/set", clipboardData);
     }
-    public void sendClipboard() { sendClipboard(false); }
+    /**
+     * Sends our clipboard to the server.
+     */
+    public void sendClipboard() {
+        sendClipboard(false);
+    }
 
+    /**
+     * Asks the server to send their clipboard data
+     */
     public void requestClipboard() {
         if (!this.clipboardSettings.enabled || !this.clipboardSettings.allowServerToSet)
             return;
@@ -474,10 +538,16 @@ public class Server extends ServerConfig {
         this.connectionManager.sendRequestAsync("/api/v1/server/filesharing/upload/newFileUUID", uploadRequest);
     }
 
-    //Downloads the file from the server
-    private void downloadFile(String fileUUID, String authenticationCode) {
+    /**
+     * Internal helper method to download a file given the file information.
+     * @param fileUUID Unique identifier for the download
+     * @param authenticationCode Code sent to authenticate ourselves to the server
+     * @param fileName Name of the file being downloaded, we save the file to this name.
+     */
+    private void downloadFile(String fileUUID, String authenticationCode, String fileName) {
         try {
-            URL url = new URL("/api/v1/server/socket/socketUUID/filesharing/{{fileUUID}}");
+            Log.d(TAG, "Downloading file \"" + fileName + "\". UUID: " + fileUUID + ". Authentication code: " + authenticationCode);
+            URL url = new URL("http://" + connectionManager.getIPAddress().toString() + "/api/v1/server/socket/" + connectionManager.getSocketUUID() + "/filesharing/" + fileUUID + "/download");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json");
@@ -490,7 +560,6 @@ public class Server extends ServerConfig {
 
             int responseCode = connection.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                String fileName = "";
                 String disposition = connection.getHeaderField("Content-Disposition");
                 String contentType = connection.getContentType();
                 int contentLength = connection.getContentLength();
@@ -500,30 +569,28 @@ public class Server extends ServerConfig {
                     if (index > 0) {
                         fileName = disposition.substring(index + 10, disposition.length() - 1);
                     }
-                } else {
-                    fileName = fileUUID;
                 }
 
-                InputStream is = connection.getInputStream();
-                FileOutputStream fos = new FileOutputStream(fileName);
+                // Save the file to the user's download folder
+                File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                File targetFile = new File(downloadDir, fileName);
 
-                int bytesRead = -1;
-                byte[] buffer = new byte[4096];
-                while ((bytesRead = is.read(buffer)) != -1) {
-                    fos.write(buffer, 0, bytesRead);
+                try (InputStream is = connection.getInputStream()) {
+                    try (FileOutputStream fos = new FileOutputStream(targetFile)) {
+                        int bytesRead = -1;
+                        byte[] buffer = new byte[4096];
+                        while ((bytesRead = is.read(buffer)) != -1) {
+                            fos.write(buffer, 0, bytesRead);
+                        }
+                    }
                 }
-
-                fos.close();
-                is.close();
                 Log.i(TAG,"File downloaded successfully.");
             } else {
                 Log.e(TAG,"Server returned HTTP response code: " + responseCode);
             }
 
             connection.disconnect();
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -532,6 +599,8 @@ public class Server extends ServerConfig {
     // Uploads the file from the client to the server
     private void uploadFile(String fileUUID, String authenticationCode, Uri contentUri) {
         try {
+            Log.d(TAG, "Uploading file, UUID: " + fileUUID);
+
             String crlf = "\r\n";
             String twoHyphens = "--";
             String boundary =  "*****";

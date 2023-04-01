@@ -88,25 +88,25 @@ public class NeptuneNotification {
 
 
         if (extras.containsKey(Notification.EXTRA_TITLE)) {
-            this.title = extras.getString(Notification.EXTRA_TITLE);
+            this.title = extras.getCharSequence(Notification.EXTRA_TITLE).toString();
         } else if (extras.containsKey(Notification.EXTRA_CONVERSATION_TITLE)) {
-            this.title = extras.getString(Notification.EXTRA_CONVERSATION_TITLE);
+            this.title = extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE).toString();
         } else if (extras.containsKey(Notification.EXTRA_TITLE_BIG)) {
-            this.title = extras.getString(Notification.EXTRA_TITLE_BIG);
+            this.title = extras.getCharSequence(Notification.EXTRA_TITLE_BIG).toString();
         }
 
         // Get text data
         if (extras.containsKey(Notification.EXTRA_BIG_TEXT)) // Lots of text!
-            this.text = extras.getString(Notification.EXTRA_BIG_TEXT);
+            this.text = extras.getCharSequence(Notification.EXTRA_BIG_TEXT).toString();
         else if (extras.containsKey(Notification.EXTRA_TEXT)) // Main body
-            this.text = extras.getString(Notification.EXTRA_TEXT);
+            this.text = extras.getCharSequence(Notification.EXTRA_TEXT).toString();
         else if (extras.containsKey(Notification.EXTRA_INFO_TEXT)) // okay.. at least something right?
-            this.text = extras.getString(Notification.EXTRA_INFO_TEXT);
+            this.text = extras.getCharSequence(Notification.EXTRA_INFO_TEXT).toString();
         else if (extras.containsKey(Notification.EXTRA_SUMMARY_TEXT)) // We're getting desperate...
-            this.text = extras.getString(Notification.EXTRA_SUMMARY_TEXT);
+            this.text = extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT).toString();
 
         // Sub text
-        this.subtext = extras.getString(Notification.EXTRA_SUB_TEXT);
+        this.subtext = extras.getCharSequence(Notification.EXTRA_SUB_TEXT).toString();
 
 
         this.category = notification.category;
@@ -138,7 +138,7 @@ public class NeptuneNotification {
 
 
         if (this.category != null)
-            this.isSilent = notification.category.equalsIgnoreCase(Notification.CATEGORY_TRANSPORT); // Media notification!
+            this.isSilent = notification.category.equals(Notification.CATEGORY_TRANSPORT); // Media notification!
 
 
 

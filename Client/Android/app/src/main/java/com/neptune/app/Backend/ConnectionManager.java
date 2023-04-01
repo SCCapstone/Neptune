@@ -1,6 +1,7 @@
 package com.neptune.app.Backend;
 
 import android.annotation.SuppressLint;
+import android.os.Handler;
 import android.os.StrictMode;
 import android.util.Log;
 
@@ -687,6 +688,11 @@ public class ConnectionManager {
                 }
                 if (reason.equalsIgnoreCase("reconnecting")) {
                     // reconnect???
+                    Handler handler = new Handler();
+                    handler.postDelayed(() -> {
+                        // Call the method you want to run after 5 seconds here
+                        createWebSocketClient(false);
+                    }, 5000);
                 }
             }
 
@@ -1069,7 +1075,7 @@ public class ConnectionManager {
             e.printStackTrace();
             throw new FailedToPair("Number format exception?"); // ? because what?
 
-        } catch (InvalidKeyException e) {
+        } catch (InvalidKeyException | NeptuneCrypto.InvalidDecryptionKey e) {
             connecting = false;
             e.printStackTrace();
             throw new FailedToPair("Client-server handshake failure, unable to generate a shared key.");

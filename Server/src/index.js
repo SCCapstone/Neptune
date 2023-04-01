@@ -1,6 +1,6 @@
 'use strict';
 /**
- *	_	_ 
+ *    _  _ 
  *	 | \| |
  *	 | .` |
  *	 |_|\_|eptune
@@ -378,7 +378,7 @@ async function main() {
 	/**
 	 * _____________
 	 * |           |
-	 * |	GUI    |
+	 * |    GUI    |
 	 * |___________|
 	 * 
 	 */
@@ -521,8 +521,11 @@ async function main() {
 
 	// Reset uploads folder!
 	try {
-		if (fs.existsSync('./data/uploads'))
+		if (fs.existsSync('./data/uploads')) {
 			fs.rmSync('./data/uploads', { recursive: true, force: true });
+		}
+
+		fs.mkdirSync('./data/uploads');
 	} catch (e) {}
 
 	const httpServer = http.createServer(app);
@@ -946,6 +949,7 @@ async function main() {
 	 */
 	/**
 	 * @typedef {object} fileSharingObject
+	 * @property {string} fileUUID - File UUID
 	 * @property {string} fileName - File name for when the file is copied to the received folder
 	 * @property {boolean} enabled - Whether the file is able to be downloaded/uploaded. Once the fileUUID is used, this is flipped off and the object is deleted.
 	 * @property {string} createdTime - Time object was created (ISO) (file have a life time of 2 minutes)
@@ -973,6 +977,9 @@ async function main() {
 	 * @return {string} fileUUID
 	 */
 	Neptune.filesharing.newClientDownload = function(client, filepath) {
+		if (client === undefined)
+			return;
+
 		if (!client.fileSharingSettings.enabled) // don't check this, client does that: || !client.fileSharingSettings.allowClientToDownload)
 			return;
 
@@ -1160,6 +1167,15 @@ async function main() {
 				return;
 			}
 
+			if (req.file == undefined) {
+				// No file????
+				Neptune.webLog.warn("No file included in upload! UUID: " + fileUUID);
+				delete fileUUIDs[fileUUID];
+				res.status(403).send('{ "error": "Missing file" }');
+				deleteFiles();
+				return;
+			}
+
 			/** @type {fileSharingObject} */
 			let fileSharingObject = fileUUIDs[fileUUID];
 
@@ -1192,7 +1208,7 @@ async function main() {
 			}
 
 			let client = Neptune.clientManager.getClient(fileSharingObject.clientUUID);
-			let newPath = (fileSharingObject.fileName !== undefined? fileSharingObject.fileName : fileUUID);
+			let fileName = (fileSharingObject.fileName !== undefined? fileSharingObject.fileName : fileUUID);
 			let acceptedFunction = function() {
 
 				if (client.fileSharingSettings.notifyOnClientUpload) {
@@ -1204,12 +1220,19 @@ async function main() {
 						applicationPackage: 'com.neptune.server',
 						applicationName: 'Neptune Server',
 						notificationId: 'fileReceivedNotification',
-						title: 'New file received',
+						title: 'Received file from ' + (fileSharingObject.clientName != undefined? fileSharingObject.clientName : 'a client') + '.',
 						type: 'standard',
 
 						contents: {
-							text: 'Received a new file from: ' + fileSharingObject.clientName + '\r\n' + 'Name: ' + newPath,
+							text: 'Received a file: ' + fileName,
 							subtext: "File received",
+							actions: [
+								{
+									"id": "showme",
+									"type": "button",
+									"contents": "Open downloads folder"
+								},
+							]
 						},
 
 						onlyAlertOnce: true,
@@ -1219,21 +1242,61 @@ async function main() {
 					notification.push();
 					notification.on('activate', (data) => {
 						try {
-							if (process.platform === 'win32') {
-								const explorerPath = path.join(process.env.SystemRoot, 'explorer.exe');
-								exec(`"${explorerPath}" /select, "${path.resolve(__dirname, "..", fileSharingObject.filePath, newPath)}"`, (error, stdout, stderr) => {});
-							} else if (process.platform === 'darwin') {
-								exec(`open -R "${path.resolve(__dirname, "..", fileSharingObject.filePath, newPath)}"`, (error, stdout, stderr) => {});
-							} else if (process.platform === 'linux' && process.env.DESKTOP_SESSION === 'gnome') {
-								exec(`gnome-open "${path.resolve(__dirname, "..", fileSharingObject.filePath, newPath)}"`, (error, stdout, stderr) => {});
+							let button = "";
+							if (data.actionParameters !== undefined) {
+								if (data.actionParameters.id !== undefined)
+									button = Buffer.from(data.actionParameters.id, "base64").toString("utf8");
 							}
-						} catch (_) {}
+
+							if (button != undefined)
+								button = button.toLowerCase();
+
+							console.log(button);
+
+							if (button === "open downloads folder") {
+								// Opens the file browser and selects the received file
+								let absolutePath = path.resolve(__dirname, "..", fileSharingObject.filePath, fileName);
+								if (process.platform === 'win32') {
+									const explorerPath = path.join(process.env.SystemRoot, 'explorer.exe');
+									exec(`"${explorerPath}" /select, "${absolutePath}"`, (error, stdout, stderr) => {});
+								} else if (process.platform === 'darwin') {
+									exec(`open -R "${absolutePath}"`, (error, stdout, stderr) => {});
+								} else if (process.platform === 'linux' && process.env.DESKTOP_SESSION === 'gnome') {
+									exec(`gnome-open "${absolutePath}"`, (error, stdout, stderr) => {});
+								}
+							}
+						} catch (e) {
+							global.Neptune.webLog.error("Failed to open file browser to select received file. See log for details.");
+							global.Neptune.webLog.error(e, false);
+						}
 					});
 				}
 
 				// Process
-				Neptune.webLog.info("Received file \"" + req.file.filename + "\" from client " + fileSharingObject.clientUUID);
-				fs.renameSync(req.file.path, fileSharingObject.filePath + "/" + newPath);
+				let targetPath = path.resolve(fileSharingObject.filePath + "/" + fileName);
+				Neptune.webLog.info("Received file \"" + fileName + "\" from client " + fileSharingObject.clientUUID);
+				Neptune.webLog.info("Received files directory: " + fileSharingObject.filePath, false);
+				if (fs.existsSync(targetPath)) {
+					// Target file already exists, generate a unique file name
+					let counter = 1;
+					let newTargetPath = fileName.replace(/\.[^.]+$/, '') + ' (' + counter + ')' + path.extname(fileName);
+
+					while (fs.existsSync(newTargetPath)) {
+						// Increment the counter until a unique file name is found
+						counter++;
+						newTargetPath = fileName.replace(/\.[^.]+$/, '') + ' (' + counter + ')' + path.extname(fileName);
+					}
+
+					Neptune.webLog.debug("Saving received file (conflict) to: " + path.resolve(fileSharingObject.filePath + "/" + newTargetPath))
+
+					// Rename the file to the new unique name
+					fs.renameSync(req.file.path, path.resolve(fileSharingObject.filePath + "/" + newTargetPath));
+
+				} else {
+					Neptune.webLog.debug("Saving received file to: " + targetPath)
+					fs.renameSync(req.file.path, targetPath);
+				}
+
 				res.status(200).end("{ \"status\": \"success\", \"approved\": true }");
 			}
 
@@ -1251,7 +1314,7 @@ async function main() {
 					type: 'standard',
 
 					contents: {
-						text: 'New file request from: ' + fileSharingObject.clientName + '\r\n' + 'Accept file? Name: ' + newPath,
+						text: 'New file request from: ' + fileSharingObject.clientName + '\r\n' + 'Accept file? Name: ' + fileName,
 						subtext: "File received",
 						actions: [
 							{
@@ -1297,8 +1360,17 @@ async function main() {
 							alreadyProcessedPleaseDoNotRaceMe = true;
 							res.status(418).end("{ \"status\": \"failed\", \"approved\": false }");
 						}
-					} catch (_) {
-						console.error(_);
+					} catch (e) {
+						global.Neptune.webLog.error("Failed to process accept/deny notification for received file. See log for details.");
+						global.Neptune.webLog.error(e, false);
+						try {
+							if (req.file.path !== undefined) {
+								if (fs.existsSync(req.file.path))
+									fs.unlinkSync(req.file.path)
+			
+								res.status(418).end("{ \"status\": \"failed\", \"approved\": false }");
+							}
+						} catch (_) {}
 					}
 				});
 
@@ -1321,10 +1393,11 @@ async function main() {
 				acceptedFunction();
 			}
 		} catch (e) {
+			Neptune.webLog.error("Error receiving file from client. See log for details.");
 			Neptune.webLog.error(e, false);
 
 			if (res != undefined)
-				res.status(500).send("{}");
+				res.status(500).end("{ \"status\": \"failed\", \"approved\": false }");
 		}
 	});
 

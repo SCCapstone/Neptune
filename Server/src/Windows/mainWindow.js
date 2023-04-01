@@ -268,7 +268,7 @@ class thisTest extends NeptuneWindow {
 			this.chkFileSharingAutoAccept.setEnabled(enabled === true);
 			this.chkFileSharingNotify.setEnabled(enabled === true);
 			this.chkFilesharingAllowClientToUpload.setEnabled(enabled === true);
-			this.txtFileSharingSaveDirectory.setEnabled(enabled === true);
+			//this.txtFileSharingSaveDirectory.setEnabled(enabled === true);
 			this.btnFileSharingSaveDirectoryBrowse.setEnabled(enabled === true);
 
 			this.actionToggleAllowClientToUpload.setEnabled(enabled === true);
@@ -353,7 +353,7 @@ class thisTest extends NeptuneWindow {
 			this.chkFilesharingAllowClientToUpload.setEnabled(client.fileSharingSettings.enabled === true);
 
 			this.txtFileSharingSaveDirectory.setText(client.fileSharingSettings.receivedFilesDirectory !== undefined? client.fileSharingSettings.receivedFilesDirectory : "");
-			this.txtFileSharingSaveDirectory.setEnabled(client.fileSharingSettings.enabled === true);
+			//this.txtFileSharingSaveDirectory.setEnabled(client.fileSharingSettings.enabled === true);
 			this.btnFileSharingSaveDirectoryBrowse.setEnabled(client.fileSharingSettings.enabled === true);
 		}
 	}
@@ -437,12 +437,15 @@ class thisTest extends NeptuneWindow {
 			this.actionToggleClipboardSharing = new NodeGUI.QAction(this.MainWindow);
 			this.actionToggleClipboardSharing.setObjectName("actionToggleClipboardSharing");
 			this.actionToggleClipboardSharing.setCheckable(true);
-			this.actionToggleClipboardSharing.setEnabled(false);
 			this.actionToggleClipboardSharing.setText("Enable clipboard sharing");
 			this.actionToggleClipboardSharing.addEventListener('triggered', (checked) => {
 				let client = this.GetSelectedClient()
 				if (client !== undefined) {
 					this.updateEnableClipboardSharing(checked);
+
+					if (this.chkSyncClipboard.isChecked() !== checked)
+						this.chkSyncClipboard.setChecked(checked === true);
+
 					this.log("Saving + syncing configuration");
 					client.save();
 					client.syncConfiguration();
@@ -467,12 +470,13 @@ class thisTest extends NeptuneWindow {
 			this.actionToggleFileSharing = new NodeGUI.QAction(this.MainWindow);
 			this.actionToggleFileSharing.setObjectName("actionToggleFileSharing");
 			this.actionToggleFileSharing.setCheckable(true);
-			this.actionToggleFileSharing.setEnabled(false);
 			this.actionToggleFileSharing.setText("Enable file sharing");
 			this.actionToggleFileSharing.addEventListener('triggered', (checked) => {
 				let client = this.GetSelectedClient()
 				if (client !== undefined) {
 					this.updateEnableFileSharing(checked);
+					if (this.chkFileSharingEnable.isChecked() !== checked)
+						this.chkFileSharingEnable.setChecked(checked);
 					this.log("Saving + syncing configuration");
 					client.save();
 					client.syncConfiguration();
@@ -498,16 +502,36 @@ class thisTest extends NeptuneWindow {
 			this.actionSend_file.setObjectName("actionSend_file");
 			this.actionSend_file.setEnabled(false);
 			this.actionSend_file.setText("Send file");
+			this.actionSend_file.addEventListener('triggered', () => {
+				let client = this.GetSelectedClient();
+				if (client !== undefined) {
+					this.#sendFile(client);
+				}
+			});
 
 			this.actionDelete_client = new NodeGUI.QAction(this.MainWindow);
 			this.actionDelete_client.setObjectName("actionDelete_client");
 			this.actionDelete_client.setText("Delete client");
 			this.actionDelete_client.addEventListener('triggered', () => {
-				// prompt to confirm.
 				let client = this.GetSelectedClient();
 				if (client !== undefined) {
-					this.RemoveClientFromDeviceList(client.friendlyName);
-					client.delete();
+					let yesButton = new NodeGUI.QPushButton();
+					yesButton.setText("Yes");
+
+					let noButton = new NodeGUI.QPushButton();
+					noButton.setText("No");
+
+					let result = this.displayMessageBox("Delete and unpair " + (client.friendlyName === undefined? "the client" : client.friendlyName) + "?",
+						"Are you sure you want to delete and unpair with " + (client.friendlyName === undefined? "the client" : client.friendlyName) + "?",
+						[
+							{ button: yesButton, buttonRole: NodeGUI.ButtonRole.AcceptRole },
+							{ button: noButton, buttonRole: NodeGUI.ButtonRole.RejectRole },
+						]);
+
+					if (result == NodeGUI.DialogCode.Accepted) {
+						this.RemoveClientFromDeviceList(client.friendlyName);
+						client.delete();
+					}
 				}
 			});
 			
@@ -706,7 +730,6 @@ class thisTest extends NeptuneWindow {
 			this.menuFile.addAction(this.actionPair_client);
 			this.menuFile.addAction(this.actionRefresh_device_list);
 			this.menuFile.addSeparator();
-			this.menuFile.addAction(this.actionRefresh_client_info);
 			this.menuFile.addAction(this.menuClient_settings_action);
 			this.menuFile.addSeparator();
 			this.menuFile.addAction(this.actionPreferences);
@@ -721,6 +744,7 @@ class thisTest extends NeptuneWindow {
 			this.menuHelp.addAction(this.actionAbout_Neptune);
 
 			this.menuBar.addMenu(this.menuFile);
+			this.menuBar.addAction(this.actionRefresh_client_info);
 			// menuBar.addMenu(this.menuClient_settings);
 			this.menuBar.addMenu(this.menuHelp);
 
@@ -761,11 +785,11 @@ class thisTest extends NeptuneWindow {
 					this.lblClientBatteryLevel.setText("");
 					this.updateClientData();
 				} else {
+					this.updateClientData();
 					this.menuClient_settings_action.setEnabled(true);
 					this.scrollArea.setEnabled(true);
 					// this.scrollArea.setFocus(NodeGUI.FocusReason.OtherFocusReason);
 					this.actionRefresh_client_info.setEnabled(true);
-					this.updateClientData();
 				}
 			})
 
@@ -927,6 +951,8 @@ class thisTest extends NeptuneWindow {
 			this.chkSyncClipboard.setText("Enable sharing clipboard");
 			this.chkSyncClipboard.addEventListener('stateChanged', (state) => {
 				this.updateEnableClipboardSharing(state === 2? true : false);
+				if (this.actionToggleClipboardSharing.isChecked() !== (state === 2))
+					this.actionToggleClipboardSharing.setChecked(state === true);
 			});
 
 			verticalLayout_2.addWidget(this.chkSyncClipboard);
@@ -993,6 +1019,8 @@ class thisTest extends NeptuneWindow {
 			this.chkFileSharingEnable.setText("Enable file sharing");
 			this.chkFileSharingEnable.addEventListener('stateChanged', (state) => {
 				this.updateEnableFileSharing(state == 2? true : false);
+				if (this.actionToggleFileSharing.isChecked() !== (state === 2))
+					this.actionToggleFileSharing.setChecked(state === true);
 			});
 
 			fileSharingCheckboxes.addWidget(this.chkFileSharingEnable);
@@ -1059,6 +1087,13 @@ class thisTest extends NeptuneWindow {
 			gridLayout_5.setObjectName("gridLayout_5");
 			this.txtFileSharingSaveDirectory = new NodeGUI.QLineEdit(widget);
 			this.txtFileSharingSaveDirectory.setObjectName("txtFileSharingSaveDirectory");
+			this.txtFileSharingSaveDirectory.setEnabled(false);
+			let saveDirectory = "";
+			if (this.GetSelectedClient() !== undefined) {
+				let client = this.GetSelectedClient();
+				saveDirectory = client.getReceivedFilesDirectory();
+			}
+			this.txtFileSharingSaveDirectory.setText(saveDirectory);
 			if (this.enableToolTips)
 				this.txtFileSharingSaveDirectory.setToolTip("Directory incoming files are saved to.");
 
@@ -1071,6 +1106,23 @@ class thisTest extends NeptuneWindow {
 			if (this.enableToolTips)
 				this.btnFileSharingSaveDirectoryBrowse.setToolTip("Open folder picker dialog.");
 			this.btnFileSharingSaveDirectoryBrowse.setText("Browse");
+			this.btnFileSharingSaveDirectoryBrowse.addEventListener('clicked', () => {
+				let client = this.GetSelectedClient();
+				if (client !== undefined) {
+					let fileDialog = new NodeGUI.QFileDialog();
+					fileDialog.setFileMode(NodeGUI.FileMode.Directory);
+					fileDialog.setWindowTitle("Select a download folder for " + (client.friendlyName !== undefined? client.friendlyName : "the client") + ".");
+					fileDialog.setOptions(NodeGUI.Option.ShowDirsOnly);
+					let acceptedOrDenied = fileDialog.exec();
+					if (acceptedOrDenied == NodeGUI.DialogCode.Accepted) {
+						let selectedFolder = fileDialog.selectedFiles()[0];
+						client.fileSharingSettings.receivedFilesDirectory = selectedFolder;
+						saveDirectory = client.getReceivedFilesDirectory(); // runs checks ?
+						this.txtFileSharingSaveDirectory.setText(saveDirectory);
+					}
+				}
+			});
+
 
 			gridLayout_5.addWidget(this.btnFileSharingSaveDirectoryBrowse, 1, 1, 1, 1);
 
@@ -1140,11 +1192,25 @@ class thisTest extends NeptuneWindow {
 				this.btnDelete.setToolTip("Delete this client.");
 			this.btnDelete.setText("Delete");
 			this.btnDelete.addEventListener('clicked', () => {
-				// prompt to confirm
 				let client = this.GetSelectedClient();
 				if (client !== undefined) {
-					this.RemoveClientFromDeviceList(client.friendlyName);
-					client.delete();
+					let okayButton = new NodeGUI.QPushButton();
+					okayButton.setText("Yes");
+
+					let cancelButton = new NodeGUI.QPushButton();
+					cancelButton.setText("No");
+
+					let result = this.displayMessageBox("Delete and unpair " + (client.friendlyName === undefined? "the client" : client.friendlyName) + "?",
+						"Are you sure you want to delete and unpair with " + (client.friendlyName === undefined? "the client" : client.friendlyName) + "?",
+						[
+							{ button: okayButton, buttonRole: NodeGUI.ButtonRole.AcceptRole },
+							{ button: cancelButton, buttonRole: NodeGUI.ButtonRole.RejectRole },
+						]);
+
+					if (result == NodeGUI.DialogCode.Accepted) {
+						this.RemoveClientFromDeviceList(client.friendlyName);
+						client.delete();
+					}
 				}
 			});
 
@@ -1173,6 +1239,12 @@ class thisTest extends NeptuneWindow {
 				this.btnSendFile.setToolTip("Open the file selector dialog and send a file to the client device.");
 			this.btnSendFile.setText("Send file");
 			this.btnSendFile.setEnabled(false);
+			this.btnSendFile.addEventListener('clicked', () => {
+				let client = this.GetSelectedClient();
+				if (client !== undefined) {
+					this.#sendFile(client);
+				}
+			});
 
 			verticalLayout.addWidget(this.btnSendFile);
 
@@ -1278,6 +1350,79 @@ class thisTest extends NeptuneWindow {
 		}
 	}
 
+
+	/**
+	 * Displays a message box with custom buttons.
+	 *
+	 * @param {string} title - The title of the message box.
+	 * @param {string} message - The message text of the message box.
+	 * @param {Array<{ button: NodeGUI.QPushButton, buttonRole?: NodeGUI.ButtonRole }>} buttons - An array of objects representing each custom button to add to the message box. Each object should contain a `button` property representing the `QPushButton` object, and an optional `buttonRole` property representing the button role (defaults to `ButtonRole.AcceptRole` if not specified).
+	 *
+	 * @returns {NodeGUI.DialogCode} - Whether the dialog was accepted `NodeGUI.DialogCode.Accepted` or rejected `NodeGUI.DialogCode.Rejected`.
+	 */
+	displayMessageBox(title, message, buttons) {
+		const messageBox = new NodeGUI.QMessageBox();
+		messageBox.setWindowTitle(title);
+		messageBox.setText(message);
+		if (!global.RunningTest) // I hate this
+			messageBox.setWindowIcon(process.ResourceManager.ApplicationIcon);
+		if (process.platform == 'win32') {
+			try {
+				// This allows NeptuneRunner to fix the window's taskbar data
+				messageBox.addEventListener(NodeGUI.WidgetEventTypes.Show, () => {
+					global.NeptuneRunnerIPC.pipe.write("fixwinhwnd" + this.winId() + "");
+				});
+			} catch (_) {}
+		}
+
+		// Add custom buttons to the message box
+		buttons.forEach(({ button, buttonRole }) => {
+			messageBox.addButton(button, buttonRole || NodeGUI.ButtonRole.AcceptRole);
+
+			button.addEventListener('clicked', () => {
+		    	messageBox.done(buttonRole || NodeGUI.ButtonRole.AcceptRole);
+			});
+		});
+
+		// Show the message box and return the result
+		const result = messageBox.exec();
+		return result;
+	}
+
+
+	/**
+	 * Open the file dialog picker for the user to select files to send to a client.
+	 * @param {Client} client - The client files will be sent to.
+	 */
+	#sendFile(client) {
+		try {
+			let fileDialog = new NodeGUI.QFileDialog();
+			fileDialog.setFileMode(NodeGUI.FileMode.ExistingFiles);
+			fileDialog.setWindowTitle("Send a file to " + (client.friendlyName !== undefined? client.friendlyName : "the client") + ".");
+			fileDialog.setOptions(NodeGUI.Option.DontConfirmOverwrite);
+			fileDialog.setNameFilter('All files (*.*)');
+			let acceptedOrDenied = fileDialog.exec();
+			if (acceptedOrDenied == NodeGUI.DialogCode.Accepted) {
+				let files = fileDialog.selectedFiles();
+
+				files.forEach(filePath => {
+					client.sendFile(filePath);
+				});
+			}
+		} catch(error) {
+
+			let okayButton = new NodeGUI.QPushButton();
+			okayButton.setText("Okay");
+
+			this.displayMessageBox(
+				"Failed to send file.",
+				"Failed to send selected file(s) to the client.\nReason: " + error.message,
+				[
+					{ button: okayButton, buttonRole: NodeGUI.ButtonRole.AcceptRole },
+				]
+			);
+		}
+	}
 }
 
 module.exports = thisTest;

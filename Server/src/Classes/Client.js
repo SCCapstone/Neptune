@@ -14,6 +14,7 @@ const NotificationManager = require('./NotificationManager.js');
 const IPAddress = require('./IPAddress.js');
 const Notification = require('./Notification.js');
 const crypto = require("node:crypto")
+const fs = require("node:fs");
 
 
 /** @type {import('./NeptuneConfig.js')} */
@@ -23,6 +24,7 @@ var NeptuneConfig = global.Neptune.config;
 
 const ClientConfig = require('./ClientConfig.js');
 const Clipboard = require('./Clipboard.js');
+const path = require('node:path');
 
 
 /**
@@ -293,13 +295,10 @@ class Client extends ClientConfig {
 		} else if (command == "/api/v1/server/filesharing/upload/newFileUUID") {
 			// Client is uploading a file.
 			if (this.fileSharingSettings.enabled && this.fileSharingSettings.allowClientToUpload) {
-				let saveToDirectory = this.fileSharingSettings.receivedFilesDirectory;
-				if (saveToDirectory !== undefined && saveToDirectory.trim().length == 0) {
-					saveToDirectory = "./data/receivedFiles/";
-				}
+				let saveToDirectory = this.getReceivedFilesDirectory();
 				let fileUUIDPackage = global.Neptune.filesharing.newClientUpload(this, data["filename"], saveToDirectory);
 
-				this.log.debug("Client request file upload, new fileUUID: " + fileUUIDPackage.fileUUID);
+				this.log.info("Client request file upload, new fileUUID: " + fileUUIDPackage.fileUUID);
 				this.sendRequest("/api/v1/server/filesharing/upload/fileUUID", {
 					fileUUID: fileUUIDPackage.fileUUID,
 					requestId: data.requestId,
@@ -308,6 +307,29 @@ class Client extends ClientConfig {
 			}
 
 		}
+	}
+
+	getReceivedFilesDirectory() {
+		let saveToDirectory = this.fileSharingSettings.receivedFilesDirectory;
+		if (saveToDirectory === undefined || !fs.existsSync(saveToDirectory)) {
+			this.log.debug("Received files directory not set or does not exist, using ./data/receivedFiles/");
+			saveToDirectory = "./data/receivedFiles/";
+		} else {
+			try {
+				// Check if the path points to a valid directory
+				let stats = fs.statSync(saveToDirectory);
+				if (!stats.isDirectory()) {
+					this.log.debug("Received files directory exists, but it's not actually a directory (?), using ./data/receivedFiles/");
+					saveToDirectory = "./data/receivedFiles/";
+				}
+			} catch (_) {
+				saveToDirectory = "./data/receivedFiles/";
+			}
+		}
+
+
+		this.log.debug("Received files directory: " + saveToDirectory);
+		return saveToDirectory;
 	}
 
 	setupConnectionManagerWebsocket(webSocket) {
@@ -474,7 +496,16 @@ class Client extends ClientConfig {
 	 * @return {boolean}
 	 */
 	sendFile(filePath) {
-		
+		let fileSharingObject = global.Neptune.filesharing.newClientDownload(this, filePath);
+
+		if (fileSharingObject !== undefined);
+
+		this.log.info("Server request file download (-> client), new fileUUID: " + fileSharingObject.fileUUID);
+		this.sendRequest("/api/v1/client/filesharing/receive", {
+			fileUUID: fileSharingObject.fileUUID,
+			authenticationCode: fileSharingObject.authenticationCode,
+			fileName: path.basename(filePath),
+		});
 	}
 
 

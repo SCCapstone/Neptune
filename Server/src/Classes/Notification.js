@@ -204,6 +204,10 @@ class Notification extends EventEmitter {
         let maybeThis = this;
         let pushNotification = function() { // Using notifier
             try {
+                // don't do media ones :!
+                if (maybeThis.data.type === "media")
+                    return;
+
                 // send the notification
                 let text = maybeThis.data.contents.text + maybeThis.data.contents.subtext
                 if (text === undefined)
@@ -232,6 +236,8 @@ class Notification extends EventEmitter {
                     title: maybeThis.data.title,
                     message: text,
                     id: maybeThis.data.notificationId,
+
+                    sound: maybeThis.data.isSilent === false,
 
                     actions: actions,
                     reply: false,

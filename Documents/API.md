@@ -310,7 +310,7 @@ POST Data:
 ```json5
 {
     "requestId": 123, // Client provided id to track which file this uuid is for, returned as is in response.
-    "filename": "myDocument.pdf", // Name of the file being uploaded. Raw name, extension and all
+    "fileName": "myDocument.pdf", // Name of the file being uploaded. Raw name, extension and all
 }
 ```
 
@@ -354,6 +354,7 @@ POST Data:
 {
     "fileUUID": "d5a11522-99b2-4a99-8e0c-1017f7e1efa2", // The file UUID the client needs to download
     "authenticationCode": "1234", // Code used to authenticate the client
+    "fileName": "abc" // Name of the file
 }
 ```
 

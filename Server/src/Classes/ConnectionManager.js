@@ -314,7 +314,7 @@ class ConnectionManager extends EventEmitter {
 
 		this.#webSocket.on('close', (code, reason) => {
 			// clean up!
-			this.#log.info("WebSocket: client disconnected");
+			this.#log.info("WebSocket: client disconnected (code: " + code + ", reason: " + reason + ").");
 		});
 
 		this.#webSocket.on('pong', (data) => {
@@ -324,6 +324,8 @@ class ConnectionManager extends EventEmitter {
 
 		this.#webSocket.on('open', () => {
 			// opened up
+			this.#log.debug("WebSocket: opened");
+
 		});
 
 		this.#webSocket.on('ping', (data) => {
@@ -334,7 +336,7 @@ class ConnectionManager extends EventEmitter {
 
 		this.#log.info("WebSocket: connected and listening...");
 
-		this.sendRequest("/api/v1/client/battery/get", {}); // Get battery data on WebSocket connection
+		//this.sendRequest("/api/v1/client/battery/get", {}); // Get battery data on WebSocket connection
 	}
 }
 
