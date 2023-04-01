@@ -1,8 +1,8 @@
 /**
- *      _  _ 
- *     | \| |
- *     | .` |
- *     |_|\_|eptune
+ *			_	_ 
+ *		 | \| |
+ *		 | .` |
+ *		 |_|\_|eptune
  *
  *		Capstone Project 2022
  * 
@@ -99,8 +99,22 @@ class NeptuneConfig extends ConfigItem {
 	 * Friendly device name
 	 * @type {string}
 	 */
-	friendlyName = "MyServer";
+	friendlyName = "";
 
+
+	#getComputerName() {
+		switch (process.platform) {
+			case "win32":
+				return process.env.COMPUTERNAME;
+			case "darwin":
+				return cp.execSync("scutil --get ComputerName").toString().trim();
+			case "linux":
+				const prettyname = cp.execSync("hostnamectl --pretty").toString().trim();
+				return prettyname === "" ? os.hostname() : prettyname;
+			default:
+				return os.hostname();
+		}
+	}
 
 	/**
 	 * @param {import('./ConfigurationManager')} configManager ConfigurationManager instance
@@ -109,6 +123,10 @@ class NeptuneConfig extends ConfigItem {
 	 */
 	constructor(configManager, fileName) {
 		super(configManager, fileName);
+
+		if (this.firstRun || this.friendlyName == "")
+			this.friendlyName = this.#getComputerName();
+
 		this.loadSync();
 	}
 

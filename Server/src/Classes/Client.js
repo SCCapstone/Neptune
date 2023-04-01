@@ -183,7 +183,8 @@ class Client extends ClientConfig {
 			if (data["batteryTimeRemaining"] !== undefined)
 				this.batteryTimeRemaining = data["batteryTimeRemaining"]
 
-			let timeRemainingMsg = (this.batteryTimeRemaining !== undefined)? ", " + this.batteryTimeRemaining/60 + " minutes until full" : "";
+			// let timeRemainingMsg = (this.batteryTimeRemaining !== undefined)? ", " + this.batteryTimeRemaining/60 + " minutes until full" : "";
+			let timeRemainingMsg = "";
 			let chargeMessage = (this.batteryChargerType!="discharging")? "charging via " + this.batteryChargerType + timeRemainingMsg : "discharging";
 			this.log.debug("Received battery data from client. Client is at " + this.batteryLevel + "% and is " + chargeMessage + ". Temperature: " + this.batteryTemperature);
 
@@ -289,16 +290,20 @@ class Client extends ClientConfig {
 		} else if (command == "/api/v1/client/clipboard/uploadStatus") {
 			this.clipboardModificationsLocked = false;
 
-		} else if (command == "/api/v1/server/filesharing/upload") {
+		} else if (command == "/api/v1/server/filesharing/upload/newFileUUID") {
 			// Client is uploading a file.
 			if (this.fileSharingSettings.enabled && this.fileSharingSettings.allowClientToUpload) {
-				let saveToDirectory = this.fileSharingSettings.receivedFilesDirectory !== undefined? this.fileSharingSettings.receivedFilesDirectory : "./receivedFiles/"
-				let fileUUID = global.Neptune.filesharing.newClientUpload(this, saveToDirectory);
+				let saveToDirectory = this.fileSharingSettings.receivedFilesDirectory;
+				if (saveToDirectory !== undefined && saveToDirectory.trim().length == 0) {
+					saveToDirectory = "./data/receivedFiles/";
+				}
+				let fileUUIDPackage = global.Neptune.filesharing.newClientUpload(this, data["filename"], saveToDirectory);
 
-				this.log.debug("Client request file upload, new fileUUID: " + fileUUID);
+				this.log.debug("Client request file upload, new fileUUID: " + fileUUIDPackage.fileUUID);
 				this.sendRequest("/api/v1/server/filesharing/upload/fileUUID", {
-					fileUUID: fileUUID,
-					requestId: data.requestId
+					fileUUID: fileUUIDPackage.fileUUID,
+					requestId: data.requestId,
+					authenticationCode: fileUUIDPackage.authenticationCode,
 				});
 			}
 

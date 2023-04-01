@@ -1,11 +1,11 @@
 'use strict';
 /**
- *	_  _ 
- *   | \| |
- *   | .` |
- *   |_|\_|eptune
+ *	_	_ 
+ *	 | \| |
+ *	 | .` |
+ *	 |_|\_|eptune
  *
- *   Capstone Project 2022
+ *	 Capstone Project 2022
  */
 
 
@@ -21,10 +21,10 @@ const isWin = process.platform === "win32"; // Can change notification handling 
 
 // Global behavioral changes (static stuff)
 const debug = true; // change this later idk
-const displaySilly = false; // output the silly log level to console (it goes  every other level > silly, silly is the lowest priority, literal spam)
+const displaySilly = false; // output the silly log level to console (it goes	every other level > silly, silly is the lowest priority, literal spam)
 Error.stackTraceLimit = (debug)? 8 : 4;
 
-Neptune.version = new Version(0, 5, 0, ((debug)?"debug":"release"), "BetaRelease");
+Neptune.version = new Version(0, 8, 9, ((debug)?"debug":"release"), "RC1");
 
 global.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune. Allows us to get around providing `Neptune` to everything
 
@@ -41,6 +41,7 @@ const path = require("node:path");
 const fs = require("node:fs")
 const EventEmitter = require('node:events');
 const util = require('node:util');
+const { exec } = require('node:child_process');
 
 // Crypto
 const keytar = require("keytar");
@@ -63,6 +64,7 @@ const multer = require('multer');
 const ConfigurationManager = require('./Classes/ConfigurationManager.js');
 const NeptuneConfig = require('./Classes/NeptuneConfig.js');
 const ClientManager = require('./Classes/ClientManager.js');
+const Notification = require('./Classes/Notification.js');
 const NotificationManager = require('./Classes/NotificationManager.js');
 /** @typedef {import('./Classes/Client')} Client */
 /** @type {import('./Classes/LogMan').LogMan} */
@@ -92,7 +94,18 @@ Neptune.notificationManager;
 
 // Logging
 /** @type {LogMan} */
-Neptune.logMan = new LogMan("Neptune", "./logs", { fileWriteLevel: { silly: debug }, consoleDisplayLevel: { silly: displaySilly }, cleanLog: true });
+let logOptions = {
+	fileWriteLevel: {
+		silly: debug
+	},
+	consoleDisplayLevel: {
+		silly: displaySilly
+	},
+	cleanLog: true,
+	consoleMessageCharacterLimit: (debug? 750 : 1250),
+	fileMessageCharacterLimit: (debug? 4000 : 7500),
+}
+Neptune.logMan = new LogMan("Neptune", "./logs", logOptions);
 // Log name: Neptune, in the logs folder, do not display silly messages (event fired!)
 
 Neptune.log = Neptune.logMan.getLogger("Neptune"); // You can call this (log) to log as info
@@ -106,16 +119,18 @@ Neptune.logMan.on('close', () => { // Reopen log file if closed (and not shuttin
 
 // For debugging, allows you to output a nasty object into console. Neat
 var utilLog = function(obj, depth) {
-	Neptune.log.debug(util.inspect(obj, {depth: (depth!=undefined)? depth : 2}));
+	Neptune.log.debug(util.inspect(obj, {depth: (depth!=undefined)? depth : 3}));
 }
 
 // This is our "error" handler. seeeesh
 process.on('unhandledRejection', (error) => {
 	Neptune.log.error('Unhandled rejection: ' + error.message + "\n" + error.stack, debug);
+	Neptune.log.error(error, false);
 	// Should close now..
 });
 process.on('uncaughtException', (error) => {
 	Neptune.log.error('Unhandled exception: ' + error.message + "\n" + error.stack, debug);
+	Neptune.log.error(error, false);
 });
 
 
@@ -235,25 +250,24 @@ Neptune.log("Running on \x1b[1m\x1b[34m" + process.platform);
 
 // If Win32, connect to the NeptuneRunner application pipe
 if (isWin) {
-	let NRIPC = require("./Classes/NeptuneRunner.js")
-	global.NeptuneRunnerIPC = new NRIPC.NeptuneRunnerIPC();
+	try {
+		let NRIPC = require("./Classes/NeptuneRunner.js")
+		global.NeptuneRunnerIPC = new NRIPC.NeptuneRunnerIPC();
+	} catch (e) {}
 }
 
 
 
-
-
-
-if (!fs.existsSync("./data/"))
-	fs.mkdirSync("./data/")
-if (!fs.existsSync("./data/clients/"))
-	fs.mkdirSync("./data/clients/")
-
-
-var firstRun = (fs.existsSync("./data/NeptuneConfig.json") === false);
-
 // two things: blah blah blah main function can't be async, catastrophic error catching
 async function main() {
+	if (!fs.existsSync("./data/"))
+		fs.mkdirSync("./data/")
+	if (!fs.existsSync("./data/clients/"))
+		fs.mkdirSync("./data/clients/")
+
+
+	var firstRun = (fs.existsSync("./data/NeptuneConfig.json") === false);
+
 	let encryptionKey = await keytar.getPassword("Neptune","ConfigKey");
 	let keyFound = (encryptionKey !== null && encryptionKey !== "");
 	if (encryptionKey == null)
@@ -353,7 +367,7 @@ async function main() {
 	}
 
 	Neptune.events.application.on('shutdown', (shutdownTimeout) => {
-		Neptune.clientManager.destroy(); // Remove any unpaired 
+		Neptune.clientManager.destroy(); // Remove any unpaired
 	});
 
 	Neptune.log("Loading previous clients...");
@@ -363,8 +377,8 @@ async function main() {
 
 	/**
 	 * _____________
-	 * |		   |
-	 * |	GUI	|
+	 * |           |
+	 * |	GUI    |
 	 * |___________|
 	 * 
 	 */
@@ -413,6 +427,12 @@ async function main() {
 		}
 	});
 	Neptune.events.application.on('shutdown', ()=>{
+		try {
+			// Actually web...but removes the upload folder
+			if (fs.existsSync('./data/uploads'))
+				fs.rmSync('./data/uploads', { recursive: true, force: true });
+		} catch (e) {}
+		
 		tray.hide();
 	});
 	
@@ -473,7 +493,7 @@ async function main() {
 
 	/**
 	 * _____________
-	 * |		   |
+	 * |           |
 	 * |  Express  |
 	 * |___________|
 	 * 
@@ -491,6 +511,7 @@ async function main() {
 	// 	saveUninitialized: true,
 	// 	resave: true
 	// }));
+
 	var upload = multer({
 		dest: './data/uploads/',
 		limits: {
@@ -498,6 +519,11 @@ async function main() {
 		},
 	}); // For uploads
 
+	// Reset uploads folder!
+	try {
+		if (fs.existsSync('./data/uploads'))
+			fs.rmSync('./data/uploads', { recursive: true, force: true });
+	} catch (e) {}
 
 	const httpServer = http.createServer(app);
 
@@ -565,320 +591,350 @@ async function main() {
 	// https://nodejs.org/api/crypto.html#class-diffiehellman
 	// This is the initial endpoint for the client
 	app.post('/api/v1/server/initiateConnection', (req, res) => {
-		let conInitUUID = crypto.randomUUID(); // NeptuneCrypto.convert(NeptuneCrypto.randomString(16), "utf8", "hex"); // string (len 16) -> HEX
-		let conInitLog = Neptune.logMan.getLogger("ConInit-" + conInitUUID);
-		conInitLog.info("Initiating new client connection, uuid: " + conInitUUID);
+		try {
+			let conInitUUID = crypto.randomUUID(); // NeptuneCrypto.convert(NeptuneCrypto.randomString(16), "utf8", "hex"); // string (len 16) -> HEX
+			let conInitLog = Neptune.logMan.getLogger("ConInit-" + conInitUUID);
+			conInitLog.info("Initiating new client connection, uuid: " + conInitUUID);
 
-		// https://nodejs.org/api/crypto.html#class-diffiehellmangroup
-		let supportedKeyGroups = ['modp14', 'modp15', 'modp16'];
-		let keyGroup = 'modp16';
-		if (req.body.supportedKeyGroups !== undefined) {
-			for (var i = 0; i<req.body.supportedKeyGroups.length; i++) {
-				if (supportedKeyGroups.indexOf(req.body.supportedKeyGroups[i]) != -1) {
-					keyGroup = req.body.supportedKeyGroups[i];
+			// https://nodejs.org/api/crypto.html#class-diffiehellmangroup
+			let supportedKeyGroups = ['modp14', 'modp15', 'modp16'];
+			let keyGroup = 'modp16';
+			if (req.body.supportedKeyGroups !== undefined) {
+				for (var i = 0; i<req.body.supportedKeyGroups.length; i++) {
+					if (supportedKeyGroups.indexOf(req.body.supportedKeyGroups[i]) != -1) {
+						keyGroup = req.body.supportedKeyGroups[i];
+					}
 				}
 			}
-		}
-		conInitLog.debug("Selected DH key group: " + keyGroup);
+			conInitLog.debug("Selected DH key group: " + keyGroup);
 
-		// Select the cipher and hash
-		let supportedCiphers = ["chacha20-poly1305", "chacha20", "aes-256-gcm", "aes-128-gcm"];
-		let supportedHashAlgorithms = ["sha256", "sha512"];
-		let cipher = "aes-128-gcm";
-		let hashAlgorithm = "sha256";
+			// Select the cipher and hash
+			let supportedCiphers = ["chacha20-poly1305", "chacha20", "aes-256-gcm", "aes-128-gcm"];
+			let supportedHashAlgorithms = ["sha256", "sha512"];
+			let cipher = "aes-128-gcm";
+			let hashAlgorithm = "sha256";
 
-		if (req.body.supportedCiphers !== undefined) {
-			for (var i = 0; i<req.body.supportedCiphers.length; i++) {
-				if (supportedCiphers.indexOf(req.body.supportedCiphers[i]) != -1) {
-					cipher = req.body.supportedCiphers[i];
+			if (req.body.supportedCiphers !== undefined) {
+				for (var i = 0; i<req.body.supportedCiphers.length; i++) {
+					if (supportedCiphers.indexOf(req.body.supportedCiphers[i]) != -1) {
+						cipher = req.body.supportedCiphers[i];
+					}
 				}
 			}
-		}
-		conInitLog.silly("Selected cipher: " + cipher);
+			conInitLog.silly("Selected cipher: " + cipher);
 
-		if (req.body.supportedHashAlgorithms !== undefined) {
-			for (var i = 0; i<req.body.supportedHashAlgorithms.length; i++) {
-				if (supportedHashAlgorithms.indexOf(req.body.supportedHashAlgorithms[i]) != -1) {
-					hashAlgorithm = req.body.supportedHashAlgorithms[0];
+			if (req.body.supportedHashAlgorithms !== undefined) {
+				for (var i = 0; i<req.body.supportedHashAlgorithms.length; i++) {
+					if (supportedHashAlgorithms.indexOf(req.body.supportedHashAlgorithms[i]) != -1) {
+						hashAlgorithm = req.body.supportedHashAlgorithms[0];
+					}
 				}
 			}
+			conInitLog.silly("Selected hash algorithm: " + hashAlgorithm);
+			
+
+
+			let alice = crypto.getDiffieHellman(keyGroup);
+			alice.generateKeys();
+
+			let useDynamicSalt = false;
+			let dynamicSalt;
+			if (req.body.useDynamicSalt == true) {
+				conInitLog.silly("Using dynamicSalt");
+				useDynamicSalt = true;
+				dynamicSalt = crypto.getDiffieHellman(keyGroup);
+				dynamicSalt.generateKeys();
+			}
+
+
+			// Store this data. Create our response
+			conInitUUIDs[conInitUUID] = {
+				log: conInitLog,
+				enabled: true,
+				socketCreated: false,
+				aliceDHObject: alice,
+				createdTime: new Date().toISOString(),
+				supportedCiphers: req.body.acceptedCrypto,
+				selectedCipher: cipher,
+				supportedHashAlgorithms: req.body.acceptedHashTypes,
+				selectedHashAlgorithm: hashAlgorithm,
+				supportedKeyGroups: req.body.acceptedKeyGroups,
+				selectedKeyGroup: keyGroup,
+			}
+
+			let myResponsePacket = {
+				"g1": alice.getGenerator('base64'),
+				"p1": alice.getPrime('base64'),
+				"a1": alice.getPublicKey('base64'),
+				"conInitUUID": conInitUUID,
+				selectedKeyGroup: keyGroup,
+				selectedCipher: cipher,
+				selectedHashAlgorithm: hashAlgorithm
+			};
+
+			if (useDynamicSalt && dynamicSalt !== undefined) {
+				myResponsePacket.g2 = dynamicSalt.getGenerator('base64');
+				myResponsePacket.p2 = dynamicSalt.getPrime('base64');
+				myResponsePacket.a2 = dynamicSalt.getPublicKey('base64');
+				conInitUUIDs[conInitUUID].dynamicSaltDHObject = dynamicSalt;
+			}
+
+			let responseString = JSON.stringify(myResponsePacket);
+			conInitLog.silly("Sending: " + responseString);
+			res.status(200).send(responseString);
+		} catch (e) {
+			Neptune.webLog.error(e, false);
+
+			if (res != undefined)
+				res.status(500).send("{}");
 		}
-		conInitLog.silly("Selected hash algorithm: " + hashAlgorithm);
-		
-
-
-		let alice = crypto.getDiffieHellman(keyGroup);
-		alice.generateKeys();
-
-		let useDynamicSalt = false;
-		let dynamicSalt;
-		if (req.body.useDynamicSalt == true) {
-			conInitLog.silly("Using dynamicSalt");
-			useDynamicSalt = true;
-			dynamicSalt = crypto.getDiffieHellman(keyGroup);
-			dynamicSalt.generateKeys();
-		}
-
-
-		// Store this data. Create our response
-		conInitUUIDs[conInitUUID] = {
-			log: conInitLog,
-			enabled: true,
-			socketCreated: false,
-			aliceDHObject: alice,
-			createdTime: new Date().toISOString(),
-			supportedCiphers: req.body.acceptedCrypto,
-			selectedCipher: cipher,
-			supportedHashAlgorithms: req.body.acceptedHashTypes,
-			selectedHashAlgorithm: hashAlgorithm,
-			supportedKeyGroups: req.body.acceptedKeyGroups,
-			selectedKeyGroup: keyGroup,
-		}
-
-		let myResponsePacket = {
-			"g1": alice.getGenerator('base64'),
-			"p1": alice.getPrime('base64'),
-			"a1": alice.getPublicKey('base64'),
-			"conInitUUID": conInitUUID,
-			selectedKeyGroup: keyGroup,
-			selectedCipher: cipher,
-			selectedHashAlgorithm: hashAlgorithm
-		};
-
-		if (useDynamicSalt && dynamicSalt !== undefined) {
-			myResponsePacket.g2 = dynamicSalt.getGenerator('base64');
-			myResponsePacket.p2 = dynamicSalt.getPrime('base64');
-			myResponsePacket.a2 = dynamicSalt.getPublicKey('base64');
-			conInitUUIDs[conInitUUID].dynamicSaltDHObject = dynamicSalt;
-		}
-
-		let responseString = JSON.stringify(myResponsePacket);
-		conInitLog.silly("Sending: " + responseString);
-		res.status(200).send(responseString);
 	});
 
 
 
 	// This is the final part of negotiation, creates the socket and opens up command inputting
 	app.post('/api/v1/server/initiateConnection/:conInitUUID', (req, res) => {
-		let conInitUUID = req.params.conInitUUID;
-		Neptune.webLog.silly("POST: /api/v1/server/initiateConnection/" + conInitUUID + " .. body: " + JSON.stringify(req.body));
-		if (conInitUUIDs[conInitUUID] !== undefined) {
-			if (conInitUUIDs[conInitUUID].socketCreated !== false) {
-				Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
-				res.status(403).send('{ "error": "Invalid conInitUUID" }');
-				return;
-			}
-		} else {
-			Neptune.webLog.silly("Attempt to use invalid conInitUUID: " + conInitUUID);
-			res.status(401).send('{ "error": "Invalid conInitUUID" }');
-			return;
-		}
-
-		/** @type {conInitObject} */
-		let conInitObject = conInitUUIDs[conInitUUID];
-
-		// Validate timestamp
-		let timeNow = new Date();
-		if (((timeNow - conInitObject.createdTime)/(60000)) >= 5) { // Older than 5 minutes
-			conInitObject.log.warn("Attempt to use old conInitUUID! UUID: " + conInitUUID + " . createdAt: " + conInitObject.createdTime.toISOString());
-			delete conInitUUIDs[conInitUUID];
-			res.status(408).send('{ "error": "Request timeout for conInitUUID" }');
-			return;
-		}
-
-		// Validate no other requests
-		for (const [initUuid, initValue] of Object.entries(conInitUUIDs)) {
-			if (initValue.clientId !== undefined) {
-				if (initValue == req.body.clientId) {
-					res.status(409).end(`{ "end": "Initiation request already in progress" }`);
+		try {
+			let conInitUUID = req.params.conInitUUID;
+			Neptune.webLog.silly("POST: /api/v1/server/initiateConnection/" + conInitUUID + " .. body: " + JSON.stringify(req.body));
+			if (conInitUUIDs[conInitUUID] !== undefined) {
+				if (conInitUUIDs[conInitUUID].socketCreated !== false) {
+					Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
+					res.status(403).send('{ "error": "Invalid conInitUUID" }');
 					return;
 				}
-			}
-		}
-
-
-		// Generate shared secret
-		let aliceSecret = conInitObject.aliceDHObject.computeSecret(Buffer.from(req.body.b1,'base64'));
-		conInitObject.secret = NeptuneCrypto.HKDF(aliceSecret, "mySalt1234", {hashAlgorithm: conInitObject.selectedHashAlgorithm, keyLength: 32}).key;
-
-		
-		// Validate chkMsg
-		var chkMsg = req.body.chkMsg;
-		conInitObject.clientId = req.body.clientId;
-		var client;
-		try {
-			if (NeptuneCrypto.isEncrypted(conInitObject.clientId))
-				conInitObject.clientId = NeptuneCrypto.decrypt(conInitObject.clientId, conInitObject.secret);
-
-			// Get/create client object
-			/** @type {Client} client **/
-			client = Neptune.clientManager.getClient(conInitObject.clientId)
-			client.clientId = conInitObject.clientId;
-			conInitObject.client = client;
-
-			if (client.pairKey !== undefined) {
-				// Regenerate key using shared pair key
-				conInitObject.log.debug("Using pairKey!");
-				conInitObject.secret = NeptuneCrypto.HKDF(aliceSecret, client.pairKey, {hashAlgorithm: conInitObject.selectedHashAlgorithm, keyLength: 32}).key;
-			}
-
-			if (NeptuneCrypto.isEncrypted(chkMsg))
-				chkMsg = NeptuneCrypto.decrypt(chkMsg, conInitObject.secret);
-		} catch (err) {
-			conInitObject.log.silly(err);
-			if (err instanceof NeptuneCrypto.Errors.InvalidDecryptionKey || err instanceof NeptuneCrypto.Errors.MissingDecryptionKey) {
-				// bad key.
-				conInitObject.log.warn("Socket setup, bad key! UUID: " + conInitUUID);
-				res.status(400).send(`{ "error": "Invalid encryption key" }`);
 			} else {
-				// Another error
-				conInitObject.log.warn("Decryption of chkMsg failed, error: " + err.message);
-				res.status(400).send(`{ "error": "Decryption of chkMsg failed" }`);
+				Neptune.webLog.silly("Attempt to use invalid conInitUUID: " + conInitUUID);
+				res.status(401).send('{ "error": "Invalid conInitUUID" }');
+				return;
 			}
-			delete conInitUUIDs[conInitUUID];
-			return;
-		}
-		
-		let chkMsgHash = crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg).digest('hex');
-		chkMsgHash = req.body.chkMsgHash; // remove this later
 
-		if (chkMsgHash !== req.body.chkMsgHash) {
-			conInitObject.log.warn(`Invalid chkMsg hash! chkMsg: ${chkMsg} ... ourHash: ${chkMsgHash} ... clientHash: ${req.body.chkMsgHash}`);
-			res.status(400).send(`{ "error": "Invalid chkMsgHash" }`);
-			return;
-		}
+			/** @type {conInitObject} */
+			let conInitObject = conInitUUIDs[conInitUUID];
 
+			// Validate timestamp
+			let timeNow = new Date();
+			if (((timeNow - conInitObject.createdTime)/(60000)) >= 5) { // Older than 5 minutes
+				conInitObject.log.warn("Attempt to use old conInitUUID! UUID: " + conInitUUID + " . createdAt: " + conInitObject.createdTime.toISOString());
+				delete conInitUUIDs[conInitUUID];
+				res.status(408).send('{ "error": "Request timeout for conInitUUID" }');
+				return;
+			}
 
-		try {
-			if (typeof req.ip === "string" && req.ip !== "::1") {
-				let ip = req.ip;
-				if (ip.includes(":")) {
-					ipArray = ip.split(":");
-					ip = ipArray[ipArray.length-1];
+			// Validate no other requests
+			for (const [initUuid, initValue] of Object.entries(conInitUUIDs)) {
+				if (initValue.clientId !== undefined) {
+					if (initValue == req.body.clientId) {
+						res.status(409).end(`{ "end": "Initiation request already in progress" }`);
+						return;
+					}
 				}
-				client.IPAddress = new IPAddress(ip, "25560");
 			}
-			client.saveSync();
-		} catch (e) {}
+
+
+			// Generate shared secret
+			let aliceSecret = conInitObject.aliceDHObject.computeSecret(Buffer.from(req.body.b1,'base64'));
+			conInitObject.secret = NeptuneCrypto.HKDF(aliceSecret, "mySalt1234", {hashAlgorithm: conInitObject.selectedHashAlgorithm, keyLength: 32}).key;
+
+			
+			// Validate chkMsg
+			var chkMsg = req.body.chkMsg;
+			conInitObject.clientId = req.body.clientId;
+			var client;
+			try {
+				if (NeptuneCrypto.isEncrypted(conInitObject.clientId))
+					conInitObject.clientId = NeptuneCrypto.decrypt(conInitObject.clientId, conInitObject.secret);
+
+				// Get/create client object
+				/** @type {Client} client **/
+				client = Neptune.clientManager.getClient(conInitObject.clientId)
+				client.clientId = conInitObject.clientId;
+				conInitObject.client = client;
+
+				if (client.pairKey !== undefined) {
+					// Regenerate key using shared pair key
+					conInitObject.log.debug("Using pairKey!");
+					conInitObject.secret = NeptuneCrypto.HKDF(aliceSecret, client.pairKey, {hashAlgorithm: conInitObject.selectedHashAlgorithm, keyLength: 32}).key;
+				}
+
+				if (NeptuneCrypto.isEncrypted(chkMsg))
+					chkMsg = NeptuneCrypto.decrypt(chkMsg, conInitObject.secret);
+			} catch (err) {
+				conInitObject.log.silly(err);
+				if (err instanceof NeptuneCrypto.Errors.InvalidDecryptionKey || err instanceof NeptuneCrypto.Errors.MissingDecryptionKey) {
+					// bad key.
+					conInitObject.log.warn("Socket setup, bad key! UUID: " + conInitUUID);
+					res.status(400).send(`{ "error": "Invalid encryption key" }`);
+				} else {
+					// Another error
+					conInitObject.log.warn("Decryption of chkMsg failed, error: " + err.message);
+					res.status(400).send(`{ "error": "Decryption of chkMsg failed" }`);
+				}
+				delete conInitUUIDs[conInitUUID];
+				return;
+			}
+			
+			let chkMsgHash = crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg).digest('hex');
+			chkMsgHash = req.body.chkMsgHash; // remove this later
+
+			if (chkMsgHash !== req.body.chkMsgHash) {
+				conInitObject.log.warn(`Invalid chkMsg hash! chkMsg: ${chkMsg} ... ourHash: ${chkMsgHash} ... clientHash: ${req.body.chkMsgHash}`);
+				res.status(400).send(`{ "error": "Invalid chkMsgHash" }`);
+				return;
+			}
+
+
+			try {
+				if (typeof req.ip === "string" && req.ip !== "::1") {
+					let ip = req.ip;
+					if (ip.includes(":")) {
+						ipArray = ip.split(":");
+						ip = ipArray[ipArray.length-1];
+					}
+					client.IPAddress = new IPAddress(ip, "25560");
+				}
+				client.saveSync();
+			} catch (e) {}
 
 
 
-		// Create socket
-		let socketUUID = crypto.randomUUID();
-		socketUUIDs[socketUUID] = conInitUUID;
-		conInitObject.socketCreated = true; // Done		
+			// Create socket
+			let socketUUID = crypto.randomUUID();
+			socketUUIDs[socketUUID] = conInitUUID;
+			conInitObject.socketCreated = true; // Done		
 
-		// Setup connection manager (enables HTTP listener)
-		client.setupConnectionManager(conInitObject.secret, {
-			conInitUUID: conInitUUID,
-			socketUUID: socketUUID,
-			encryptionParameters: {
-				cipherAlgorithm: conInitObject.selectedCipher,
+			// Setup connection manager (enables HTTP listener)
+			client.setupConnectionManager(conInitObject.secret, {
+				conInitUUID: conInitUUID,
+				socketUUID: socketUUID,
+				encryptionParameters: {
+					cipherAlgorithm: conInitObject.selectedCipher,
+					hashAlgorithm: conInitObject.selectedHashAlgorithm,
+				}
+			});
+			
+
+			// Create response
+			let response = JSON.stringify({
+				confMsg: crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg + req.body.chkMsgHash).digest('hex'),
+				socketUUID: socketUUID,
+			});
+
+			
+
+			let encryptedResponse = NeptuneCrypto.encrypt(response, conInitObject.secret, undefined, {
 				hashAlgorithm: conInitObject.selectedHashAlgorithm,
-			}
-		});
-		
+				cipherAlgorithm: conInitObject.selectedCipher
+			});
 
-		// Create response
-		let response = JSON.stringify({
-			confMsg: crypto.createHash(req.body.chkMsgHashFunction).update(chkMsg + req.body.chkMsgHash).digest('hex'),
-			socketUUID: socketUUID,
-		});
+			conInitObject.log.info(conInitUUID + " setup completed.");
 
-		
+			res.status(200).send(encryptedResponse);
+		} catch (e) {
+			Neptune.webLog.error(e, false);
 
-		let encryptedResponse = NeptuneCrypto.encrypt(response, conInitObject.secret, undefined, {
-			hashAlgorithm: conInitObject.selectedHashAlgorithm,
-			cipherAlgorithm: conInitObject.selectedCipher
-		});
-
-		conInitObject.log.info(conInitUUID + " setup completed.");
-
-		res.status(200).send(encryptedResponse);
+			if (res != undefined)
+				res.status(500).send("{}");
+		}
 	});
 	app.post('/api/v1/server/initiateConnection/:conInitUUID/scrap', (req, res) => {
-		let conInitUUID = req.params.conInitUUID;
-		if (conInitUUIDs[conInitUUID] !== undefined) {
-			Neptune.weblog.info("Scrapping initiation request for conInitUUID: " + conInitUUID.substr(0,48));
-			if (conInitUUIDs[conInitUUID].client !== undefined)
-				conInitUUIDs[conInitUUID].client.destroyConnectionManager();
+		try {
+			let conInitUUID = req.params.conInitUUID;
+			if (conInitUUIDs[conInitUUID] !== undefined) {
+				Neptune.webLog.info("Scrapping initiation request for conInitUUID: " + conInitUUID.substr(0,48));
+				if (conInitUUIDs[conInitUUID].client !== undefined)
+					conInitUUIDs[conInitUUID].client.destroyConnectionManager();
 
-			conInitUUIDs[conInitUUID].enabled = false;
-			delete conInitUUIDs[conInitUUID];
-			res.status(200).end("{}");
-		} else
-			res.status(404).end("{}");
+				conInitUUIDs[conInitUUID].enabled = false;
+				delete conInitUUIDs[conInitUUID];
+				res.status(200).end("{}");
+			} else
+				res.status(404).end("{}");
+		} catch (_) {}
 	});
 
 	app.post('/api/v1/server/socket/:socketUUID/http', (req, res) => {
-		var sentResponse = false;
-		let conInitUUID = req.body.conInitUUID;
+		try {
+			var sentResponse = false;
+			let conInitUUID = req.body.conInitUUID;
 
-		if (conInitUUIDs[conInitUUID] !== undefined) {
-			if (conInitUUIDs[conInitUUID].enabled !== true) {
-				Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
-				res.status(403).send('{ "error": "Invalid conInitUUID" }');
+			if (conInitUUIDs[conInitUUID] !== undefined) {
+				if (conInitUUIDs[conInitUUID].enabled !== true) {
+					Neptune.webLog.warn("Attempt to use disabled conInitUUID! UUID: " + conInitUUID);
+					res.status(403).send('{ "error": "Invalid conInitUUID" }');
+					return;
+				}
+			} else {
+				res.status(401).send('{ "error": "Invalid conInitUUID" }');
 				return;
 			}
-		} else {
-			res.status(401).send('{ "error": "Invalid conInitUUID" }');
-			return;
+
+			conInitUUIDs[conInitUUID].client.processHTTPRequest(JSON.stringify(req.body), (data) => {
+				conInitUUIDs[conInitUUID].log.silly(data);
+				if (!sentResponse) {
+					sentResponse = true;
+					res.status(200).send(data);
+				}
+			});
+
+			setTimeout(()=>{ // sends OK after 30 seconds (likely no response from server?)
+				if (!sentResponse) {
+					sentResponse = true;
+					res.status(200).send("{}");
+				}
+			}, 30000);
+		} catch (e) {
+			Neptune.webLog.error(e, false);
+
+			if (res != undefined)
+				res.status(500).send("{}");
 		}
-
-		conInitUUIDs[conInitUUID].client.processHTTPRequest(JSON.stringify(req.body), (data) => {
-			conInitUUIDs[conInitUUID].log.silly(data);
-			if (!sentResponse) {
-				sentResponse = true;
-				res.status(200).send(data);
-			}
-		});
-
-		setTimeout(()=>{ // sends OK after 30 seconds (likely no response from server?)
-			if (!sentResponse) {
-				sentResponse = true;
-				res.status(200).send("{}");
-			}
-		}, 30000);
 	});
 
 	let SocketServer = new WebSocketServer({server: httpServer});
 	// Listen for socket connections
 	SocketServer.on('connection', (ws, req) => {
-		if (req.url === undefined) {
-			Neptune.webLog.error("New connection via WebSocket, no URL specified. Terminating.");
-			ws.send("{ \"command\": \"/api/v1/client/disconnect\" }");
-			ws.close();
-			return;
-		}
-		let urlParts = req.url.split("/");
-		if (urlParts.length != 6) {
-			Neptune.webLog.error("New connection via WebSocket, URL (" + req.url + ") invalid. Terminating.");
-			ws.send("{ \"command\": \"/api/v1/client/disconnect\" }");
-			ws.close();
-			return;
-		}
+		try {
+			if (req.url === undefined) {
+				Neptune.webLog.error("New connection via WebSocket, no URL specified. Terminating.");
+				ws.send("{ \"command\": \"/api/v1/client/disconnect\" }");
+				ws.close();
+				return;
+			}
+			let urlParts = req.url.split("/");
+			if (urlParts.length != 6) {
+				Neptune.webLog.error("New connection via WebSocket, URL (" + req.url + ") invalid. Terminating.");
+				ws.send("{ \"command\": \"/api/v1/client/disconnect\" }");
+				ws.close();
+				return;
+			}
 
-		let socketUUID = urlParts[5].toLowerCase();
-		let conInitUUID = socketUUIDs[socketUUID];
-		if (conInitUUID === undefined || conInitUUIDs[conInitUUID] === undefined) {
-			Neptune.webLog.error("New connection via WebSocket, invalid socket UUID (" + socketUUID +"). Terminating.");
-			ws.send("{ \"command\": \"/api/v1/client/disconnect\" }");
-			ws.close(1002, "InvalidSocketUUID"); // Tells client to reinitialize the connection
-			return;
-		}
+			let socketUUID = urlParts[5].toLowerCase();
+			let conInitUUID = socketUUIDs[socketUUID];
+			if (conInitUUID === undefined || conInitUUIDs[conInitUUID] === undefined) {
+				Neptune.webLog.error("New connection via WebSocket, invalid socket UUID (" + socketUUID +"). Terminating.");
+				ws.send("{ \"command\": \"/api/v1/client/disconnect\" }");
+				ws.close(1002, "InvalidSocketUUID"); // Tells client to reinitialize the connection
+				return;
+			}
 
-		let conInitObject = conInitUUIDs[conInitUUID];
-		let client = conInitObject.client;
-		if (client === undefined) {
-			Neptune.webLog.error("New connection via WebSocket, socket UUID (" + socketUUID +") valid, but unable to find the client to setup the socket with. Terminating.");
-			ws.send("{ \"command\": \"/api/v1/client/disconnect\" }");
-			ws.close(1002, "InvalidClient"); // Tells client to reinitialize the connection
-			return;
-		}
+			let conInitObject = conInitUUIDs[conInitUUID];
+			let client = conInitObject.client;
+			if (client === undefined) {
+				Neptune.webLog.error("New connection via WebSocket, socket UUID (" + socketUUID +") valid, but unable to find the client to setup the socket with. Terminating.");
+				ws.send("{ \"command\": \"/api/v1/client/disconnect\" }");
+				ws.close(1002, "InvalidClient"); // Tells client to reinitialize the connection
+				return;
+			}
 
-		Neptune.webLog.info("Client " + client.clientId + " connected to socket, socketUUID: " + socketUUID);
-		client.setupConnectionManagerWebsocket(ws);
+			Neptune.webLog.info("Client " + client.clientId + " connected to socket, socketUUID: " + socketUUID);
+			client.setupConnectionManagerWebsocket(ws);
+		} catch (e) {
+			Neptune.webLog.error(e, false);
+
+			if (res != undefined)
+				res.status(500).send("{}");
+		}
 	});
 
 
@@ -890,11 +946,13 @@ async function main() {
 	 */
 	/**
 	 * @typedef {object} fileSharingObject
+	 * @property {string} fileName - File name for when the file is copied to the received folder
 	 * @property {boolean} enabled - Whether the file is able to be downloaded/uploaded. Once the fileUUID is used, this is flipped off and the object is deleted.
 	 * @property {string} createdTime - Time object was created (ISO) (file have a life time of 2 minutes)
 	 * @property {boolean} isUpload - File is being uploaded
 	 * @property {string} filePath - If upload, this is the directory the file is being saved to. If not an uploaded, this is the file we're serving.
 	 * @property {string} clientUUID - UUID of the client.
+	 * @property {string} clientName - Friendly name of the client.
 	 * @property {string} socketUUID - UUID of the socket client uses.
 	 * @property {string} authenticationCode - Random string of length 64 to represent a unique key only the client will know. Only used for download
 	 */
@@ -923,16 +981,20 @@ async function main() {
 
 			/** @type {fileSharingObject} */
 			let fileSharingObject = {
+				fileUUID: fileUUID,
 				enabled: true,
 				createdTime: new Date().toISOString(),
 				isUpload: false,
-				filePath: filePath,
+				filePath: filepath,
 				clientUUID: client.clientId,
-				authenticationCode: NeptuneCrypto.randomString(64),
+				clientName: client.friendlyName,
+				authenticationCode: Buffer.from(NeptuneCrypto.randomString(64), "utf8").toString("base64"),
 				socketUUID: client.getSocketUUID(),
 			}
 
 			fileUUIDs[fileUUID] = fileSharingObject;
+
+			return fileSharingObject;
 		} else {
 			throw new Error("File does not exist.");
 		}
@@ -944,172 +1006,326 @@ async function main() {
 	 * @param {string} saveToDirectory - Path to save the uploaded file to.
 	 * @return {string} fileUUID
 	 */
-	Neptune.filesharing.newClientUpload = function(client, saveToDirectory) {
+	Neptune.filesharing.newClientUpload = function(client, fileName, saveToDirectory) {
 		if (!client.fileSharingSettings.enabled || !client.fileSharingSettings.allowClientToUpload)
 			return;
 
-		if (fs.existsSync(saveToDirectory) && fs.lstatSync(saveToDirectory).isDirectory()) {
-			let fileUUID = crypto.randomUUID();
+		try {
+			if (!fs.existsSync(saveToDirectory))
+				fs.mkdirSync(saveToDirectory)
 
-			/** @type {fileSharingObject} */
-			let fileSharingObject = {
-				enabled: true,
-				createdTime: new Date().toISOString(),
-				isUpload: true,
-				filePath: filePath,
-				clientUUID: client.clientId,
-				socketUUID: client.getSocketUUID(),
+			if (fs.existsSync(saveToDirectory) && fs.lstatSync(saveToDirectory).isDirectory()) {
+				let fileUUID = crypto.randomUUID();
+
+				/** @type {fileSharingObject} */
+				let fileSharingObject = {
+					fileUUID: fileUUID,
+					fileName: fileName,
+					enabled: true,
+					createdTime: new Date().toISOString(),
+					isUpload: true,
+					filePath: saveToDirectory,
+					clientUUID: client.clientId,
+					clientName: client.friendlyName,
+					authenticationCode: Buffer.from(NeptuneCrypto.randomString(64), "utf8").toString("base64"),
+					socketUUID: client.getSocketUUID(),
+				}
+
+				fileUUIDs[fileUUID] = fileSharingObject;
+				return fileSharingObject;
+			} else {
+				throw new Error("Directory does not exist: " + saveToDirectory);
 			}
+		} catch (e) {
+			Neptune.webLog.error(e, false);
 
-			fileUUIDs[fileUUID] = fileSharingObject;
-		} else {
-			throw new Error("Directory does not exist.");
+			if (res != undefined)
+				res.status(500).send("{}");
 		}
 	}
 
 	// Download/upload endpoint
 	app.post('/api/v1/server/socket/:socketUUID/filesharing/:fileUUID/download', (req, res) => {
-		/** @type {string} */
-		let fileUUID = req.params.fileUUID;
-		let socketUUID = req.params.socketUUID;
+		try {
+			/** @type {string} */
+			let fileUUID = req.params.fileUUID;
+			let socketUUID = req.params.socketUUID;
 
 
 
-		Neptune.webLog.silly("Download requested: /api/v1/server/socket/" + socketUUID + "/" + fileUUID);
-		if (fileUUIDs[fileUUID] !== undefined) {
-			if (fileUUIDs[fileUUID].enabled !== true) {
-				Neptune.webLog.warn("Attempt to use disabled fileUUID! UUID: " + fileUUID);
-				delete fileUUIDs[fileUUID];
-				res.status(403).end('{ "error": "Invalid fileUUID" }');
+			Neptune.webLog.silly("Download requested: /api/v1/server/socket/" + socketUUID + "/" + fileUUID);
+			if (fileUUIDs[fileUUID] !== undefined) {
+				if (fileUUIDs[fileUUID].enabled !== true) {
+					Neptune.webLog.warn("Attempt to use disabled fileUUID! UUID: " + fileUUID);
+					delete fileUUIDs[fileUUID];
+					res.status(403).end('{ "error": "Invalid fileUUID" }');
+					return;
+				}
+			} else {
+				Neptune.webLog.silly("Attempt to use invalid fileUUID: " + fileUUID);
+				res.status(401).end('{ "error": "Invalid fileUUID" }');
 				return;
 			}
-		} else {
-			Neptune.webLog.silly("Attempt to use invalid fileUUID: " + fileUUID);
-			res.status(401).end('{ "error": "Invalid fileUUID" }');
-			return;
-		}
 
-		/** @type {fileSharingObject} */
-		let fileSharingObject = fileUUIDs[fileUUIDs];
+			/** @type {fileSharingObject} */
+			let fileSharingObject = fileUUIDs[fileUUID];
 
-		// Validate timestamp
-		let timeNow = new Date();
-		if (((timeNow - fileSharingObject.createdTime)/(60000)) >= 5) { // Older than 5 minutes
-			Neptune.weblog.warn("Attempt to use expired fileUUID! UUID: " + fileUUID + " . createdAt: " + fileSharingObject.createdTime.toISOString());
-			delete fileUUID[fileUUID];
-			res.status(408).end('{ "error": "Request timeout for fileUUID" }');
-			return;
-		}
+			// Validate timestamp
+			let timeNow = new Date();
+			if (((timeNow - fileSharingObject.createdTime)/(60000)) >= 5) { // Older than 5 minutes
+				Neptune.webLog.warn("Attempt to use expired fileUUID! UUID: " + fileUUID + " . createdAt: " + fileSharingObject.createdTime.toISOString());
+				delete fileUUID[fileUUID];
+				res.status(408).end('{ "error": "Request timeout for fileUUID" }');
+				return;
+			}
 
-		// Validate socketUUID
-		if (fileSharingObject.socketUUID !== socketUUID) {
-			Neptune.weblog.warn("File upload socketUUID mismatch! FileUUID: " + fileUUID + " .");
-			delete fileUUID[fileUUID];
-			res.status(408).send('{ "error": "Invalid socketUUID" }');
-			deleteFiles();
-			return;
-		}
+			// Validate socketUUID
+			if (fileSharingObject.socketUUID !== socketUUID) {
+				Neptune.webLog.warn("File upload socketUUID mismatch! FileUUID: " + fileUUID + " .");
+				delete fileUUID[fileUUID];
+				res.status(408).send('{ "error": "Invalid socketUUID" }');
+				deleteFiles();
+				return;
+			}
 
 
-		// For download?
-		if (fileSharingObject.isUpload) {
-			Neptune.weblog.warn("Attempt to download using a upload fileUUID.");
+			// For download?
+			if (fileSharingObject.isUpload) {
+				Neptune.webLog.warn("Attempt to download using a upload fileUUID.");
+				delete fileUUIDs[fileUUID];
+				res.status(405).end('{ "error": "Attempt to upload using a download fileUUID." }');
+				return;
+			}
+
+
+			// Check validation code
+			if (req.body.authenticationCode !== fileSharingObject.authenticationCode) {
+				Neptune.webLog.warn("Invalid authenticationCode used on fileUUID: " + fileUUID);
+				res.status(401).end('{ "error": "Invalid authenticationCode" }');
+				return;
+			}
+
+
+
+
+			let filePath = fileSharingObject.filePath;
+			Neptune.webLog.info("Client " + fileSharingObject.clientUUID + " has downloaded " + filePath);
+
+			fileUUIDs[fileUUID].enabled = false;
 			delete fileUUIDs[fileUUID];
-			res.status(405).end('{ "error": "Attempt to upload using a download fileUUID." }');
+
+			// Serve the file
+			let filename = filePath.replace(/^.*[\\\/]/, '');
+			res.setHeader('Content-disposition', 'attachment; filename=' + filename);
+			res.download(filePath);
+
 			return;
+		} catch (e) {
+			Neptune.webLog.error(e, false);
+
+			if (res != undefined)
+				res.status(500).send("{}");
 		}
-
-
-		// Check validation code
-		if (req.body.authenticationCode !== fileSharingObject.authenticationCode) {
-			Neptune.webLog.warn("Invalid authenticationCode used on fileUUID: " + fileUUID);
-			res.status(401).end('{ "error": "Invalid authenticationCode" }');
-			return;
-		}
-
-
-
-
-		let filePath = fileSharingObject.filePath;
-		Neptune.weblog.info("Client " + fileSharingObject.clientUUID + " has downloaded " + filePath);
-
-		fileUUIDs[fileUUID].enabled = false;
-		delete fileUUIDs[fileUUID];
-
-		// Serve the file
-		let filename = filePath.replace(/^.*[\\\/]/, '');
-		res.setHeader('Content-disposition', 'attachment; filename=' + filename);
-		res.download(filePath);
-
-		return;
 	});
 
 
 	// Upload
-	app.post('/api/v1/server/socket/:socketUUID/filesharing/:fileUUID/download', upload.single('file'), (req, res) => {
-		let fileUUID = req.params.fileUUID;
-		let socketUUID = req.params.socketUUID;
+	app.post('/api/v1/server/socket/:socketUUID/filesharing/:fileUUID/upload', upload.single('file'), (req, res) => {
+		try {
+			let fileUUID = req.params.fileUUID;
+			let socketUUID = req.params.socketUUID;
 
-		function deleteFiles() {
-			if (fs.existsSync('./' + req.file.path)) {
-				fs.unlink('./' + req.file.path, err => {
-					Neptune.weblog.warn("Failed to delete blocked upload: " + req.file.filename)
-				});
+			function deleteFiles() {
+				if (fs.existsSync('./' + req.file.path)) {
+					fs.unlink('./' + req.file.path, err => {
+						Neptune.webLog.warn("Failed to delete blocked upload: " + req.file.filename)
+					});
+				}
 			}
-		}
 
 
-		Neptune.webLog.silly("Upload requested: /api/v1/server/socket/" + socketUUID + "/" + fileUUID);
-		if (fileUUIDs[fileUUID] !== undefined) {
-			if (fileUUIDs[fileUUID].enabled !== true) {
-				Neptune.webLog.warn("Attempt to use disabled fileUUID! UUID: " + fileUUID);
-				delete fileUUIDs[fileUUID];
-				res.status(403).send('{ "error": "Invalid fileUUID" }');
+			Neptune.webLog.silly("Upload requested: /api/v1/server/socket/" + socketUUID + "/filesharing/" + fileUUID + "/upload");
+			if (fileUUIDs[fileUUID] !== undefined) {
+				if (fileUUIDs[fileUUID].enabled !== true) {
+					Neptune.webLog.warn("Attempt to use disabled fileUUID! UUID: " + fileUUID);
+					delete fileUUIDs[fileUUID];
+					res.status(403).send('{ "error": "Invalid fileUUID" }');
+					deleteFiles();
+					return;
+				}
+			} else {
+				Neptune.webLog.silly("Attempt to use invalid fileUUID: " + fileUUID);
+				res.status(401).send('{ "error": "Invalid fileUUID" }');
 				deleteFiles();
 				return;
 			}
-		} else {
-			Neptune.webLog.silly("Attempt to use invalid fileUUID: " + fileUUID);
-			res.status(401).send('{ "error": "Invalid fileUUID" }');
-			deleteFiles();
-			return;
+
+			/** @type {fileSharingObject} */
+			let fileSharingObject = fileUUIDs[fileUUID];
+
+			// Validate timestamp
+			let timeNow = new Date();
+			if (((timeNow - fileSharingObject.createdTime)/(60000)) >= 5) { // Older than 5 minutes
+				Neptune.webLog.warn("Attempt to use expired fileUUID! UUID: " + fileUUID + " . createdAt: " + fileSharingObject.createdTime.toISOString());
+				delete fileUUID[fileUUID];
+				res.status(408).send('{ "error": "Request timeout for fileUUID" }');
+				deleteFiles();
+				return;
+			}
+
+			// Validate socketUUID
+			if (fileSharingObject.socketUUID !== socketUUID) {
+				Neptune.webLog.warn("File upload socketUUID mismatch! FileUUID: " + fileUUID + " .");
+				delete fileUUID[fileUUID];
+				res.status(408).send('{ "error": "Invalid socketUUID" }');
+				deleteFiles();
+				return;
+			}
+
+			// For upload?
+			if (!fileSharingObject.isUpload) {
+				Neptune.webLog.warn("Attempt to upload using a download fileUUID.");
+				delete fileUUIDs[fileUUID];
+				res.status(405).send('{ "error": "Attempt to upload using a download fileUUID." }');
+				deleteFiles();
+				return;
+			}
+
+			let client = Neptune.clientManager.getClient(fileSharingObject.clientUUID);
+			let newPath = (fileSharingObject.fileName !== undefined? fileSharingObject.fileName : fileUUID);
+			let acceptedFunction = function() {
+
+				if (client.fileSharingSettings.notifyOnClientUpload) {
+					let notification = new Notification({
+						clientId: "Neptune",
+						friendlyName: "MainWindow",
+					}, {
+						action: 'create',
+						applicationPackage: 'com.neptune.server',
+						applicationName: 'Neptune Server',
+						notificationId: 'fileReceivedNotification',
+						title: 'New file received',
+						type: 'standard',
+
+						contents: {
+							text: 'Received a new file from: ' + fileSharingObject.clientName + '\r\n' + 'Name: ' + newPath,
+							subtext: "File received",
+						},
+
+						onlyAlertOnce: true,
+						priority: "default",
+						isSilent: false,
+					});
+					notification.push();
+					notification.on('activate', (data) => {
+						try {
+							if (process.platform === 'win32') {
+								const explorerPath = path.join(process.env.SystemRoot, 'explorer.exe');
+								exec(`"${explorerPath}" /select, "${path.resolve(__dirname, "..", fileSharingObject.filePath, newPath)}"`, (error, stdout, stderr) => {});
+							} else if (process.platform === 'darwin') {
+								exec(`open -R "${path.resolve(__dirname, "..", fileSharingObject.filePath, newPath)}"`, (error, stdout, stderr) => {});
+							} else if (process.platform === 'linux' && process.env.DESKTOP_SESSION === 'gnome') {
+								exec(`gnome-open "${path.resolve(__dirname, "..", fileSharingObject.filePath, newPath)}"`, (error, stdout, stderr) => {});
+							}
+						} catch (_) {}
+					});
+				}
+
+				// Process
+				Neptune.webLog.info("Received file \"" + req.file.filename + "\" from client " + fileSharingObject.clientUUID);
+				fs.renameSync(req.file.path, fileSharingObject.filePath + "/" + newPath);
+				res.status(200).end("{ \"status\": \"success\", \"approved\": true }");
+			}
+
+
+			if (client.fileSharingSettings.requireConfirmationOnClinetUploads) {
+				let requestPermissionNotification = new Notification({
+					clientId: "Neptune",
+					friendlyName: "MainWindow",
+				}, {
+					action: 'create',
+					applicationPackage: 'com.neptune.server',
+					applicationName: 'Neptune Server',
+					notificationId: 'fileReceivedNotification',
+					title: 'Accept incoming file?',
+					type: 'standard',
+
+					contents: {
+						text: 'New file request from: ' + fileSharingObject.clientName + '\r\n' + 'Accept file? Name: ' + newPath,
+						subtext: "File received",
+						actions: [
+							{
+								"id": "deny",
+								"type": "button",
+								"contents": "Deny"
+							},
+							{
+								"id": "accept",
+								"type": "button",
+								"contents": "Accept"
+							}
+						]
+					},
+
+					onlyAlertOnce: true,
+					priority: "default",
+					isSilent: false,
+				});
+				requestPermissionNotification.push();
+
+				let alreadyProcessedPleaseDoNotRaceMe = false; // we love race conditions
+				requestPermissionNotification.on('activate', (data) => {
+					try {
+						let button = "";
+						if (data.actionParameters !== undefined) {
+							if (data.actionParameters.id !== undefined)
+								button = Buffer.from(data.actionParameters.id, "base64").toString("utf8");
+						}
+
+						if (button != undefined)
+							button = button.toLowerCase();
+
+						console.log(button);
+
+						if (button === "accept") {
+							alreadyProcessedPleaseDoNotRaceMe = true;
+							acceptedFunction();
+						} else {
+							if (fs.existsSync(req.file.path))
+								fs.unlinkSync(req.file.path)
+
+							alreadyProcessedPleaseDoNotRaceMe = true;
+							res.status(418).end("{ \"status\": \"failed\", \"approved\": false }");
+						}
+					} catch (_) {
+						console.error(_);
+					}
+				});
+
+				setTimeout(() => {
+					if (requestPermissionNotification != undefined) {
+						requestPermissionNotification.delete();
+					}
+
+					if (alreadyProcessedPleaseDoNotRaceMe)
+						return;
+
+					if (req.file.path !== undefined) {
+						if (fs.existsSync(req.file.path))
+							fs.unlinkSync(req.file.path)
+	
+						res.status(418).end("{ \"status\": \"failed\", \"approved\": false }");
+					}
+				}, 30000);
+			} else {
+				acceptedFunction();
+			}
+		} catch (e) {
+			Neptune.webLog.error(e, false);
+
+			if (res != undefined)
+				res.status(500).send("{}");
 		}
-
-		/** @type {fileSharingObject} */
-		let fileSharingObject = fileUUIDs[fileUUIDs];
-
-		// Validate timestamp
-		let timeNow = new Date();
-		if (((timeNow - fileSharingObject.createdTime)/(60000)) >= 5) { // Older than 5 minutes
-			Neptune.weblog.warn("Attempt to use expired fileUUID! UUID: " + fileUUID + " . createdAt: " + fileSharingObject.createdTime.toISOString());
-			delete fileUUID[fileUUID];
-			res.status(408).send('{ "error": "Request timeout for fileUUID" }');
-			deleteFiles();
-			return;
-		}
-
-		// Validate socketUUID
-		if (fileSharingObject.socketUUID !== socketUUID) {
-			Neptune.weblog.warn("File upload socketUUID mismatch! FileUUID: " + fileUUID + " .");
-			delete fileUUID[fileUUID];
-			res.status(408).send('{ "error": "Invalid socketUUID" }');
-			deleteFiles();
-			return;
-		}
-
-		// For upload?
-		if (!fileSharingObject.isUpload) {
-			Neptune.weblog.warn("Attempt to upload using a download fileUUID.");
-			delete fileUUIDs[fileUUID];
-			res.status(405).send('{ "error": "Attempt to upload using a download fileUUID." }');
-			deleteFiles();
-			return;
-		}
-
-		// Process
-		Neptune.weblog.info("Received file \"" + req.file.filename + "\" from client " + fileSharingObject.clientUUID);
-		fs.rename(req.file.path, fileSharingObject.filePath + "/" + req.file.filename);
-		res.status(200).end("{ \"status\": \"success\", \"approved\": true }");
 	});
 
 
@@ -1130,7 +1346,7 @@ async function main() {
 
 
 	// Command line listener
-
+	process.stdout.write(`${String.fromCharCode(27)}]0;Neptune Server${String.fromCharCode(7)}`);
 
 	// Server operator interaction
 
@@ -1238,7 +1454,6 @@ async function main() {
 
 	// Operator input
 	prompt();
-	console.log("END")
 }
 
 if (debug) {
@@ -1287,7 +1502,7 @@ ppid: ${process.ppid}\\
 
 versions:
 \`\`\`JSON
-  {
+	{
 	"node": "${process.versions.node}",
 	"v8": "${process.versions.v8}",
 	"uv": "${process.versions.uv}",
@@ -1305,12 +1520,12 @@ versions:
 	"unicode": "${process.versions.unicode}",
 	"ngtcp2": "${process.versions.ngtcp2}",
 	"nghttp3": "${process.versions.nghttp3}"
-  }
+	}
 \`\`\`
 
 process.features:
 \`\`\`JSON
-  {
+	{
 	"inspector": ${process.features.inspector},
 	"debug": ${process.features.debug},
 	"uv": ${process.features.uv},
@@ -1319,7 +1534,7 @@ process.features:
 	"tls_sni": ${process.features.tls_sni},
 	"tls_ocsp": ${process.features.tls_ocsp},
 	"tls": ${process.features.tls}
-  }
+	}
 \`\`\``;
 
 		fs.writeFileSync(__dirname + "/crashReport-" + date + "T" + time.replace(/:/g,"_") + ".md", crashReport);

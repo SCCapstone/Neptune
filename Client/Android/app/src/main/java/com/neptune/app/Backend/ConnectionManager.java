@@ -687,7 +687,6 @@ public class ConnectionManager {
                 }
                 if (reason.equalsIgnoreCase("reconnecting")) {
                     // reconnect???
-                    createWebSocketClient(false);
                 }
             }
 
@@ -776,7 +775,7 @@ public class ConnectionManager {
             JsonObject jsonResponse = decryptAndProcessPacket(JsonParser.parseString(message).getAsJsonObject());
             APIDataPackage apiData = new APIDataPackage(jsonResponse);
             this.EventEmitter.emit("command", apiData);
-        } catch (JsonParseException e) {
+        } catch (Exception e) {
             Log.e(TAG, "WebSocket unable to parse api message!");
             e.printStackTrace();
         }

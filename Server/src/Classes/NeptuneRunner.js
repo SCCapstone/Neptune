@@ -94,59 +94,62 @@ class NeptuneRunnerIPC extends EventEmitter {
         //    throw new Error("Operating system not supported.");
 
         this.log = Neptune.logMan.getLogger("NR-Pipe");
+        try {
+            this.pipe = net.createConnection(this.#pipePath + this.#pipeName, () => {
+                this.log.info("Connected to NeptuneRunner, sending CKey.");
 
-        this.pipe = net.createConnection(this.#pipePath + this.#pipeName, () => {
-            this.log.info("Connected to NeptuneRunner, sending CKey.");
-
-            if (!this.#pipeAuthenticated) {
-                this.pipe.write("\x02ckey\x1f" + this.#pipeClientKey + "\x1e\x03");
-            }
-        });
-
-        this.pipe.on('data', (data) => {
-            if (!this.#pipeAuthenticated) {
-                if (data == "\x02skey\x1f" + this.#pipeServerKey + "\x1e\x03") {
-                    this.log.debug("Authenticated.");
-                    this.#pipeAuthenticated = true
-
-                    /**
-                     * @event NeptuneRunnerIPC#authenticated
-                     * @type {undefined}
-                     */
-                    this.emit("authenticated")
-                } else {
-                    this.log.debug("Unable to authenticate pipe! Data: " + data.toString());
+                if (!this.#pipeAuthenticated) {
+                    this.pipe.write("\x02ckey\x1f" + this.#pipeClientKey + "\x1e\x03");
                 }
-            } else {
-                this.log.debug("Received: " + data.toString());
-                let dataProcessed = new PipeDataReceivedEventArgs(data.toString());
+            });
 
-                if (dataProcessed.Command == "notify-dismissed" || dataProcessed.Command == "notify-failed" || dataProcessed.Command == "notify-activated") {
-                    let dataParameters = dataProcessed.toDictionary();
-                    let eventString = 'notify-id_' + dataParameters.id;
-                    if (dataParameters.clientId !== undefined && dataParameters.id !== undefined) {
-                        eventString = 'notify-client_' + dataParameters.clientId + ":" + dataParameters.id
+            this.pipe.on('data', (data) => {
+                if (!this.#pipeAuthenticated) {
+                    if (data == "\x02skey\x1f" + this.#pipeServerKey + "\x1e\x03") {
+                        this.log.debug("Authenticated.");
+                        this.#pipeAuthenticated = true
+
+                        /**
+                         * @event NeptuneRunnerIPC#authenticated
+                         * @type {undefined}
+                         */
+                        this.emit("authenticated")
+                    } else {
+                        this.log.debug("Unable to authenticate pipe! Data: " + data.toString());
                     }
-                    this.emit(eventString, dataProcessed);
                 } else {
-                    /**
-                     * Received data from NeptuneRunner
-                     * @event NeptuneRunnerIPC#data
-                     * @type {PipeDataReceivedEventArgs}
-                     */
-                    this.emit('data', dataProcessed);
-                }
-            }
-        });
+                    this.log.debug("Received: " + data.toString());
+                    let dataProcessed = new PipeDataReceivedEventArgs(data.toString());
 
-        this.pipe.on('end', () => {
-            this.log.warn('Disconnected from NeptuneRunner.');
-            /**
-             * @event NeptuneRunnerIPC#end
-             * @type {undefined}
-             */
-            this.emit("end");
-        });
+                    if (dataProcessed.Command == "notify-dismissed" || dataProcessed.Command == "notify-failed" || dataProcessed.Command == "notify-activated") {
+                        let dataParameters = dataProcessed.toDictionary();
+                        let eventString = 'notify-id_' + dataParameters.id;
+                        if (dataParameters.clientId !== undefined && dataParameters.id !== undefined) {
+                            eventString = 'notify-client_' + dataParameters.clientId + ":" + dataParameters.id
+                        }
+                        this.emit(eventString, dataProcessed);
+                    } else {
+                        /**
+                         * Received data from NeptuneRunner
+                         * @event NeptuneRunnerIPC#data
+                         * @type {PipeDataReceivedEventArgs}
+                         */
+                        this.emit('data', dataProcessed);
+                    }
+                }
+            });
+
+            this.pipe.on('end', () => {
+                this.log.warn('Disconnected from NeptuneRunner.');
+                /**
+                 * @event NeptuneRunnerIPC#end
+                 * @type {undefined}
+                 */
+                this.emit("end");
+            });
+        } catch (e) {
+            this.log.error('Catastrophic error on NeptuneRunnerIPC setup.');
+        }
     }
 
 

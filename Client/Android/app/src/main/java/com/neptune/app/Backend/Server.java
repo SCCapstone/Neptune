@@ -5,8 +5,11 @@ import static android.content.Context.BATTERY_SERVICE;
 
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Build;
+import android.provider.OpenableColumns;
 import android.util.Log;
 
 import com.google.gson.JsonObject;
@@ -19,6 +22,7 @@ import com.neptune.app.Backend.Structs.APIDataPackage;
 import com.neptune.app.MainActivity;
 
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -43,7 +47,7 @@ public class Server extends ServerConfig {
 
     // When uploading a file, we can't actually send the file until server sends us a fileUUID.
     // So, to preserve the file path we're trying to upload we store the filepath as the value to the request id we send.
-    private Map<String, String> fileRequestIdsToFilePaths = new HashMap<>();
+    private Map<String, Uri> fileRequestIdsToFilePaths = new HashMap<>();
 
     public Server(String serverId, ConfigurationManager configurationManager) throws JsonParseException, IOException {
         super(serverId, configurationManager);
@@ -196,19 +200,22 @@ public class Server extends ServerConfig {
                         Log.i(TAG, "authenticationCode: " + authenticationCode);
                     }
 
-                } else if (command.equals("/api/v1/server/filesharing/upload/fileUUID") && apiDataPackage.isJsonObject()) {
+                } else if (command.equals("/api/v1/server/filesharing/upload/fileuuid") && apiDataPackage.isJsonObject()) {
                     // We got our file UUID, upload!
                     JsonObject data = apiDataPackage.jsonObject();
-                    if (data.has("fileUUID") && data.has("requestId")
+                    if (data.has("fileUUID") && data.has("requestId") && data.has("authenticationCode")
                             && fileRequestIdsToFilePaths.containsKey(data.get("requestId").getAsString())) {
-                        String filePath = fileRequestIdsToFilePaths.get(data.get("requestId").getAsString());
+
+                        Uri filePath = fileRequestIdsToFilePaths.get(data.get("requestId").getAsString());
                         String fileUUID = data.get("fileUUID").getAsString();
+                        String authenticationCode = data.get("authenticationCode").getAsString();
 
                         // upload file to "/api/v1/server/socket/" + connectionManager.getSocketUUID() + "/filesharing/" + fileUUID + "/upload"
+                        uploadFile(fileUUID, authenticationCode, filePath);
                     }
 
 
-                } else if (command.equals("/api/v1/server/filesharing/uploadStatus") && apiDataPackage.isJsonObject()) {
+                } else if (command.equals("/api/v1/server/filesharing/uploadstatus") && apiDataPackage.isJsonObject()) {
                     // Upload status
                     JsonObject data = apiDataPackage.jsonObject();
                     String status;
@@ -312,9 +319,10 @@ public class Server extends ServerConfig {
             batteryData.addProperty("temperature", temperature);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 long remandingTime = bm.computeChargeTimeRemaining();
-                if (remandingTime != -1)
+                if (remandingTime != -1 && remandingTime != 5000000)
                     batteryData.addProperty("batteryTimeRemaining", remandingTime / 1000);
             }
+
             connectionManager.sendRequestAsync("/api/v1/client/battery/info", batteryData);
         } catch (Exception e) {
             e.printStackTrace();
@@ -433,33 +441,41 @@ public class Server extends ServerConfig {
      * First stage is this method, asks the server to create a new fileUUID for upload.
      * The server then sends us a request with fileUUID that will be used in the URL the file will be uploaded to.
      * We send a request id with our first request and the server sends it back. Because of that, we remember the file to upload.
-     * @param filePath
+     * @param uri Content URI
      * @throws FileNotFoundException
      */
-    public void sendFile(String filePath) throws FileNotFoundException, SecurityException {
+    public void sendFile(Uri uri) throws FileNotFoundException, SecurityException {
         if (!filesharingSettings.enabled) {
             return;
         }
 
-        File file = new File(filePath);
-        if (!file.exists() || !file.isFile())
-            throw new FileNotFoundException("File at \"" + filePath + "\" does not exist.");
-        if (!file.canRead())
-            throw new SecurityException("Cannot read file at " + filePath + ".");
+        if (!connectionManager.isWebSocketConnected()) {
+            connectionManager.createWebSocketClient(false);
+        }
+
+        Cursor returnCursor = MainActivity.Context.getContentResolver().query(uri, null, null, null, null);
+        /*
+         * Get the column indexes of the data in the Cursor,
+         * move to the first row in the Cursor, get the data,
+         * and display it.
+         */
+        int nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+        int sizeIndex = returnCursor.getColumnIndex(OpenableColumns.SIZE);
+        returnCursor.moveToFirst();
 
         String requestId = UUID.randomUUID().toString();
         if (fileRequestIdsToFilePaths == null)
             fileRequestIdsToFilePaths = new HashMap<>(1);
 
-        fileRequestIdsToFilePaths.put(requestId, filePath);
+        fileRequestIdsToFilePaths.put(requestId, uri);
         JsonObject uploadRequest = new JsonObject();
         uploadRequest.addProperty("requestId", requestId);
-        uploadRequest.addProperty("filename", file.getName());
+        uploadRequest.addProperty("filename", returnCursor.getString(nameIndex));
         this.connectionManager.sendRequestAsync("/api/v1/server/filesharing/upload/newFileUUID", uploadRequest);
     }
 
     //Downloads the file from the server
-    public void downloadFile(String fileUUID, String authenticationCode) {
+    private void downloadFile(String fileUUID, String authenticationCode) {
         try {
             URL url = new URL("/api/v1/server/socket/socketUUID/filesharing/{{fileUUID}}");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -512,25 +528,37 @@ public class Server extends ServerConfig {
         }
     }
 
+
     // Uploads the file from the client to the server
-    public void uploadFile(String fileUUID, String authenticationCode, String filePath) {
+    private void uploadFile(String fileUUID, String authenticationCode, Uri contentUri) {
         try {
-            URL url = new URL("/api/v1/server/socket/socketUUID/filesharing/{{fileUUID}}");
+            String crlf = "\r\n";
+            String twoHyphens = "--";
+            String boundary =  "*****";
+
+            URL url = new URL("http://" + connectionManager.getIPAddress().toString() + "/api/v1/server/socket/" + connectionManager.getSocketUUID() + "/filesharing/" + fileUUID + "/upload");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("Content-Disposition", "attachment; filename=\"" + fileUUID + "\"");
-            connection.setRequestProperty("Authentication-Code", authenticationCode);
+            connection.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
             connection.setDoOutput(true);
 
-            File file = new File(filePath);
-            FileInputStream inputStream = new FileInputStream(file);
-            byte[] buffer = new byte[4096];
-            int bytesRead = -1;
-            while ((bytesRead = inputStream.read(buffer)) != -1) {
-                connection.getOutputStream().write(buffer, 0, bytesRead);
+            DataOutputStream request = new DataOutputStream(connection.getOutputStream());
+            request.writeBytes(twoHyphens + boundary + crlf);
+            request.writeBytes("Content-Disposition: form-data; name=\"file\";filename=\"filename2.jpg\"" + crlf);
+            request.writeBytes(crlf);
+
+            try (InputStream inputStream = MainActivity.Context.getContentResolver().openInputStream(contentUri)) {
+                byte[] buffer = new byte[4096];
+                int bytesRead = -1;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    request.write(buffer, 0, bytesRead);
+                }
             }
-            inputStream.close();
+
+            request.writeBytes(crlf);
+            request.writeBytes(twoHyphens + boundary + twoHyphens + crlf);
+            request.flush();
+            request.close();
 
             int responseCode = connection.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {

@@ -351,6 +351,11 @@ class LogMan extends EventEmitter {
 	 * 
 	 * @property {number} [objectRenderDepth=2] - When logging objects, this dictates how deep we render the object. Default 2
 	 * @property {boolean} [cleanLog=false] - Delete any log file
+	 * 
+	 * @property {number} [consoleMessageCharacterLimit=1000] - The maximum number of characters we'll print to the console each message.
+	 * @property {string} [consoleMessageCharacterLimitString="...|"] - This is the string appended on to a message that we've fit to the consoleMessageCharacterLimit.
+	 * @property {number} [fileMessageCharacterLimit=7500] - The maximum number of characters written out each log message to the file.
+	 * @property {string} [fileMessageCharacterLimitString="...|"] - This is the string appended on to a message that we've fit to the fileMessageCharacterLimit.
 	 */
 
 	/**
@@ -452,6 +457,16 @@ class LogMan extends EventEmitter {
 				this.outputToConsole = options.outputToConsole;
 			if (typeof options.outputToFile === "boolean")
 				this.outputToFile = options.outputToFile;
+
+
+			if (typeof options.consoleMessageCharacterLimit === "string")
+				this.consoleMessageCharacterLimit = options.consoleMessageCharacterLimit;
+			if (typeof options.consoleMessageCharacterLimitString === "string")
+				this.consoleMessageCharacterLimitString = options.consoleMessageCharacterLimitString;
+			if (typeof options.fileMessageCharacterLimit === "string")
+				this.fileMessageCharacterLimit = options.fileMessageCharacterLimit;
+			if (typeof options.fileMessageCharacterLimitString === "string")
+				this.fileMessageCharacterLimitString = options.fileMessageCharacterLimitString;
 		}
 
 		if (this.#logFile.writable) {

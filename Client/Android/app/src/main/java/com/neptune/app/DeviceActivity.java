@@ -5,10 +5,16 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.DialogFragment;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.Context;
+import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.DocumentsContract;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -314,39 +320,54 @@ public class DeviceActivity extends AppCompatActivity {
         alertBuilder.create().show();
     }
 
+    @TargetApi(Build.VERSION_CODES.KITKAT)
+    public static String getRealPathFromURI_API19(Uri uri){
+        String filePath = "";
+        String wholeID = DocumentsContract.getDocumentId(uri);
+        String id = wholeID.split(":")[1];
+
+        String[] column = { MediaStore.Images.Media.DATA };
+
+        // where id is equal to
+        String sel = MediaStore.Images.Media._ID + "=?";
+
+        Cursor cursor = MainActivity.Context.getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                column, sel, new String[]{ id }, null);
+        int columnIndex = cursor.getColumnIndex(column[0]);
+        if (cursor.moveToFirst()) {
+            filePath = cursor.getString(columnIndex);
+        }
+        cursor.close();
+        return filePath;
+    }
+
     public void onActivityResult(int requestcode, int resultcode, Intent data) {
-        super.onActivityResult(requestcode, resultcode, data);
-        Context context = getApplicationContext();
+        try {
+            super.onActivityResult(requestcode, resultcode, data);
+            Context context = getApplicationContext();
 
-        if(requestcode == requestCodeMultiple && resultcode == Activity.RESULT_OK) {
-            if(data == null) {
-                return;
-            }
-
-            if(null != data.getClipData()) {
-                List<String> tempStrings = new ArrayList<String>();
-                for(int i=0; i<data.getClipData().getItemCount(); i++) {
-                    Uri uri = data.getClipData().getItemAt(i).getUri();
-                    tempStrings.add(uri.getPath());
+            if (requestcode == requestCodeMultiple && resultcode == Activity.RESULT_OK) {
+                if (data == null) {
+                    return;
                 }
 
-                try {
-                    for(int k=0; k<tempStrings.size(); k++) {
-                        Toast.makeText(context, tempStrings.get(k), Toast.LENGTH_SHORT).show();
-                        server.sendFile(tempStrings.get(k));
+                if (null != data.getClipData()) {
+                    for (int i = 0; i < data.getClipData().getItemCount(); i++) {
+                        Uri uri = data.getClipData().getItemAt(i).getUri();
+                        if (uri != null) {
+                            server.sendFile(uri);
+                        }
                     }
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                Uri uri = data.getData();
-                Toast.makeText(context, uri.getPath(), Toast.LENGTH_SHORT).show();
-                try {
-                    server.sendFile(uri.getPath());
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
+                } else {
+                    Uri uri = data.getData();
+                    String filePath = getRealPathFromURI_API19(uri);
+                    if (uri != null) {
+                        server.sendFile(uri);
+                    }
                 }
             }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
         }
     }
 

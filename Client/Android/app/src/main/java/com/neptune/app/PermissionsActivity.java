@@ -19,18 +19,15 @@ public class PermissionsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_permissions);
 
         settingsButton = findViewById(R.id.openSettings);
-        settingsButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                try {
-                    ComponentName componentName = new ComponentName(getPackageName(), com.neptune.app.Backend.NotificationListenerService.class.getName());
-                    Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
-                    intent.putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, componentName.flattenToString());
-                    startActivity(intent);
-                } catch (Exception ignored) {
-                    Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
-                    startActivity(intent);
-                }
+        settingsButton.setOnClickListener(view -> {
+            try {
+                ComponentName componentName = new ComponentName(getPackageName(), com.neptune.app.Backend.NotificationListenerService.class.getName());
+                Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
+                intent.putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, componentName.flattenToString());
+                startActivity(intent);
+            } catch (Exception ignored) {
+                Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
+                startActivity(intent);
             }
         });
     }

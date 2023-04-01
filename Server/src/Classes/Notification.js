@@ -211,23 +211,66 @@ class Notification extends EventEmitter {
                 if (text.length == 0)
                     text = " "
 
+                let hasTextbox = false;
+                let choices = []; // combobox choices
+                let actions = []; // buttons
+
+                if (maybeThis.data.contents.actions !== undefined) {
+                    for (var i = 0; i<maybeThis.data.contents.actions.length; i++) {
+                        let action = maybeThis.data.contents.actions[i];
+                        if (action.type == "combobox") {
+                            choices = action.choices;
+                        } else if (action.type == "textbox") {
+                            hasTextbox = true;
+                        } else if (action.type == "button") {
+                            actions.push(action.contents);
+                        }
+                    }
+                }
+
                 maybeThis.#notifierNotification = Notifier.notify({
                     title: maybeThis.data.title,
                     message: text,
                     id: maybeThis.data.notificationId,
+
+                    actions: actions,
+                    reply: false,
                 }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
-                    if (err) {
-                        logger.error(err);
-                    } else {
-                        logger.debug("Action received: " + response);
-                        logger.silly("action metadata: ");
-                        logger.silly(metadata);
-                        maybeThis.emit(response, metadata);
+                    try {
+                        if (err) {
+                            logger.error(err, false);
+                        } else {
+                            let action = metadata.action === "dismissed"? "dismissed" : "activated";
+                            let id = metadata.button === undefined? "" : Buffer.from(metadata.button, "utf8").toString("base64");
+                            let text = metadata.text === undefined? "" : Buffer.from(metadata.text, "utf8").toString("base64");
+
+                            let dataPackage = {
+                                action: action,
+                                actionParameters: {
+                                    id: id,
+                                    text: text,
+                                    comboBoxChoice: undefined,
+                                }
+                            }
+
+                            
+                            logger.silly("action metadata: ", false);
+                            logger.silly(metadata, false);
+
+                            if (action == "activated") {
+                                maybeThis.activate(dataPackage);
+                            } else if (action == "dismissed") {
+                                maybeThis.dismiss(dataPackage);
+                            }
+                        }
+                    } catch(e) {
+                        logger.error("Unable to react to notifier notification. See log for more details");
+                        logger.error(e, false);
                     }
                 });
             } catch (e) {
                 logger.error("Unable to push notification to system! Error: " + e.message);
-                logger.debug(e);
+                logger.error(e, false);
 
                 // maybe use QT to push balloon notification ..?
             }
@@ -268,7 +311,7 @@ class Notification extends EventEmitter {
                 let contentsBase64Data = Buffer.from(contentsJsonString, 'utf8').toString('base64');
                 let contentsDataString = `data:text/json;base64, ${contentsBase64Data}`;
                 data.contents = contentsDataString;
-                this.#log.silly(data);
+                this.#log.silly(data, false);
                 global.NeptuneRunnerIPC.sendData("notify-push", data);
 
                 let func = this.#IPCActivation;
@@ -315,8 +358,9 @@ class Notification extends EventEmitter {
                 notification.dismiss(dataPackage);
             }
         } catch (e) {
-            this.#log.error("Error on processing IPC activation data, check log for details.");
-            this.#log.error(e, false);
+            console.error(e);
+            //this.#log.error("Error on processing IPC activation data, check log for details.");
+            //this.#log.error(e, false);
         } 
     }
 
@@ -339,7 +383,8 @@ class Notification extends EventEmitter {
      * @param {UpdateNotificationData} [data] - User input from the notification
      */
     activate(data) {
-        this.#log.info("Activated! Data: " + data);
+        this.#log.info("Activated!");
+        this.#log.info(data, false);
         this.emit("activate", data);
     }
 
@@ -348,6 +393,7 @@ class Notification extends EventEmitter {
      */
     dismiss() {
         // Simulate a dismiss (swiped away)
+        this.#log.info("Dismissed!");
         this.emit("dismissed");
     }
 
@@ -363,9 +409,9 @@ class Notification extends EventEmitter {
                 id: this.data.notificationId,
             })
         } else {
-            Notifier.notifiy(Object.assign(this.#notifierNotification, {
-                remove: this.#id
-            })); // ????
+            if (!this.#notifierNotification !== undefined) {
+                this.#notifierNotification.close();
+            }
         }
     }
 

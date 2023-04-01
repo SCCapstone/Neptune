@@ -294,7 +294,7 @@ public class Clipboard {
                 values.put(MediaStore.Images.Media.DATA, uri.toString());
 
                 ContentResolver theContent = MainActivity.Context.getContentResolver();
-                theContent.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                Uri imageUri = theContent.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
                 ClipData clipData = ClipData.newUri(MainActivity.Context.getContentResolver(), "Neptune-Server: Image", uri);
                 ClipboardManager clipboard = (ClipboardManager) MainActivity.Context.getSystemService(Context.CLIPBOARD_SERVICE);
                 clipboard.setPrimaryClip(clipData);
