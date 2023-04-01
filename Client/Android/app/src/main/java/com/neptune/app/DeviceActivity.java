@@ -142,7 +142,7 @@ public class DeviceActivity extends AppCompatActivity {
             }
         });
 
-//If the send clipboard button is clicked, the client will send the server their clipboard data.
+        //If the send clipboard button is clicked, the client will send the server their clipboard data.
         sendClipboard.setEnabled(server.clipboardSettings.enabled);
         sendClipboard.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -208,7 +208,9 @@ public class DeviceActivity extends AppCompatActivity {
         ImageView files = (ImageView) findViewById(R.id.fileSets);
         files.setOnClickListener(new View.OnClickListener(){
             public void onClick(View v) {
-                startActivity(new Intent(DeviceActivity.this, FileActivity.class));
+                Intent fileActivity = new Intent(DeviceActivity.this, FileActivity.class);
+                fileActivity.putExtra("ID3", serverId);
+                startActivity(fileActivity);
             }
         });
 

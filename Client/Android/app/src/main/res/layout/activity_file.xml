@@ -7,52 +7,70 @@
     tools:context=".FileActivity">
 
     <TextView
-        android:id="@+id/textView9"
+        android:id="@+id/destinationFolderTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="28dp"
-        android:text="Destination folder"
+        android:layout_marginStart="-20dp"
+        android:text="@string/destination_folder"
         android:textColor="@color/black"
-        android:textSize="20dp"
+        android:textSize="20sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.091"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
-        android:id="@+id/textView4"
+        android:id="@+id/destinationFolder"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="10dp"
+        android:layout_marginStart="10dp"
         android:text="/tree/primary:Receiving"
-        app:layout_constraintBottom_toTopOf="@+id/checkBox5"
+        app:layout_constraintBottom_toTopOf="@+id/notifyOnReceived"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.102"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView9"
+        app:layout_constraintTop_toBottomOf="@+id/destinationFolderTitle"
         app:layout_constraintVertical_bias="1.0" />
 
     <CheckBox
-        android:id="@+id/checkBox5"
+        android:id="@+id/notifyOnReceived"
         android:layout_width="365dp"
         android:layout_height="41dp"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="44dp"
         android:button="@null"
         android:drawableRight="?android:attr/listChoiceIndicatorMultiple"
-        android:text="Notify on file received"
+        android:text="@string/notify_on_received"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.347"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView9"
+        app:layout_constraintTop_toBottomOf="@+id/destinationFolderTitle"
         tools:ignore="TouchTargetSizeCheck" />
 
     <TextView
-        android:id="@+id/textView11"
+        android:id="@+id/notifyDescription"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="Vibrate and play a sound when receiving a file"
+        android:layout_marginTop="16dp"
+        android:text="@string/notify_description"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.214"
+        app:layout_constraintHorizontal_bias="0.154"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/checkBox5" />
+        app:layout_constraintTop_toBottomOf="@+id/notifyOnReceived" />
+
+    <ImageView
+        android:id="@+id/chooseDestinationFolder"
+        android:layout_width="40dp"
+        android:layout_height="30dp"
+        android:layout_marginTop="28dp"
+        android:clickable="true"
+        android:focusable="true"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.118"
+        app:layout_constraintStart_toEndOf="@+id/destinationFolderTitle"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/folder"
+        tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

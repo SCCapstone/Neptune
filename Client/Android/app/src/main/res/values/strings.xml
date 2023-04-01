@@ -14,4 +14,10 @@
     <string name="notification_permission_title">Notification Access Required</string>
     <string name="notification_permission_description">This app requires access to your notifications in order to function properly. To grant access, please enable the notification access permission for this app in the settings.</string>
     <string name="open_settings">Open Settings</string>
+
+    <string name="destination_folder">Destination Folder</string>
+    <string name="notify_on_received">Notify on file received</string>
+    <string name="notify_description">Vibrate and play a sound when receiving a file.</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>
