@@ -46,6 +46,10 @@ public class Server extends ServerConfig {
 
     private ConnectionManager connectionManager;
 
+    public EventEmitter EventEmitter = new EventEmitter();
+
+    private boolean currentlySyncing = false; // We love race conditions
+
     // When uploading a file, we can't actually send the file until server sends us a fileUUID.
     // So, to preserve the file path we're trying to upload we store the filepath as the value to the request id we send.
     private Map<String, Uri> fileRequestIdsToFilePaths = new HashMap<>();
@@ -85,6 +89,12 @@ public class Server extends ServerConfig {
         connectionManager = new ConnectionManager(this.ipAddress, this);
         try {
             connectionManager.EventEmitter.addListener("command", this.getCommandListener());
+
+            connectionManager.EventEmitter.addListener("connected", (objects) -> EventEmitter.emit("connected", objects));
+            connectionManager.EventEmitter.addListener("connecting", (objects) -> EventEmitter.emit("connecting", objects));
+            connectionManager.EventEmitter.addListener("websocket_connected", (objects) -> EventEmitter.emit("websocket_connected", objects));
+            connectionManager.EventEmitter.addListener("websocket_disconnected", (objects) -> EventEmitter.emit("websocket_disconnected", objects));
+            connectionManager.EventEmitter.addListener("connection-failed", (objects) -> EventEmitter.emit("connection-failed", objects));
         } catch (TooManyEventListenersException | TooManyEventsException e) {
             // Literally how?
             e.printStackTrace();
@@ -508,7 +518,7 @@ public class Server extends ServerConfig {
      * @param uri Content URI
      * @throws FileNotFoundException
      */
-    public void sendFile(Uri uri) throws FileNotFoundException, SecurityException {
+    public void sendFile(Uri uri) {
         if (!filesharingSettings.enabled) {
             return;
         }
@@ -524,7 +534,6 @@ public class Server extends ServerConfig {
          * and display it.
          */
         int nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-        int sizeIndex = returnCursor.getColumnIndex(OpenableColumns.SIZE);
         returnCursor.moveToFirst();
 
         String requestId = UUID.randomUUID().toString();
@@ -535,6 +544,8 @@ public class Server extends ServerConfig {
         JsonObject uploadRequest = new JsonObject();
         uploadRequest.addProperty("requestId", requestId);
         uploadRequest.addProperty("filename", returnCursor.getString(nameIndex));
+
+        returnCursor.close();
         this.connectionManager.sendRequestAsync("/api/v1/server/filesharing/upload/newFileUUID", uploadRequest);
     }
 
@@ -673,6 +684,22 @@ public class Server extends ServerConfig {
             connectionManager.initiateConnection();
 
         connectionManager.pair();
+    }
+
+    /**
+     * Connect, set up websocket, sync configuration and send battery info.
+     * @throws FailedToPair Unable to initiate connection
+     */
+    public void sync() throws FailedToPair {
+        if (currentlySyncing)
+            return;
+
+        this.setupConnectionManager();
+        if (!this.getConnectionManager().isWebSocketConnected())
+            this.getConnectionManager().createWebSocketClient(false);
+        this.syncConfiguration();
+        this.sendBatteryInfo();
+        this.ping();
     }
 
     enum SendNotificationAction {

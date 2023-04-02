@@ -32,7 +32,6 @@ import java.util.TreeMap;
 import java.util.UUID;
 
 public class NotificationsActivity extends AppCompatActivity {
-
     private Button btnCheckAll;
     private Button btnUncheckAll;
     private Button showBut;
@@ -107,7 +106,7 @@ public class NotificationsActivity extends AppCompatActivity {
         }
 
         //This grabs the server's ID that was passed from the previous activity, so we can ensure we are editing the correct server's blacklist.
-        String serverId = getIntent().getStringExtra("ID2");
+        String serverId = getIntent().getStringExtra(Constants.EXTRA_SERVER_ID);
         server = MainActivity.serverManager.getServer(UUID.fromString(serverId));
 
         /*  These lines of code check if there is a blacklist created for the server and adds all apps to it if there is not one.

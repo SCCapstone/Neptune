@@ -96,17 +96,26 @@ public class NeptuneNotification {
         }
 
         // Get text data
-        if (extras.containsKey(Notification.EXTRA_BIG_TEXT)) // Lots of text!
-            this.text = extras.getCharSequence(Notification.EXTRA_BIG_TEXT).toString();
-        else if (extras.containsKey(Notification.EXTRA_TEXT)) // Main body
-            this.text = extras.getCharSequence(Notification.EXTRA_TEXT).toString();
-        else if (extras.containsKey(Notification.EXTRA_INFO_TEXT)) // okay.. at least something right?
-            this.text = extras.getCharSequence(Notification.EXTRA_INFO_TEXT).toString();
-        else if (extras.containsKey(Notification.EXTRA_SUMMARY_TEXT)) // We're getting desperate...
-            this.text = extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT).toString();
+        try {
+            if (extras.containsKey(Notification.EXTRA_BIG_TEXT)) // Lots of text!
+                this.text = extras.getCharSequence(Notification.EXTRA_BIG_TEXT).toString();
+            else if (extras.containsKey(Notification.EXTRA_TEXT)) // Main body
+                this.text = extras.getCharSequence(Notification.EXTRA_TEXT).toString();
+            else if (extras.containsKey(Notification.EXTRA_INFO_TEXT)) // okay.. at least something right?
+                this.text = extras.getCharSequence(Notification.EXTRA_INFO_TEXT).toString();
+            else if (extras.containsKey(Notification.EXTRA_SUMMARY_TEXT)) // We're getting desperate...
+                this.text = extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT).toString();
+        } catch (Exception ignored) {}
+        if (this.text == null)
+            this.text = "";
 
         // Sub text
-        this.subtext = extras.getCharSequence(Notification.EXTRA_SUB_TEXT).toString();
+        if (extras.containsKey(Notification.EXTRA_SUB_TEXT)) {
+            CharSequence charSequence = extras.getCharSequence(Notification.EXTRA_SUB_TEXT);
+            if (charSequence != null) {
+                this.subtext = charSequence.toString();
+            }
+        }
 
 
         this.category = notification.category;

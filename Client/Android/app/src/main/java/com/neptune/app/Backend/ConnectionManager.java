@@ -113,6 +113,8 @@ public class ConnectionManager {
     // Encryption parameters
     private NeptuneCrypto.CipherData cipherData;
 
+    private double lastPingDelay = 0;
+
     public ConnectionManager(IPAddress ipAddress, Server parent) {
         this.IPAddress = ipAddress;
         this.Server = parent;
@@ -224,6 +226,7 @@ public class ConnectionManager {
             return response;
         } catch (FailedToPair | IOException e) {
             Log.i("Connection-Manager", "Server does not exist, or we cannot connect");
+            EventEmitter.emit("connection-failed");
             e.printStackTrace();
 
             try {
@@ -386,7 +389,7 @@ public class ConnectionManager {
 
         } catch (Exception e) {
             Log.e(TAG, "Unable to parse Json response!");
-            Log.d(TAG, "Post request response: " + responseBody);
+            Log.d(TAG, "Post request response: \"" + responseBody + "\"");
             e.printStackTrace();
             if (response != null)
                 return new JsonResponse(new JsonObject(), response);
@@ -720,6 +723,7 @@ public class ConnectionManager {
                 // Start polling thread/service
                 setPollServerForRequests(true);
                 webSocketConnected = false;
+                EventEmitter.emit("websocket_disconnected");
                 if (response != null)
                     response.close();
             }
@@ -759,7 +763,7 @@ public class ConnectionManager {
                 } else {
                     Log.i(TAG, "WebSocket connection, but without any response data?");
                 }
-
+                EventEmitter.emit("websocket_connected");
                 webSocketConnected = true;
                 if (response != null)
                     response.close();
@@ -850,6 +854,7 @@ public class ConnectionManager {
         if (connecting)
             return;
         try {
+            EventEmitter.emit("connecting");
             StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build(); // ?
             StrictMode.setThreadPolicy(policy);
             connecting = true;
@@ -1086,9 +1091,9 @@ public class ConnectionManager {
             e.printStackTrace();
             throw new FailedToPair("Client-server handshake failure, unable to select supported handshake parameters.");
         } finally {
+            //EventEmitter.emit("connected");
             connecting = false;
         }
-        connecting = false;
     }
 
     /**
@@ -1139,6 +1144,7 @@ public class ConnectionManager {
                     //long diff = TimeUnit.DAYS.convert(diffInMilliseconds, TimeUnit.MILLISECONDS);
                     Log.d("ConnectionManager-" + this.Server.serverId, "Server " + this.Server.friendlyName + " ping: " + diffInMilliseconds + "ms");
                     this.Server.sendBatteryInfo();
+                    lastPingDelay = diffInMilliseconds;
                     return diffInMilliseconds;
                 }
             }
@@ -1148,6 +1154,14 @@ public class ConnectionManager {
         }
 
         return -1;
+    }
+
+    /**
+     * Returns the last recorded ping time
+     * @return Last recorded ping time
+     */
+    public double getLastPingDelay() {
+        return lastPingDelay;
     }
 
     public String getSocketUUID() {

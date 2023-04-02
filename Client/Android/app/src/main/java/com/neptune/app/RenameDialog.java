@@ -15,6 +15,7 @@ public class RenameDialog extends AppCompatDialogFragment {
     private EditText editName;
     private RenameDialogListener listener;
 
+    private String id = "generic.rename";
     private String title = "Change client name";
     private String hintText = "Client name";
 
@@ -22,8 +23,15 @@ public class RenameDialog extends AppCompatDialogFragment {
         super();
     }
 
-    public RenameDialog(String title, String hintText) {
+    /**
+     * Creates a new rename dialog popup
+     * @param id The id returned to your "processRenameDialog" method
+     * @param title Title of the dialog
+     * @param hintText Hint text for the name text-box
+     */
+    public RenameDialog(String id, String title, String hintText) {
         super();
+        this.id = id;
         this.title = title;
         this.hintText = hintText;
     }
@@ -34,20 +42,16 @@ public class RenameDialog extends AppCompatDialogFragment {
         LayoutInflater inflater = getActivity().getLayoutInflater();
         View view = inflater.inflate(R.layout.rename_dialog, null);
 
+        String id = this.id;
+
         editName = view.findViewById(R.id.editDevName);
         editName.setText(hintText);
 
-        builder.setView(view).setTitle(title).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
+        builder.setView(view).setTitle(title).setNegativeButton("Cancel", (dialogInterface, i) -> {
 
-            }
-        }).setPositiveButton("Save", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                String device = editName.getText().toString();
-                listener.applyTexts(device);
-            }
+        }).setPositiveButton("Save", (dialogInterface, i) -> {
+            String newName = editName.getText().toString();
+            listener.processRenameDialog(id, newName);
         });
 
         return builder.create();
@@ -59,11 +63,16 @@ public class RenameDialog extends AppCompatDialogFragment {
         try {
             listener = (RenameDialogListener) context;
         } catch (ClassCastException e) {
-            throw new ClassCastException(context.toString() + "must implement DialogExListener");
+            throw new ClassCastException(context.toString() + " must implement RenameDialogListener.");
         }
     }
 
     public interface RenameDialogListener {
-        void applyTexts(String devName);
+        /**
+         * Use to retrieve the text from the rename dialog
+         * @param id Id passed on creation of the dialog, used to determine which name this is setting.
+         * @param newName Dialog text
+         */
+        void processRenameDialog(String id, String newName);
     }
 }

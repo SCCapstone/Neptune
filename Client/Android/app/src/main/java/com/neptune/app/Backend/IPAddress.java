@@ -1,6 +1,7 @@
 package com.neptune.app.Backend;
 
-import android.content.Intent;
+import com.neptune.app.Backend.Exceptions.InvalidIPAddress;
+import com.neptune.app.Backend.Exceptions.InvalidPort;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -84,14 +85,3 @@ public class IPAddress {
     }
 }
 
-class InvalidPort extends Error {
-    InvalidPort(int port) {
-        super("Invalid port supplied: " + port);
-    }
-}
-
-class InvalidIPAddress extends Error {
-    InvalidIPAddress(String ip) {
-        super("Invalid IP address supplied: " + ip);
-    }
-}

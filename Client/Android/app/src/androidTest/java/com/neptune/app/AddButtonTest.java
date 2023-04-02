@@ -21,6 +21,6 @@ public class AddButtonTest {
         Espresso.onView(withId(R.id.addDev)).perform(click());
         Espresso.onView(withId(R.id.nameEdit)).perform(ViewActions.typeText("John Doe"));
         Espresso.onView(withId(R.id.ipEdit)).perform(ViewActions.typeText("192.158.1.38"));
-        Espresso.onView(withText(R.id.name)).equals(Espresso.onView(withText(R.id.nameEdit)));
+        Espresso.onView(withText(R.id.server_name)).equals(Espresso.onView(withText(R.id.nameEdit)));
     }
 }

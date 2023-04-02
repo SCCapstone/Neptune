@@ -18,7 +18,7 @@ public class ServerFilesharingSettings {
     public boolean notifyOnServerUpload = true;
 
     // Where received files are saved (downloads is the default)
-    public String receivedFilesDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath();
+    public String receivedFilesDirectory;
 
 
 

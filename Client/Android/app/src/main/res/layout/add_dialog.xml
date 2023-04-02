@@ -31,6 +31,8 @@
             android:layout_alignParentBottom="true"
             android:layout_marginTop="20dp"
             android:hint="IP Address"
+            android:inputType="textUri"
+            android:password="false"
             android:textSize="20dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"

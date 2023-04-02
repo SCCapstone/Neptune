@@ -8,31 +8,16 @@
 
     <Button
         android:id="@+id/addDev"
-        android:layout_width="318dp"
+        android:layout_width="0dp"
         android:layout_height="48dp"
+        android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
-        android:text="Add new device"
+        android:layout_marginEnd="16dp"
+        android:text="@string/add_new_device"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.172"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
-
-    <ImageView
-        android:id="@+id/editClientName"
-        android:layout_width="39dp"
-        android:layout_height="39dp"
-        android:layout_marginStart="1dp"
-        android:layout_marginEnd="12dp"
-        android:layout_marginBottom="18dp"
-        android:clickable="true"
-        app:layout_constraintBottom_toTopOf="@id/mainScroller"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.84"
-        app:layout_constraintStart_toEndOf="@+id/addDev"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="1.0"
-        app:srcCompat="@android:drawable/ic_menu_edit"
-        tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
 
     <ScrollView
         android:id="@+id/mainScroller"
@@ -68,6 +53,7 @@
             android:id="@+id/lblMyFriendlyName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
             android:textAlignment="center"
             tools:text="%deviceName%" />
 
@@ -88,59 +74,5 @@
             tools:text="%clientVersion%" />
 
     </LinearLayout>
-
-    <!--<ImageView
-        android:id="@+id/imageView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.104"
-        app:srcCompat="@drawable/desktop_connection_logo"
-        tools:ignore="ImageContrastCheck" />-->
-
-    <!--<ImageView
-        android:id="@+id/editDevName"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:layout_marginTop="65dp"
-        android:layout_marginEnd="8dp"
-        android:background="@null"
-        android:minWidth="40dp"
-        android:minHeight="40dp"
-        android:clickable="true"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/change_name_pencil_logo"
-        tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />-->
-
-    <!--<TextView
-        android:id="@+id/name"
-        android:layout_width="244dp"
-        android:layout_height="24dp"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginEnd="128dp"
-        android:clickable="true"
-        android:text="Desktop-24Sf4"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.104"
-        tools:ignore="TouchTargetSizeCheck" />-->
-
-    <!--<Button
-        android:id="@+id/notifTest"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:layout_marginEnd="100dp"
-        android:text="Button"
-        app:layout_constraintEnd_toStartOf="@+id/editDevName"
-        app:layout_constraintTop_toBottomOf="@+id/addDev" />-->
 
 </androidx.constraintlayout.widget.ConstraintLayout>

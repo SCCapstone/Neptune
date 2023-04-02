@@ -1,12 +1,28 @@
 <resources>
     <string name="app_name">Neptune Client</string>
 
-    <string name="save_button">Save</string>
-    <string name="delete_button">Delete</string>
-    <string name="connection_settings">Connection Settings</string>
-    <string name="ip_address">IP Address</string>
+    <!-- Main Activity -->
+    <string name="add_new_device">Add new device</string>
+    <string name="menu_pair_text">Pair with a server</string>
+    <string name="menu_rename_client_text">Rename client</string>
+    <string name="menu_about_neptune_text">About Neptune</string>
+
+    <!-- Server entry (main activity) -->
+    <string name="server_item_line_delete_button_text">Delete and unpair server</string>
+    <string name="server_item_line_name_placeholder">Name</string>
+    <string name="server_item_line_sync_button_text">Sync with server</string>
+
+
+
 
     <!-- Permissions Screen Strings -->
+    <string name="notification_permission_title">Notification Access Required</string>
+    <string name="notification_permission_description">
+        This app requires access to your notifications in order to function properly.
+        To grant access, please enable the notification access permission for this app in the settings.
+    </string>
+    <string name="open_settings">Open Settings</string>
+
     <string name="instructionsExplanation">The following shows a list of instructions to follow to enable the reading of notifications.</string>
     <string name="notification_permission_step1">1. Open the Settings App</string>
     <string name="notification_permission_step2">2. Search for "special app access"</string>
@@ -15,37 +31,57 @@
     <string name="notification_permission_step5">5. Enable the &quot;Allow notification access&quot; switch.</string>
     <string name="notification_permission_step6">6. After enabling the setting, restart Neptune Client.</string>
 
-    <!-- Notification Strings -->
-    <string name="notification_permission_title">Notification Access Required</string>
-    <string name="notification_permission_description">This app requires access to your notifications in order to function properly. To grant access, please enable the notification access permission for this app in the settings.</string>
-    <string name="open_settings">Open Settings</string>
 
-    <string name="notification_sync_title">Sync notifications</string>
 
-    <!-- Clipboard Strings -->
-    <string name="clipboard_enable_title">Clipboard sharing</string>
+
+    <!-- Server settings -->
+    <string name="title_activity_server_settings">Server Settings</string>
+    <string name="title_activity_server_settings_placeholder">%s settings</string>
+    <!-- Setting buttons -->
+    <string name="send_file">Send File</string>
     <string name="receive_clipboard">Receive Clipboard</string>
     <string name="send_clipboard">Send Clipboard</string>
 
-    <string name="clipboard_allow">Allow server to request clipboard</string>
+    <string name="menu_server_settings_save">Save</string>
+    <string name="menu_server_settings_delete">Delete</string>
+
+    <string name="connection_settings">Connection Settings</string>
+    <string name="server_ip_address_title_placeholder">Server\'s IP address: </string>
+    <string name="server_websocket_status_title_placeholder">Websocket status: %s</string>
+    <string name="server_websocket_status_connected">connected</string>
+    <string name="server_websocket_status_disconnected">disconnected</string>
+    <string name="server_ping_delay_title_placeholder">Last ping delay (ms): %s</string>
+    <string name="server_settings_sync">Sync with server</string>
+
+
+    <!-- Preference Titles -->
+    <string name="notifications_header">Notifications</string>
+    <string name="clipboard_header">Clipboard</string>
+    <string name="filesharing_header">File sharing</string>
+
+
+    <!-- Notifications -->
+    <string name="notifications_sync_title">Sync notifications</string>
+    <string name="notifications_selected_apps_title">Manage synced applications</string>
+
+    <!-- Clipboard Preferences -->
+    <string name="clipboard_enable_title">Enable clipboard sharing</string>
+    <string name="clipboard_server_get_title">Allow server to request clipboard data</string>
     <string name="clipboard_server_get_summary_on">Server can request a copy of this device\'s clipboard</string>
     <string name="clipboard_server_get_summary_off">Server only receives clipboard data when we send it</string>
 
-
-    <!-- File Sharing Strings -->
-    <string name="filesharing_enable_title">File sharing</string>
-    <string name="send_file">Send File</string>
-    <string name="destination_folder">Destination Folder</string>
-
-    <string name="notify_on_received">Notify on file received</string>
-    <string name="notify_description">Vibrate and play a sound when receiving a file.</string>
-
-    <string name="automatically_accept_file">Automatically accept uploads</string>
-    <string name="auto_accept_files_summary_off">Incoming files must be accepted before downloading</string>
-    <string name="auto_accept_files_summary_on">Incoming files are automatically saved</string>
-
-    <string name="allow_server_upload_file">Allow server to upload files</string>
+    <!-- File sharing Preferences -->
+    <string name="filesharing_enable_title">Enable file sharing</string>
+    <string name="filesharing_server_set_title">Receive files from server</string>
     <string name="filesharing_server_set_summary_on">Server can upload files to this device</string>
     <string name="filesharing_server_set_summary_off">Server cannot upload files to this device</string>
 
+    <string name="filesharing_notify_on_receive_title">Notify on incoming file</string>
+
+    <string name="filesharing_auto_accept_files_title">Automatically accept incoming files</string>
+    <string name="filesharing_auto_accept_files_summary_on">Incoming files are automatically saved</string>
+    <string name="filesharing_auto_accept_files_summary_off">Incoming files must be accepted before downloading</string>
+
+    <string name="filesharing_destination_folder_title">Set incoming files destination</string>
+    <string name="filesharing_destination_folder_location_placeholder">Current destination: %s</string>
 </resources>

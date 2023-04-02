@@ -597,12 +597,16 @@ class Client extends ClientConfig {
 	 */
 	unpair() {
 		if (this.isPaired) {
-			this.log.info("Unpairing");
-			this.#connectionManager.unpair();
-			this._pairId = undefined;
-			this._pairKey = undefined;
-			this.delete();
-			return true;
+			try {
+				this.log.info("Unpairing");
+				if (this.#connectionManager != undefined)
+					this.#connectionManager.unpair();
+				this._pairId = undefined;
+				this._pairKey = undefined;
+			} finally {
+				this.delete();
+				return true;
+			}
 		} else
 			return false
 	}
@@ -611,13 +615,15 @@ class Client extends ClientConfig {
 	 * This will pair with a client, generating the required pairId and pairKey
 	 */
 	pair() {
-		this.#connectionManager.pair();
+		if (this.#connectionManager !== undefined)
+			this.#connectionManager.pair();
 		client.saveSync();
 	}
 
 
 	destroyConnectionManager() {
-		this.#connectionManager.destroy();
+		if (this.#connectionManager !== undefined)
+			this.#connectionManager.destroy();
 	}
 
 	delete() {

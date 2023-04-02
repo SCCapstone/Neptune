@@ -1361,6 +1361,9 @@ class thisTest extends NeptuneWindow {
 	 * @returns {NodeGUI.DialogCode} - Whether the dialog was accepted `NodeGUI.DialogCode.Accepted` or rejected `NodeGUI.DialogCode.Rejected`.
 	 */
 	displayMessageBox(title, message, buttons) {
+		if (!this.isVisible())
+			return;
+
 		const messageBox = new NodeGUI.QMessageBox();
 		messageBox.setWindowTitle(title);
 		messageBox.setText(message);
