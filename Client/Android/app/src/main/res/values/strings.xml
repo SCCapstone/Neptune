@@ -1,7 +1,12 @@
 <resources>
     <string name="app_name">Neptune Client</string>
 
+    <string name="save_button">Save</string>
+    <string name="delete_button">Delete</string>
+    <string name="connection_settings">Connection Settings</string>
+    <string name="ip_address">IP Address</string>
 
+    <!-- Permissions Screen Strings -->
     <string name="instructionsExplanation">The following shows a list of instructions to follow to enable the reading of notifications.</string>
     <string name="notification_permission_step1">1. Open the Settings App</string>
     <string name="notification_permission_step2">2. Search for "special app access"</string>
@@ -10,14 +15,37 @@
     <string name="notification_permission_step5">5. Enable the &quot;Allow notification access&quot; switch.</string>
     <string name="notification_permission_step6">6. After enabling the setting, restart Neptune Client.</string>
 
-
+    <!-- Notification Strings -->
     <string name="notification_permission_title">Notification Access Required</string>
     <string name="notification_permission_description">This app requires access to your notifications in order to function properly. To grant access, please enable the notification access permission for this app in the settings.</string>
     <string name="open_settings">Open Settings</string>
 
+    <string name="notification_sync_title">Sync notifications</string>
+
+    <!-- Clipboard Strings -->
+    <string name="clipboard_enable_title">Clipboard sharing</string>
+    <string name="receive_clipboard">Receive Clipboard</string>
+    <string name="send_clipboard">Send Clipboard</string>
+
+    <string name="clipboard_allow">Allow server to request clipboard</string>
+    <string name="clipboard_server_get_summary_on">Server can request a copy of this device\'s clipboard</string>
+    <string name="clipboard_server_get_summary_off">Server only receives clipboard data when we send it</string>
+
+
+    <!-- File Sharing Strings -->
+    <string name="filesharing_enable_title">File sharing</string>
+    <string name="send_file">Send File</string>
     <string name="destination_folder">Destination Folder</string>
+
     <string name="notify_on_received">Notify on file received</string>
     <string name="notify_description">Vibrate and play a sound when receiving a file.</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <string name="automatically_accept_file">Automatically accept uploads</string>
+    <string name="auto_accept_files_summary_off">Incoming files must be accepted before downloading</string>
+    <string name="auto_accept_files_summary_on">Incoming files are automatically saved</string>
+
+    <string name="allow_server_upload_file">Allow server to upload files</string>
+    <string name="filesharing_server_set_summary_on">Server can upload files to this device</string>
+    <string name="filesharing_server_set_summary_off">Server cannot upload files to this device</string>
+
 </resources>

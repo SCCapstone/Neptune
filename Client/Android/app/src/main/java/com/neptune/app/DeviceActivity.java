@@ -197,7 +197,7 @@ public class DeviceActivity extends AppCompatActivity {
         ipAddress.setText(server.ipAddress.getIPAddress());
 
         ImageView notifs = (ImageView) findViewById(R.id.notifSets);
-        notifs.setOnClickListener(new View.OnClickListener(){
+        notifs.setOnClickListener(new ImageView.OnClickListener(){
             public void onClick(View v) {
                 Intent notificationsActivity = new Intent(DeviceActivity.this, NotificationsActivity.class);
                 notificationsActivity.putExtra("ID2", serverId);
@@ -205,8 +205,18 @@ public class DeviceActivity extends AppCompatActivity {
             }
         });
 
+        ImageView clipboard = findViewById(R.id.clipboardSettings);
+        clipboard.setOnClickListener(new ImageView.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent clipboardActivity = new Intent(DeviceActivity.this, ClipboardActivity.class);
+                clipboardActivity.putExtra("CB_ID", serverId);
+                startActivity(clipboardActivity);
+            }
+        });
+
         ImageView files = (ImageView) findViewById(R.id.fileSets);
-        files.setOnClickListener(new View.OnClickListener(){
+        files.setOnClickListener(new ImageView.OnClickListener(){
             public void onClick(View v) {
                 Intent fileActivity = new Intent(DeviceActivity.this, FileActivity.class);
                 fileActivity.putExtra("ID3", serverId);

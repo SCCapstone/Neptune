@@ -27,11 +27,11 @@
         android:clickable="true"
         app:layout_constraintBottom_toTopOf="@id/mainScroller"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintHorizontal_bias="0.84"
         app:layout_constraintStart_toEndOf="@+id/addDev"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="1.0"
-        app:srcCompat="@drawable/change_name_pencil_logo"
+        app:srcCompat="@android:drawable/ic_menu_edit"
         tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
 
     <ScrollView

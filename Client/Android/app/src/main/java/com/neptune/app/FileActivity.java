@@ -6,16 +6,12 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.documentfile.provider.DocumentFile;
-import androidx.fragment.app.DialogFragment;
 
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
@@ -57,8 +53,33 @@ public class FileActivity extends AppCompatActivity {
             }
         });
 
+        CheckBox allowServerUpload = findViewById(R.id.serverUploadFile);
+        TextView allowServerUploadText = findViewById(R.id.receiveFilesDescription);
+        allowServerUpload.setChecked(server.filesharingSettings.allowServerToUpload);
+        allowServerUploadText.setText(setServerReceiveText());
+        allowServerUpload.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if(b) {
+                    allowServerUpload.setChecked(true);
+                    server.filesharingSettings.allowServerToUpload = true;
+                } else {
+                    allowServerUpload.setChecked(false);
+                    server.filesharingSettings.allowServerToUpload = false;
+                }
+                allowServerUploadText.setText(setServerReceiveText());
+
+                try {
+                    server.save();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
         //CheckBox for enabling or disabling notifications upon the client receiving a file.
-        CheckBox notify = findViewById(R.id.notifyOnReceived);
+        CheckBox notify = findViewById(R.id.notifyOnReceive);
+        notify.setChecked(server.filesharingSettings.notifyOnServerUpload);
         notify.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
@@ -69,6 +90,30 @@ public class FileActivity extends AppCompatActivity {
                     notify.setChecked(false);
                     server.filesharingSettings.notifyOnServerUpload = false;
                 }
+
+                try {
+                    server.save();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        CheckBox autoAccept = findViewById(R.id.autoAcceptFiles);
+        TextView autoAcceptText = findViewById(R.id.autoAcceptFilesDescription);
+        autoAccept.setChecked(server.filesharingSettings.requireConfirmationOnServerUploads);
+        autoAcceptText.setText(setAutoAcceptFileText());
+        autoAccept.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if(b) {
+                    autoAccept.setChecked(true);
+                    server.filesharingSettings.requireConfirmationOnServerUploads = true;
+                } else {
+                    autoAccept.setChecked(false);
+                    server.filesharingSettings.requireConfirmationOnServerUploads = false;
+                }
+                autoAcceptText.setText(setAutoAcceptFileText());
 
                 try {
                     server.save();
@@ -107,6 +152,18 @@ public class FileActivity extends AppCompatActivity {
             }
         }
     });
+
+    public int setAutoAcceptFileText() {
+        if(server.filesharingSettings.requireConfirmationOnServerUploads)
+            return R.string.auto_accept_files_summary_on;
+        return R.string.auto_accept_files_summary_off;
+    }
+
+    public int setServerReceiveText() {
+        if(server.filesharingSettings.allowServerToUpload)
+            return R.string.filesharing_server_set_summary_on;
+        return R.string.filesharing_server_set_summary_off;
+    }
 
     @Override
     public boolean onSupportNavigateUp() {

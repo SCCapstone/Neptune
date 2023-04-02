@@ -2,23 +2,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.neptune.app">
-
     <!-- For filesharing -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-
-    <!-- Self-explanatory -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" /> <!-- Self-explanatory -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-
-    <!-- Selecting which app notifications are synced -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" /> <!-- Selecting which app notifications are synced -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
-
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
-        android:usesCleartextTraffic="true"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -27,27 +21,35 @@
         android:roundIcon="@mipmap/neptune_ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.NeptuneClientFrontEnd"
+        android:usesCleartextTraffic="true"
+        tools:replace="android:theme"
         tools:targetApi="31">
+        <activity
+            android:name=".ClipboardActivity"
+            android:exported="false"
+            android:label="Clipboard sharing settings"/>
         <activity
             android:name=".FileActivity"
             android:exported="false"
-            android:label = "File sharing settings"/>
+            android:label="File sharing settings" />
         <activity
             android:name=".NotificationsActivity"
             android:exported="false"
-            android:label = "Change synced notifications"/>
-        <activity android:name=".PermissionsActivity"
+            android:label="Change synced notifications" />
+        <activity
+            android:name=".PermissionsActivity"
             android:exported="false"
-            android:label="Permissions required"/>
+            android:label="Permissions required" />
         <activity
             android:name=".DeviceActivity"
             android:exported="false"
-            android:label = "Server settings page"/>
+            android:label="Server settings" />
         <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -60,26 +62,24 @@
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
-        </provider>
-
-        <!-- Service listening for and sending notification data to the server(s) -->
-        <service android:name="com.neptune.app.Backend.NotificationListenerService"
+        </provider> <!-- Service listening for and sending notification data to the server(s) -->
+        <service
+            android:name=".Backend.NotificationListenerService"
+            android:exported="false"
             android:label="Neptune Notification Listener"
-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-            android:exported="false">
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
-        </service>
-
-        <!-- Sync service -->
-        <service android:name="com.neptune.app.Backend.NeptuneKeepAlive"
+        </service> <!-- Sync service -->
+        <service
+            android:name=".Backend.NeptuneKeepAlive"
+            android:exported="false"
             android:label="Neptune Connection Keep Alive"
             android:permission="android.permission.INTERNET"
-            android:process=":remote"
-            android:exported="false">
+            android:process=":remote">
             <intent-filter>
-                <data android:scheme="package"/>
+                <data android:scheme="package" />
             </intent-filter>
         </service>
     </application>

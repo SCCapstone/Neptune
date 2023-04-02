@@ -16,8 +16,8 @@
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
         android:enabled="false"
-        android:text="Send file"
         android:onClick="openFilePicker"
+        android:text="@string/send_file"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -29,7 +29,7 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="8dp"
         android:enabled="false"
-        android:text="Send clipboard"
+        android:text="@string/send_clipboard"
         app:layout_constraintEnd_toStartOf="@+id/btnReceiveClipboard"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/btnSendFile" />
@@ -41,7 +41,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginEnd="16dp"
         android:enabled="false"
-        android:text="Receive clipboard"
+        android:text="@string/receive_clipboard"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/btnSendClipboard"
         app:layout_constraintTop_toBottomOf="@+id/btnSendFile" />
@@ -75,7 +75,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="128dp"
-        android:text="Sync notifications"
+        android:text="@string/notification_sync_title"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.059"
         app:layout_constraintStart_toStartOf="parent"
@@ -99,7 +99,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:enabled="true"
-        android:text="Share clipboard"
+        android:text="@string/clipboard_enable_title"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -123,7 +123,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="28dp"
         android:enabled="true"
-        android:text="File sharing"
+        android:text="@string/filesharing_enable_title"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.052"
         app:layout_constraintStart_toStartOf="parent"
@@ -133,13 +133,13 @@
         android:id="@+id/fileSets"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="296dp"
-        android:layout_marginEnd="12dp"
+        android:layout_marginTop="288dp"
+        android:layout_marginEnd="16dp"
         android:clickable="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/settings_icon_logo"
-        tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
+        app:srcCompat="@android:drawable/ic_menu_manage"
+        tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck,ImageContrastCheck" />
 
     <TextView
         android:id="@+id/fileTextView"
@@ -157,7 +157,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginTop="368dp"
-        android:text="Connections settings"
+        android:text="@string/connection_settings"
         android:textColor="@color/black"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -170,11 +170,10 @@
         android:layout_marginTop="416dp"
         android:ems="10"
         android:inputType="textPersonName"
-        android:text="192.168.1.2"
         android:textColor="#616161"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:ignore="TouchTargetSizeCheck" />
+        tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
 
     <TextView
         android:id="@+id/textView8"
@@ -182,7 +181,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:layout_marginBottom="2dp"
-        android:text="IP Address"
+        android:text="@string/ip_address"
         app:layout_constraintBottom_toTopOf="@+id/editIPAddress"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.081"
@@ -198,8 +197,20 @@
         android:clickable="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/settings_icon_logo"
-        tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
+        app:srcCompat="@android:drawable/ic_menu_manage"
+        tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck,ImageContrastCheck" />
+
+    <ImageView
+        android:id="@+id/clipboardSettings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="212dp"
+        android:layout_marginEnd="16dp"
+        android:clickable="true"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@android:drawable/ic_menu_manage"
+        tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck,ImageContrastCheck" />
 
     <Button
         android:id="@+id/deleteDeviceActivity"
@@ -209,10 +220,11 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         android:backgroundTint="@android:color/holo_red_light"
-        android:text="Delete"
+        android:text="@string/delete_button"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        tools:ignore="TextContrastCheck" />
 
     <Button
         android:id="@+id/btnSave"
@@ -222,11 +234,12 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="8dp"
         android:backgroundTint="@color/teal_700"
-        android:text="Save"
+        android:text="@string/save_button"
         app:layout_constraintBottom_toTopOf="@+id/deleteDeviceActivity"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        tools:ignore="TextContrastCheck" />
 
     <!--<Button
         android:id="@+id/connec"
