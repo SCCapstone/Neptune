@@ -528,7 +528,7 @@ class thisTest extends NeptuneWindow {
 							{ button: noButton, buttonRole: NodeGUI.ButtonRole.RejectRole },
 						]);
 
-					if (result == NodeGUI.DialogCode.Accepted) {
+					if (result != NodeGUI.DialogCode.Accepted) { // ?
 						this.RemoveClientFromDeviceList(client.friendlyName);
 						client.delete();
 					}

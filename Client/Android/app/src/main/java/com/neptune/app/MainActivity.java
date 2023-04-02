@@ -171,9 +171,10 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
                 result -> {
                     if (result.getResultCode() == Activity.RESULT_OK) {
                         Intent data = result.getData();
-                        if (data.hasExtra(Constants.EXTRA_SERVER_ID)) {
+                        if (data.hasExtra(Constants.EXTRA_SERVER_ID) && data.getStringExtra(Constants.EXTRA_SERVER_ID) != null) {
                             try {
-                                UUID serverUUID = UUID.fromString(data.getStringExtra(Constants.EXTRA_SERVER_ID));
+                                String uid = data.getStringExtra(Constants.EXTRA_SERVER_ID);
+                                UUID serverUUID = UUID.fromString(uid);
                                 Server server = serverManager.getServer(serverUUID);
                                 String name = server.friendlyName;
                                 server.unpair();
@@ -337,6 +338,8 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
         serverSyncButton.setOnClickListener(v -> new Thread(() -> {
             try {
+                Drawable drawable = getDrawable(R.drawable.ic_round_sync_24);
+                serverSyncButton.setImageDrawable(drawable);
                 hideOrShowImageButtonProgressBar(serverSyncButton, serverSyncProgress, false);
                 Log.i("MainActivity", "Syncing with " + server.friendlyName);
                 server.sync();

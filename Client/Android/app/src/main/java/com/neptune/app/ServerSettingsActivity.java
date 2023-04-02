@@ -24,6 +24,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.documentfile.provider.DocumentFile;
 
+import com.neptune.app.Backend.Exceptions.TooManyEventListenersException;
+import com.neptune.app.Backend.Exceptions.TooManyEventsException;
 import com.neptune.app.Backend.Server;
 
 import java.io.File;
@@ -135,8 +137,16 @@ public class ServerSettingsActivity extends AppCompatActivity {
         btnSync.setOnClickListener((view) -> {
             new Thread(() -> {
                 try {
+                    try {
+                        server.EventEmitter.once("pong", (a) -> runOnUiThread(() -> updateDetailsText()));
+                    } catch (TooManyEventListenersException | TooManyEventsException e) {
+                        e.printStackTrace();
+                    }
                     server.sync();
-                    Toast.makeText(this, "Synced", Toast.LENGTH_SHORT).show();
+                    runOnUiThread(() -> {
+                        updateDetailsText();
+                        //Toast.makeText(this, "Synced", Toast.LENGTH_SHORT).show();
+                    });
                 } catch (Exception e) {
                     Log.e(TAG, "btnSync: failed to sync", e);
                     showErrorMessage("Failed to sync", "An error occurred while syncing the server. Error: " + e.getMessage());
@@ -465,7 +475,7 @@ public class ServerSettingsActivity extends AppCompatActivity {
     private void deleteServer() {
         askForConfiguration("Delete " + server.friendlyName + "?", "Are you sure you want to delete the server?", (dialog,id) -> {
             Intent intent = new Intent();
-            intent.putExtra(Constants.EXTRA_SERVER_ID, server.serverId);
+            intent.putExtra(Constants.EXTRA_SERVER_ID, this.server.serverId);
             setResult(Activity.RESULT_OK, intent);
             finish();
         });

@@ -113,7 +113,7 @@ public class ConnectionManager {
     // Encryption parameters
     private NeptuneCrypto.CipherData cipherData;
 
-    private double lastPingDelay = 0;
+    public double lastPingDelay = 0;
 
     public ConnectionManager(IPAddress ipAddress, Server parent) {
         this.IPAddress = ipAddress;
@@ -764,6 +764,7 @@ public class ConnectionManager {
                     Log.i(TAG, "WebSocket connection, but without any response data?");
                 }
                 EventEmitter.emit("websocket_connected");
+                EventEmitter.emit("connected");
                 webSocketConnected = true;
                 if (response != null)
                     response.close();
@@ -1062,36 +1063,41 @@ public class ConnectionManager {
 
             // we good
             connecting = false;
+            EventEmitter.emit("connected");
             createWebSocketClient(false);
         } catch (IOException e) { // Unable to connect
             connecting = false;
             Log.e(TAG, "No server response (initiating connection). Is it running?");
             e.printStackTrace();
+            EventEmitter.emit("connection-failed");
             throw new FailedToPair("Unable to connect to server application.");
 
         } catch (JsonParseException e) {
             connecting = false;
             Log.e(TAG, "Json parse exception on server response (initiating connection).");
             e.printStackTrace();
+            EventEmitter.emit("connection-failed");
             throw new FailedToPair("Invalid server response.");
 
         } catch (NumberFormatException e) {
             connecting = false;
             e.printStackTrace();
+            EventEmitter.emit("connection-failed");
             throw new FailedToPair("Number format exception?"); // ? because what?
 
         } catch (InvalidKeyException | NeptuneCrypto.InvalidDecryptionKey e) {
             connecting = false;
             e.printStackTrace();
+            EventEmitter.emit("connection-failed");
             throw new FailedToPair("Client-server handshake failure, unable to generate a shared key.");
 
         } catch (NoSuchPaddingException | InvalidKeySpecException | InvalidAlgorithmParameterException | NoSuchAlgorithmException e) {
             connecting = false;
             Log.e(TAG, "Someone used the wrong padding, key spec, or algorithm (initiating connection).");
             e.printStackTrace();
+            EventEmitter.emit("connection-failed");
             throw new FailedToPair("Client-server handshake failure, unable to select supported handshake parameters.");
         } finally {
-            //EventEmitter.emit("connected");
             connecting = false;
         }
     }

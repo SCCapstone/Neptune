@@ -107,7 +107,7 @@ public class NeptuneNotification {
                 this.text = extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT).toString();
         } catch (Exception ignored) {}
         if (this.text == null)
-            this.text = "";
+            this.text = " ";
 
         // Sub text
         if (extras.containsKey(Notification.EXTRA_SUB_TEXT)) {
@@ -115,6 +115,9 @@ public class NeptuneNotification {
             if (charSequence != null) {
                 this.subtext = charSequence.toString();
             }
+        }
+        if (this.subtext == null) {
+            this.subtext = " ";
         }
 
 

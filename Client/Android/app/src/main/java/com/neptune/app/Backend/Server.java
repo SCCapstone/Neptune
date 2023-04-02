@@ -3,6 +3,7 @@ package com.neptune.app.Backend;
 
 import static android.content.Context.BATTERY_SERVICE;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
@@ -34,6 +35,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -88,13 +90,19 @@ public class Server extends ServerConfig {
 
         connectionManager = new ConnectionManager(this.ipAddress, this);
         try {
-            connectionManager.EventEmitter.addListener("command", this.getCommandListener());
+            if (connectionManager.EventEmitter.listenersCount("command") == 0)
+                connectionManager.EventEmitter.addListener("command", this.getCommandListener());
 
-            connectionManager.EventEmitter.addListener("connected", (objects) -> EventEmitter.emit("connected", objects));
-            connectionManager.EventEmitter.addListener("connecting", (objects) -> EventEmitter.emit("connecting", objects));
-            connectionManager.EventEmitter.addListener("websocket_connected", (objects) -> EventEmitter.emit("websocket_connected", objects));
-            connectionManager.EventEmitter.addListener("websocket_disconnected", (objects) -> EventEmitter.emit("websocket_disconnected", objects));
-            connectionManager.EventEmitter.addListener("connection-failed", (objects) -> EventEmitter.emit("connection-failed", objects));
+            if (connectionManager.EventEmitter.listenersCount("connected") == 0)
+                connectionManager.EventEmitter.addListener("connected", (objects) -> EventEmitter.emit("connected", objects));
+            if (connectionManager.EventEmitter.listenersCount("connecting") == 0)
+                connectionManager.EventEmitter.addListener("connecting", (objects) -> EventEmitter.emit("connecting", objects));
+            if (connectionManager.EventEmitter.listenersCount("websocket_connected") == 0)
+                connectionManager.EventEmitter.addListener("websocket_connected", (objects) -> EventEmitter.emit("websocket_connected", objects));
+            if (connectionManager.EventEmitter.listenersCount("websocket_disconnected") == 0)
+                connectionManager.EventEmitter.addListener("websocket_disconnected", (objects) -> EventEmitter.emit("websocket_disconnected", objects));
+            if (connectionManager.EventEmitter.listenersCount("connection-failed") == 0)
+                connectionManager.EventEmitter.addListener("connection-failed", (objects) -> EventEmitter.emit("connection-failed", objects));
         } catch (TooManyEventListenersException | TooManyEventsException e) {
             // Literally how?
             e.printStackTrace();
@@ -142,6 +150,20 @@ public class Server extends ServerConfig {
                     pong.addProperty("receivedAt", apiDataPackage.jsonObject().get("timestamp").toString());
                     pong.addProperty("timestamp", timestamp);
                     this.connectionManager.sendRequestAsync("/api/v1/server/pong", pong);
+
+                } else if (command.equals("/api/v1/client/pong") && apiDataPackage.isJsonObject()) {
+                    JsonObject responseData = apiDataPackage.jsonObject();
+                    if (responseData.has("receivedAt")) {
+                        String timeStamp = responseData.get("receivedAt").getAsString();
+                        @SuppressLint("SimpleDateFormat")
+                        DateFormat df1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+                        Date serverTimestamp = df1.parse(timeStamp);
+                        long diffInMilliseconds = Math.abs(serverTimestamp.getTime() - new Date().getTime());
+                        //long diff = TimeUnit.DAYS.convert(diffInMilliseconds, TimeUnit.MILLISECONDS);
+                        Log.d("ConnectionManager-" + this.serverId, "Server " + this.friendlyName + " ping: " + diffInMilliseconds + "ms");
+                        connectionManager.lastPingDelay = diffInMilliseconds;
+                        EventEmitter.emit("pong", diffInMilliseconds);
+                    }
 
                 // Gets!
                 } else if (command.equals("/api/v1/client/configuration/get")) {
