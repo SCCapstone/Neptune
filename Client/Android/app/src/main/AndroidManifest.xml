@@ -2,15 +2,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.neptune.app">
+
     <!-- For filesharing -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" /> <!-- Self-explanatory -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <!-- Self-explanatory -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" /> <!-- Selecting which app notifications are synced -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <!-- Selecting which app notifications are synced -->
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:allowBackup="true"
@@ -22,7 +26,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.NeptuneClientFrontEnd"
         android:usesCleartextTraffic="true"
-        tools:replace="android:theme"
         tools:targetApi="31">
         <activity
             android:name=".ClipboardActivity"
@@ -49,7 +52,6 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -62,7 +64,9 @@
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
-        </provider> <!-- Service listening for and sending notification data to the server(s) -->
+        </provider>
+
+        <!-- Service listening for and sending notification data to the server(s) -->
         <service
             android:name=".Backend.NotificationListenerService"
             android:exported="false"
@@ -71,7 +75,9 @@
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
-        </service> <!-- Sync service -->
+        </service>
+
+        <!-- Sync service -->
         <service
             android:name=".Backend.NeptuneKeepAlive"
             android:exported="false"
