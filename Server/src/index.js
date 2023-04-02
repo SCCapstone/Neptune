@@ -1358,7 +1358,7 @@ async function main() {
 								fs.unlinkSync(req.file.path)
 
 							alreadyProcessedPleaseDoNotRaceMe = true;
-							res.status(418).end("{ \"status\": \"failed\", \"approved\": false }");
+							res.status(418).end("{ \"status\": \"rejected by user\", \"approved\": false }");
 						}
 					} catch (e) {
 						global.Neptune.webLog.error("Failed to process accept/deny notification for received file. See log for details.");
@@ -1368,7 +1368,7 @@ async function main() {
 								if (fs.existsSync(req.file.path))
 									fs.unlinkSync(req.file.path)
 			
-								res.status(418).end("{ \"status\": \"failed\", \"approved\": false }");
+								res.status(418).end("{ \"status\": \"unable to request approval\", \"approved\": false }");
 							}
 						} catch (_) {}
 					}
@@ -1386,9 +1386,9 @@ async function main() {
 						if (fs.existsSync(req.file.path))
 							fs.unlinkSync(req.file.path)
 	
-						res.status(418).end("{ \"status\": \"failed\", \"approved\": false }");
+						res.status(418).end("{ \"status\": \"timed out\", \"approved\": false }");
 					}
-				}, 30000);
+				}, 30000); // 30 second timeout
 			} else {
 				acceptedFunction();
 			}
@@ -1397,7 +1397,7 @@ async function main() {
 			Neptune.webLog.error(e, false);
 
 			if (res != undefined)
-				res.status(500).end("{ \"status\": \"failed\", \"approved\": false }");
+				res.status(500).end("{ \"status\": \"error receiving file\", \"approved\": false }");
 		}
 	});
 

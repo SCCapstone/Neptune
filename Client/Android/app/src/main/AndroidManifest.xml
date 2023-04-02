@@ -48,6 +48,15 @@
             </intent-filter>
         </activity>
 
+        <receiver android:name=".Backend.NotificationReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.neptune.app.backend.notification.ACTION_ACCEPT_INCOMING" />
+                <action android:name="com.neptune.app.backend.notification.ACTION_DENY_INCOMING" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="com.neptune.app.provider"

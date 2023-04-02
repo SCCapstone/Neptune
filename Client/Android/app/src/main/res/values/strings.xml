@@ -6,6 +6,9 @@
     <string name="menu_pair_text">Pair with a server</string>
     <string name="menu_rename_client_text">Rename client</string>
     <string name="menu_about_neptune_text">About Neptune</string>
+    <string name="main_activity_device_ip">Device IP: %s</string>
+    <string name="main_activity_friendly_name">Device IP: %s</string>
+    <string name="main_activity_version">Device IP: %s</string>
 
     <!-- Server entry (main activity) -->
     <string name="server_item_line_delete_button_text">Delete and unpair server</string>
@@ -46,7 +49,7 @@
     <string name="menu_server_settings_delete">Delete</string>
 
     <string name="connection_settings">Connection Settings</string>
-    <string name="server_ip_address_title_placeholder">Server\'s IP address: </string>
+    <string name="server_ip_address_title_placeholder">Server\'s IP address: %s</string>
     <string name="server_websocket_status_title_placeholder">Websocket status: %s</string>
     <string name="server_websocket_status_connected">connected</string>
     <string name="server_websocket_status_disconnected">disconnected</string>

@@ -4,15 +4,20 @@ package com.neptune.app.Backend;
 import static android.content.Context.BATTERY_SERVICE;
 
 import android.annotation.SuppressLint;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Build;
-import android.os.Environment;
 import android.provider.OpenableColumns;
 import android.util.Log;
+import android.webkit.MimeTypeMap;
+
+import androidx.core.app.NotificationCompat;
+import androidx.documentfile.provider.DocumentFile;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
@@ -21,20 +26,17 @@ import com.neptune.app.Backend.Exceptions.TooManyEventListenersException;
 import com.neptune.app.Backend.Exceptions.TooManyEventsException;
 import com.neptune.app.Backend.Interfaces.ICallback;
 import com.neptune.app.Backend.Structs.APIDataPackage;
+import com.neptune.app.Constants;
 import com.neptune.app.MainActivity;
-
+import com.neptune.app.ServerSettingsActivity;
 
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -142,6 +144,7 @@ public class Server extends ServerConfig {
 
                 } else if (command.equals("/api/v1/client/ping") && apiDataPackage.isJsonObject()) {
                     Date now = new Date();
+                    @SuppressLint("SimpleDateFormat")
                     SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
                     formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
                     String timestamp = formatter.format(now);
@@ -158,6 +161,8 @@ public class Server extends ServerConfig {
                         @SuppressLint("SimpleDateFormat")
                         DateFormat df1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
                         Date serverTimestamp = df1.parse(timeStamp);
+                        if (serverTimestamp == null)
+                            return;
                         long diffInMilliseconds = Math.abs(serverTimestamp.getTime() - new Date().getTime());
                         //long diff = TimeUnit.DAYS.convert(diffInMilliseconds, TimeUnit.MILLISECONDS);
                         Log.d("ConnectionManager-" + this.serverId, "Server " + this.friendlyName + " ping: " + diffInMilliseconds + "ms");
@@ -194,7 +199,7 @@ public class Server extends ServerConfig {
                     boolean isResponse = command.equals("/api/v1/server/clipboard/data"); // Are they setting or did we request?
                     JsonObject response = new JsonObject();
                     if (this.clipboardSettings.enabled) {
-                        if (this.clipboardSettings.allowServerToSet || isResponse) {
+                        if (this.clipboardSettings.allowServerToSet) {
                             if (Clipboard.setClipboard(apiDataPackage.jsonObject()) && isResponse) {
                                 response.addProperty("status", "success");
                                 this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/uploadStatus", response);
@@ -219,8 +224,7 @@ public class Server extends ServerConfig {
                     if (data.has("notificationSettings") && data.get("notificationSettings").isJsonObject()) {
                         JsonObject notificationSettings = data.get("notificationSettings").getAsJsonObject();
                         if (notificationSettings.has("enabled")) {
-                            boolean serverNotificationEnabledSetting = notificationSettings.get("enabled").getAsBoolean();
-                            this.syncNotifications = serverNotificationEnabledSetting;
+                            this.syncNotifications = notificationSettings.get("enabled").getAsBoolean();
                         }
                     }
 
@@ -228,7 +232,7 @@ public class Server extends ServerConfig {
                         JsonObject clipboardSettings = data.get("clipboardSettings").getAsJsonObject();
                         if (clipboardSettings.has("enabled")) {
                             boolean serverClipboardEnabledSetting = clipboardSettings.get("enabled").getAsBoolean();
-                            if (serverClipboardEnabledSetting == false) {
+                            if (!serverClipboardEnabledSetting) {
                                 this.clipboardSettings.enabled = false; // Only allow remote to disable
                             }
                         }
@@ -243,7 +247,7 @@ public class Server extends ServerConfig {
                         JsonObject fileSharingSettings = data.get("fileSharingSettings").getAsJsonObject();
                         if (fileSharingSettings.has("enabled")) {
                             boolean serverFilesharingEnabledSetting = fileSharingSettings.get("enabled").getAsBoolean();
-                            if (serverFilesharingEnabledSetting == false) {
+                            if (!serverFilesharingEnabledSetting) {
                                 this.filesharingSettings.enabled = false; // Only allow remote to disable
                             }
                         }
@@ -268,11 +272,80 @@ public class Server extends ServerConfig {
                         // download file from "/api/v1/server/socket/" + connectionManager.getSocketUUID() + "/filesharing/" + fileUUID + "/download"
                         // you'll have to send a POST request with json data, the json data must include the authentication code under the name "authenticationCode"
                         // see api doc.
-                        downloadFile(fileUUID, authenticationCode, fileName);
+
+                        // Request permission?
+                        if (filesharingSettings.requireConfirmationOnServerUploads) {
+                            NotificationCompat.Builder notification = MainActivity.createBaseNotification(Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_ID,
+                                    "Accept incoming file?",
+                                    "New incoming file request, accept and download " + fileName + "?");
+
+                            notification.setSubText(friendlyName);
+                            notification.setPriority(NotificationCompat.PRIORITY_HIGH);
+                            notification.setAutoCancel(true);
+                            notification.setTimeoutAfter(60000); // Cancel after 1 minute;
+
+                            // Get icon
+                            Resources resources = MainActivity.Context.getResources();
+                            int checkMarkIcon = resources.getIdentifier("ic_baseline_check_24",
+                                    "drawable",
+                                    MainActivity.Context.getPackageName());
+                            int cancelIcon = resources.getIdentifier("ic_baseline_cancel_24",
+                                    "drawable",
+                                    MainActivity.Context.getPackageName());
+
+                            // Add actions / intents
+                            int notificationId = MainActivity.getNewNotificationId();
+
+                            // Create the intents for the notification actions
+                            Intent denyIntent = new Intent(MainActivity.Context, NotificationReceiver.class);
+                            denyIntent.setAction(NotificationReceiver.ACTION_DENY_INCOMING);
+                            PendingIntent denyPendingIntent;
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                denyPendingIntent = PendingIntent.getBroadcast(MainActivity.Context,
+                                        0,
+                                        denyIntent,
+                                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+                            } else {
+                                denyPendingIntent = PendingIntent.getBroadcast(MainActivity.Context,
+                                        0,
+                                        denyIntent,
+                                        PendingIntent.FLAG_UPDATE_CURRENT);
+                            }
+
+                            Intent acceptIntent = new Intent(MainActivity.Context, NotificationReceiver.class);
+                            acceptIntent.setAction(NotificationReceiver.ACTION_ACCEPT_INCOMING);
+                            acceptIntent.putExtra(NotificationReceiver.EXTRA_SERVER_UUID, serverId.toString());
+                            acceptIntent.putExtra(NotificationReceiver.EXTRA_FILE_UUID, fileUUID);
+                            acceptIntent.putExtra(NotificationReceiver.EXTRA_AUTHENTICATION_CODE, authenticationCode);
+                            acceptIntent.putExtra(NotificationReceiver.EXTRA_FILE_PATH, fileName);
+                            PendingIntent acceptPendingIntent;
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                acceptPendingIntent = PendingIntent.getBroadcast(MainActivity.Context,
+                                        0,
+                                        acceptIntent,
+                                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+                            } else {
+                                acceptPendingIntent = PendingIntent.getBroadcast(MainActivity.Context,
+                                        0,
+                                        acceptIntent,
+                                        PendingIntent.FLAG_UPDATE_CURRENT);
+                            }
+
+                            // Add
+                            notification.addAction(cancelIcon, "Deny", denyPendingIntent);
+                            notification.addAction(checkMarkIcon, "Accept", acceptPendingIntent);
+
+                            // Push
+                            MainActivity.pushNotification(notificationId, notification);
+
+                        } else {
+                            downloadFile(fileUUID, authenticationCode, fileName);
+                        }
                     }
 
                 } else if (command.equals("/api/v1/server/filesharing/upload/fileuuid") && apiDataPackage.isJsonObject()) {
                     // We got our file UUID, upload!
+
                     JsonObject data = apiDataPackage.jsonObject();
                     if (data.has("fileUUID")
                             && data.has("requestId")
@@ -291,30 +364,34 @@ public class Server extends ServerConfig {
                 } else if (command.equals("/api/v1/server/filesharing/uploadstatus") && apiDataPackage.isJsonObject()) {
                     // Upload status
                     JsonObject data = apiDataPackage.jsonObject();
-                    String status;
                     boolean wasApproved = false;
-
-                    if (data.has("status"))
-                        status = data.get("status").getAsString();
                     if (data.has("approved"))
                         wasApproved = data.get("approved").getAsBoolean();
 
-                    // do something here if you want (send push notification? maybe a toast notification?)
-                    // not a big worry!
+                    if (!wasApproved) {
+                        String title = "File filed to upload";
+                        String message = "Server rejected the file upload and gave no reason.";
+
+                        if (data.has("status"))
+                            message = "Server rejected the file uploaded with the message: " + data.get("status").getAsString() + ".";
+
+                        NotificationCompat.Builder notification = MainActivity.createBaseNotification(Constants.UPLOAD_FILES_NOTIFICATION_CHANNEL_ID,
+                                title,
+                                message);
+                        notification.setSubText(friendlyName);
+                        MainActivity.pushNotification(notification);
+                    }
 
 
                 // Notification (activate/dismiss/update)
                 } else if (command.equals("/api/v1/client/notifications/update")) {
                     if (apiDataPackage.isJsonObject()) {
                         JsonObject data = apiDataPackage.jsonObject();
-                        String applicationPackage = data.get("applicationPackage").getAsString();
                         String notificationId = data.get("notificationId").getAsString();
 
                         // Whether we're activating the notification (clicking it) or dismissing it
                         boolean activateNotification = (data.get("action").getAsString().equalsIgnoreCase("activate"));
 
-                        String actionId = null; // If an input (button/text box) was activated (clicked), this would be the name of said input
-                        String actionText = null; // If there was any text entered into the notification (pass this to the notification)
                         JsonObject actionParameters = new JsonObject();
                         if (data.has("actionParameters")) {
                             actionParameters = data.get("actionParameters").getAsJsonObject();
@@ -329,9 +406,9 @@ public class Server extends ServerConfig {
                             MainActivity.notificationManager.dismissNotification(notificationId);
                         }
                     } else {
-                        // do array processing
+                        // do array processing ?
                     }
-                } else if (command.equals("/api/v1/client/notifications/getAll")) {
+                } else if (command.equals("/api/v1/client/notifications/getall")) {
                     // Return notifications, check ignore list / search list
 
                 }
@@ -426,7 +503,8 @@ public class Server extends ServerConfig {
                 return;
 
             if (connectionManager.getHasNegotiated()) {
-                if (!notificationBlacklistApps.contains(notification.applicationPackageName)) {
+                if (!notificationBlacklistApps.contains(notification.applicationPackageName)
+                        && !notification.applicationPackageName.equals(MainActivity.Context.getPackageName())) {
                     JsonObject notificationData = notification.toJson();
                     if (notificationData.has("action") && action != SendNotificationAction.CREATE) {
                         notificationData.remove("action");
@@ -513,7 +591,7 @@ public class Server extends ServerConfig {
         String apiUrl = "/api/v1/server/clipboard/set";
         if (isResponse)
             apiUrl = "/api/v1/client/clipboard/data";
-        this.connectionManager.sendRequestAsync("/api/v1/server/clipboard/set", clipboardData);
+        this.connectionManager.sendRequestAsync(apiUrl, clipboardData);
     }
     /**
      * Sends our clipboard to the server.
@@ -538,7 +616,6 @@ public class Server extends ServerConfig {
      * The server then sends us a request with fileUUID that will be used in the URL the file will be uploaded to.
      * We send a request id with our first request and the server sends it back. Because of that, we remember the file to upload.
      * @param uri Content URI
-     * @throws FileNotFoundException
      */
     public void sendFile(Uri uri) {
         if (!filesharingSettings.enabled) {
@@ -577,7 +654,7 @@ public class Server extends ServerConfig {
      * @param authenticationCode Code sent to authenticate ourselves to the server
      * @param fileName Name of the file being downloaded, we save the file to this name.
      */
-    private void downloadFile(String fileUUID, String authenticationCode, String fileName) {
+    public void downloadFile(String fileUUID, String authenticationCode, String fileName) {
         try {
             Log.d(TAG, "Downloading file \"" + fileName + "\". UUID: " + fileUUID + ". Authentication code: " + authenticationCode);
             URL url = new URL("http://" + connectionManager.getIPAddress().toString() + "/api/v1/server/socket/" + connectionManager.getSocketUUID() + "/filesharing/" + fileUUID + "/download");
@@ -594,8 +671,6 @@ public class Server extends ServerConfig {
             int responseCode = connection.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 String disposition = connection.getHeaderField("Content-Disposition");
-                String contentType = connection.getContentType();
-                int contentLength = connection.getContentLength();
 
                 if (disposition != null) {
                     int index = disposition.indexOf("filename=");
@@ -604,19 +679,149 @@ public class Server extends ServerConfig {
                     }
                 }
 
-                // Save the file to the user's download folder
-                File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                File targetFile = new File(downloadDir, fileName);
+                boolean receivedFilesDirectoryValid = false;
+                Uri incomingFilesDirectoryUri;
+                try {
+                    if (this.filesharingSettings.receivedFilesDirectory != null) {
+                        Uri uri = Uri.parse(this.filesharingSettings.receivedFilesDirectory);
+                        MainActivity.Context.getContentResolver().takePersistableUriPermission(uri,
+                                (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION));
+                        receivedFilesDirectoryValid = ServerSettingsActivity.isValidContentUri(uri);
+                    }
+                    if (!receivedFilesDirectoryValid)
+                        this.filesharingSettings.receivedFilesDirectory = "content://com.android.providers.downloads.documents/tree/downloads";
 
+                    incomingFilesDirectoryUri = Uri.parse(this.filesharingSettings.receivedFilesDirectory);
+                } catch (Exception ignored) {
+                    this.filesharingSettings.receivedFilesDirectory = "content://com.android.providers.downloads.documents/tree/downloads";
+                    incomingFilesDirectoryUri = Uri.parse("content://com.android.providers.downloads.documents/tree/downloads");
+                }
+                DocumentFile directoryDocumentFile = DocumentFile.fromTreeUri(MainActivity.Context, incomingFilesDirectoryUri);
+
+                if (directoryDocumentFile == null) {
+                    NotificationCompat.Builder notification = MainActivity.createBaseNotification(Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_ID,
+                        "Failed to receive incoming file",
+                        "Cannot save the file to your server's specified receive folder. Please pick a new folder to save incoming files to.");
+
+                    notification.setSubText(friendlyName);
+                    MainActivity.pushNotification(notification);
+                    return; // Failed to find the incoming files directory!
+                }
+
+                if  (!directoryDocumentFile.canWrite()) {
+                    NotificationCompat.Builder notification = MainActivity.createBaseNotification(Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_ID,
+                            "Failed to receive incoming file",
+                            "Cannot save the file to your server's specified receive folder. Please pick a new folder to save incoming files to.");
+
+                    notification.setSubText(friendlyName);
+                    MainActivity.pushNotification(notification);
+                    return;
+                }
+
+                // Check if the file already exists
+                DocumentFile existingFile = directoryDocumentFile.findFile(fileName);
+                if (existingFile != null) {
+                    // If the file exists, add a number to the file name
+                    int i = 1;
+                    int dotPosition = fileName.lastIndexOf('.');
+                    String extension = "";
+                    String baseName = fileName;
+
+                    if (dotPosition != -1) {
+                        // Separate the file name and extension
+                        extension = fileName.substring(dotPosition);
+                        baseName = fileName.substring(0, dotPosition);
+                    }
+
+                    while (existingFile != null) {
+                        String newFileName = baseName + " (" + i + ")" + extension;
+                        existingFile = directoryDocumentFile.findFile(newFileName);
+                        i++;
+                    }
+
+                    fileName = baseName + " (" + (i-1) + ")" + extension;
+                }
+
+                // Get the MIME type of the file
+                String extension = fileName.substring(fileName.lastIndexOf(".") + 1);
+                String mimeType = URLConnection.guessContentTypeFromName(fileName);
+                if (mimeType == null)
+                    mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+                if (mimeType == null || mimeType.isEmpty())
+                    mimeType = "*/*";
+
+                // Create the new file with the resolved name
+                DocumentFile newFile = directoryDocumentFile.createFile(mimeType, fileName);
+                if (newFile == null) {
+                    NotificationCompat.Builder notification = MainActivity.createBaseNotification(Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_ID,
+                            "Failed to receive incoming file",
+                            "Unable to open file stream to save the file your device..");
+
+                    notification.setSubText(friendlyName);
+                    MainActivity.pushNotification(notification);
+                    return;
+                }
+
+                // Save the file to the user's download folder
                 try (InputStream is = connection.getInputStream()) {
-                    try (FileOutputStream fos = new FileOutputStream(targetFile)) {
-                        int bytesRead = -1;
+                    try (OutputStream fos = MainActivity.Context.getContentResolver().openOutputStream(newFile.getUri()))  {
+                        int bytesRead;
                         byte[] buffer = new byte[4096];
                         while ((bytesRead = is.read(buffer)) != -1) {
                             fos.write(buffer, 0, bytesRead);
                         }
                     }
                 }
+
+                if (filesharingSettings.notifyOnServerUpload) {
+                    NotificationCompat.Builder notification = MainActivity.createBaseNotification(Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_ID,
+                            "Received file",
+                            fileName + " has been ");
+
+                    notification.setSubText(friendlyName);
+
+                    // Create open intent / action
+                    Intent openFileIntent = new Intent(Intent.ACTION_VIEW);
+                    if (!mimeType.equals("*/*"))
+                        openFileIntent.setDataAndType(newFile.getUri(), mimeType);
+                    else
+                        openFileIntent.setData(newFile.getUri());
+                    openFileIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    openFileIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    PendingIntent openFilePendingIntent;
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        openFilePendingIntent = PendingIntent.getActivity(
+                                MainActivity.Context,
+                                0,
+                                openFileIntent,
+                                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                        );
+                    } else {
+                        openFilePendingIntent = PendingIntent.getActivity(
+                                MainActivity.Context,
+                                0,
+                                openFileIntent,
+                                PendingIntent.FLAG_UPDATE_CURRENT
+                        );
+                    }
+
+                    // Get icon
+                    Resources resources = MainActivity.Context.getResources();
+                    int openIcon = resources.getIdentifier("ic_baseline_open_in_new_24",
+                        "drawable",
+                        MainActivity.Context.getPackageName());
+
+                    // Add the action to the notification
+                    notification.addAction(
+                            openIcon,
+                            "Open file",
+                            openFilePendingIntent
+                    );
+
+                    MainActivity.pushNotification(notification);
+                }
+
                 Log.i(TAG,"File downloaded successfully.");
             } else {
                 Log.e(TAG,"Server returned HTTP response code: " + responseCode);
@@ -624,6 +829,11 @@ public class Server extends ServerConfig {
 
             connection.disconnect();
         } catch (Exception e) {
+            NotificationCompat.Builder notification = MainActivity.createBaseNotification(Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_ID,
+                    "Failed to receive incoming file",
+                    e.getMessage());
+            notification.setSubText(friendlyName);
+            MainActivity.pushNotification(notification);
             e.printStackTrace();
         }
     }
@@ -651,7 +861,7 @@ public class Server extends ServerConfig {
 
             try (InputStream inputStream = MainActivity.Context.getContentResolver().openInputStream(contentUri)) {
                 byte[] buffer = new byte[4096];
-                int bytesRead = -1;
+                int bytesRead;
                 while ((bytesRead = inputStream.read(buffer)) != -1) {
                     request.write(buffer, 0, bytesRead);
                 }
@@ -670,15 +880,13 @@ public class Server extends ServerConfig {
             }
 
             connection.disconnect();
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public double ping() {
-        return this.connectionManager.ping();
+    public void ping() {
+        this.connectionManager.ping();
     }
 
 
@@ -710,18 +918,24 @@ public class Server extends ServerConfig {
 
     /**
      * Connect, set up websocket, sync configuration and send battery info.
-     * @throws FailedToPair Unable to initiate connection
      */
-    public void sync() throws FailedToPair {
+    public void sync() {
         if (currentlySyncing)
             return;
 
-        this.setupConnectionManager();
-        if (!this.getConnectionManager().isWebSocketConnected())
-            this.getConnectionManager().createWebSocketClient(false);
-        this.syncConfiguration();
-        this.sendBatteryInfo();
-        this.ping();
+        currentlySyncing = true;
+
+        try {
+            this.setupConnectionManager();
+            if (!this.getConnectionManager().isWebSocketConnected())
+                this.getConnectionManager().createWebSocketClient(false);
+            this.syncConfiguration();
+            this.sendBatteryInfo();
+            this.ping();
+        } catch (Exception ignored) {}
+        finally {
+            currentlySyncing = false;
+        }
     }
 
     enum SendNotificationAction {

@@ -370,10 +370,8 @@ public class ConnectionManager {
      * @return Response data
      */
     public JsonResponse sendHTTPPostRequest(@NonNull URL url, @NonNull JsonElement jsonData, boolean doNotAddToQueue) {
-        Response response = null;
         String responseBody = "";
-        try {
-            response = sendHTTPPostRequest(url, jsonData.toString(), "application/json", "application/json", doNotAddToQueue);
+        try (Response response = sendHTTPPostRequest(url, jsonData.toString(), "application/json", "application/json", doNotAddToQueue)) {
             if (response != null) {
                 ResponseBody responseResponseBody = response.body();
                 if (responseResponseBody != null) {
@@ -381,7 +379,6 @@ public class ConnectionManager {
                     if (responseBody.trim().isEmpty())
                         responseBody = "{}";
                 }
-                response.close();
             }
 
             JsonObject jsonBody = JsonParser.parseString(responseBody).getAsJsonObject();
@@ -391,10 +388,7 @@ public class ConnectionManager {
             Log.e(TAG, "Unable to parse Json response!");
             Log.d(TAG, "Post request response: \"" + responseBody + "\"");
             e.printStackTrace();
-            if (response != null)
-                return new JsonResponse(new JsonObject(), response);
-            else
-                return new JsonResponse();
+            return new JsonResponse();
         }
     }
 
@@ -775,6 +769,13 @@ public class ConnectionManager {
     public boolean isWebSocketConnected() {
         return webSocketConnected;
     }
+    public boolean isConnected() {
+        return connected;
+    }
+    public boolean isConnecting() {
+        return connecting;
+    }
+
 
     /**
      * Helper function to handle incoming commands over the websocket.

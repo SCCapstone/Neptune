@@ -2,15 +2,10 @@ package com.neptune.app;//comment
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.content.ContentResolver;
-import android.content.ContentUris;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -28,7 +23,6 @@ import com.neptune.app.Backend.Exceptions.TooManyEventListenersException;
 import com.neptune.app.Backend.Exceptions.TooManyEventsException;
 import com.neptune.app.Backend.Server;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.UUID;
@@ -133,28 +127,32 @@ public class ServerSettingsActivity extends AppCompatActivity {
         chkFileSharingEnable.setOnCheckedChangeListener((compoundButton, isChecked) -> updateFileSharingSettings());
         btnFileSharingManageDestination.setOnClickListener((view) -> openFolderPickerToSetDestinationDirectory());
 
-
+        final boolean[] syncing = {false};
         btnSync.setOnClickListener((view) -> {
+            if (syncing[0])
+                return;
+
+            syncing[0] = true;
             new Thread(() -> {
                 try {
                     try {
-                        server.EventEmitter.once("pong", (a) -> runOnUiThread(() -> updateDetailsText()));
+                        server.EventEmitter.once("pong", (a) -> runOnUiThread(this::updateDetailsText));
                     } catch (TooManyEventListenersException | TooManyEventsException e) {
                         e.printStackTrace();
                     }
                     server.sync();
-                    runOnUiThread(() -> {
-                        updateDetailsText();
-                        //Toast.makeText(this, "Synced", Toast.LENGTH_SHORT).show();
-                    });
+                    //Toast.makeText(this, "Synced", Toast.LENGTH_SHORT).show();
+                    runOnUiThread(this::updateDetailsText);
                 } catch (Exception e) {
                     Log.e(TAG, "btnSync: failed to sync", e);
                     showErrorMessage("Failed to sync", "An error occurred while syncing the server. Error: " + e.getMessage());
+                } finally {
+                    syncing[0] = false;
                 }
             }).start();
         });
 
-        btnSave.setOnClickListener((view) -> new Thread(() -> saveSettings()).start());
+        btnSave.setOnClickListener((view) -> new Thread(this::saveSettings).start());
         btnDelete.setOnClickListener((view) -> deleteServer());
 
 
@@ -266,7 +264,7 @@ public class ServerSettingsActivity extends AppCompatActivity {
     public void showErrorMessage(String title, String message) {
         WeakReference<ServerSettingsActivity> mActivityRef = new WeakReference<>(this);
 
-        if (mActivityRef != null && mActivityRef.get() != null && !mActivityRef.get().isFinishing()) {
+        if (mActivityRef.get() != null && !mActivityRef.get().isFinishing()) {
             AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
             alertBuilder.setTitle(title);
             alertBuilder.setMessage(message);
@@ -364,9 +362,12 @@ public class ServerSettingsActivity extends AppCompatActivity {
      * @param contentUri Content uri to render?
      * @return Friendly file/folder name
      */
-    private boolean isValidContentUri(Uri contentUri) {
+    public static boolean isValidContentUri(Uri contentUri) {
         try {
             DocumentFile documentFile = DocumentFile.fromTreeUri(MainActivity.Context, contentUri);
+
+            if (documentFile == null)
+                return false;
 
             return documentFile.exists() && documentFile.canWrite();
         } catch (Exception e) {
@@ -378,13 +379,14 @@ public class ServerSettingsActivity extends AppCompatActivity {
     /**
      * Updates the text fields
      */
-    @SuppressLint("SetTextI18n")
+    @SuppressLint("StringFormatInvalid")
     private void updateDetailsText() {
         String folderName = getString(R.string.filesharing_destination_folder_location_placeholder,
                 getFriendlyNameFromUri(incomingFilesDirectoryUri));
         txtFileSharingDestination.setText(folderName);
 
-        txtServerIpAddress.setText(getString(R.string.server_ip_address_title_placeholder) + this.server.ipAddress.toString());
+        String ipAddress = getString(R.string.server_ip_address_title_placeholder, this.server.ipAddress.toString());
+        txtServerIpAddress.setText(ipAddress);
 
         String websocketStatus = getString(R.string.server_websocket_status_connected);
         if (!this.server.getConnectionManager().isWebSocketConnected())

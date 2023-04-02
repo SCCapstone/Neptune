@@ -7,15 +7,20 @@ package com.neptune.app;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.UiModeManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.ColorFilter;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.TextUtils;
@@ -36,23 +41,22 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.IconCompat;
 
 import com.neptune.app.Backend.ClientConfig;
 import com.neptune.app.Backend.ConfigurationManager;
-import com.neptune.app.Backend.Exceptions.TooManyEventListenersException;
-import com.neptune.app.Backend.Exceptions.TooManyEventsException;
-import com.neptune.app.Backend.IPAddress;
 import com.neptune.app.Backend.Exceptions.InvalidIPAddress;
+import com.neptune.app.Backend.IPAddress;
 import com.neptune.app.Backend.NotificationListenerService;
 import com.neptune.app.Backend.NotificationManager;
 import com.neptune.app.Backend.Server;
 import com.neptune.app.Backend.ServerManager;
 
-import org.json.JSONException;
-
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.UUID;
 
@@ -77,35 +81,6 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     private final HashMap<Server, View> serversShown = new HashMap<>();
 
     private ActivityResultLauncher<Intent> serverSettingsActivityResults;
-
-    public static boolean isNotificationServiceEnabled() {
-        String enabledNotificationListeners = Settings.Secure.getString(Context.getContentResolver(), "enabled_notification_listeners");
-
-        String packageName = Context.getPackageName();
-
-        if (TextUtils.isEmpty(enabledNotificationListeners)) {
-            return false;
-        }
-
-        ComponentName serviceComponent = new ComponentName(Context, NotificationListenerService.class);
-        String serviceComponentName = serviceComponent.flattenToString();
-
-        String[] listeners = enabledNotificationListeners.split("/");
-        for (String listener : listeners) {
-            if (listener.equals(serviceComponentName) || listener.equals(serviceComponent.flattenToShortString()) || listener.contains(packageName)) {
-                return true;
-            }
-        }
-
-        listeners = enabledNotificationListeners.split(":");
-        for (String listener : listeners) {
-            if (listener.equals(serviceComponentName) || listener.equals(serviceComponent.flattenToShortString()) || listener.contains(packageName)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -142,77 +117,187 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
                     "error.getMessage(): " + e.getMessage());
         }
 
+        // Setup MainActivity
         addServer.setOnClickListener(view -> addDialog.show());
 
         lblFriendlyName = findViewById(R.id.lblMyFriendlyName);
-        lblFriendlyName.setText(ClientConfig.friendlyName);
+        lblFriendlyName.setText(getString(R.string.main_activity_friendly_name, ClientConfig.friendlyName));
         TextView lblMyIP = findViewById(R.id.lblMyIP);
         try {
             WifiManager wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
             String ip = Formatter.formatIpAddress(wm.getConnectionInfo().getIpAddress());
-            lblMyIP.setText("Device IP: " + ip);
+            lblMyIP.setText(getString(R.string.main_activity_device_ip, ip));
         } catch (Exception err) {
             err.printStackTrace();
-            //lblMyIP.setVisibility(View.INVISIBLE);
+            lblMyIP.setVisibility(View.GONE);
         }
 
         TextView lblVersion = findViewById(R.id.lblVersion);
-        lblVersion.setText("Version: " + BuildConfig.VERSION_NAME);
+        lblVersion.setText(getString(R.string.main_activity_version, BuildConfig.VERSION_NAME));
 
         if (!isNotificationServiceEnabled()) {
             startActivity(new Intent(MainActivity.this, PermissionsActivity.class));
         }
 
-
+        // Start notification listener
         startService(new Intent(this, NotificationListenerService.class));
 
+        // Activity results for settings page
         serverSettingsActivityResults = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    if (result.getResultCode() == Activity.RESULT_OK) {
-                        Intent data = result.getData();
-                        if (data.hasExtra(Constants.EXTRA_SERVER_ID) && data.getStringExtra(Constants.EXTRA_SERVER_ID) != null) {
-                            try {
-                                String uid = data.getStringExtra(Constants.EXTRA_SERVER_ID);
-                                UUID serverUUID = UUID.fromString(uid);
-                                Server server = serverManager.getServer(serverUUID);
-                                String name = server.friendlyName;
-                                server.unpair();
-                                removeServer(server, serversShown.get(server));
-                                Toast.makeText(Context, "Deleted " + name, Toast.LENGTH_SHORT).show();
-                            } catch (Exception e) {
-                                Log.e(TAG, "onActivityResult: failed to delete server", e);
-                                showErrorMessage("Failed to delete server", "Failed to unpair and delete the server. Please select delete from the list.");
-                            }
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    Intent data = result.getData();
+                    if ((data != null && data.hasExtra(Constants.EXTRA_SERVER_ID)) && data.getStringExtra(Constants.EXTRA_SERVER_ID) != null) {
+                        try {
+                            String uid = data.getStringExtra(Constants.EXTRA_SERVER_ID);
+                            UUID serverUUID = UUID.fromString(uid);
+                            Server server = serverManager.getServer(serverUUID);
+                            String name = server.friendlyName;
+                            server.unpair();
+                            removeServer(server, serversShown.get(server));
+                            Toast.makeText(Context, "Deleted " + name, Toast.LENGTH_SHORT).show();
+                        } catch (Exception e) {
+                            Log.e(TAG, "onActivityResult: failed to delete server", e);
+                            showErrorMessage("Failed to delete server", "Failed to unpair and delete the server. Please select delete from the list.");
                         }
                     }
                 }
+            }
         );
 
-        if (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-
+        // File permission check
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             // Permission is not granted
             // Should we show an explanation?
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                showErrorMessage("Cannot save files", "We need file access permissions in order to receive files from servers. " +
-                        "Click \"Ok\" and \"Allow\" to permit this.", (dialog, id) -> {
-                    ActivityCompat.requestPermissions(this,
-                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                            1);
-                });
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                showErrorMessage("Cannot save files",
+            "We need file access permissions in order to receive files from servers. " +
+                    "Click \"Ok\" and \"Allow\" to permit this.",
+                    (dialog, id) -> ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},1));
 
             } else {
                 // No explanation needed, request the permission
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                        1);
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},1);
             }
+        }
+
+        // Setup notification channels
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            android.app.NotificationManager notificationManager = getSystemService(android.app.NotificationManager.class);
+
+            NotificationChannel incomingChannel = new NotificationChannel(Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_ID,
+                    Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_NAME,
+                Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_IMPORTANCE);
+            incomingChannel.setDescription(Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_DESCRIPTION);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                incomingChannel.setAllowBubbles(false);
+            }
+            incomingChannel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+            notificationManager.createNotificationChannel(incomingChannel);
+
+            NotificationChannel uploadChannel = new NotificationChannel(Constants.UPLOAD_FILES_NOTIFICATION_CHANNEL_ID,
+                    Constants.UPLOAD_FILES_NOTIFICATION_CHANNEL_NAME,
+                    Constants.UPLOAD_FILES_NOTIFICATION_CHANNEL_IMPORTANCE);
+            uploadChannel.setDescription(Constants.UPLOAD_FILES_NOTIFICATION_CHANNEL_DESCRIPTION);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                uploadChannel.setAllowBubbles(false);
+            uploadChannel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+            notificationManager.createNotificationChannel(uploadChannel);
         }
     }
 
+    /**
+     * Creates a new notification
+     * @param channelId Channel id
+     * @param title Notification title
+     * @param text Notification body
+     * @param icon Custom notification icon
+     * @return Notification builder, you can more or send it out
+     */
+    public static NotificationCompat.Builder createBaseNotification(String channelId, String title, String text, IconCompat icon) {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(Context.getApplicationContext(), channelId);
+        builder.setContentTitle(title);
+        builder.setContentText(text);
+        builder.setSmallIcon((icon == null)? IconCompat.createWithResource(Context.getApplicationContext(), R.drawable.ic_launcher_foreground) : icon);
+
+        return builder;
+    }
+
+    /**
+     * Creates a new notification
+     * @param channelId Channel id
+     * @param title Notification title
+     * @param text Notification body
+     * @return Notification builder, you can more or send it out
+     */
+    public static NotificationCompat.Builder createBaseNotification(String channelId, String title, String text) {
+        return createBaseNotification(channelId,
+            title,
+            text,
+            IconCompat.createWithResource(Context.getApplicationContext(), R.drawable.ic_launcher_foreground));
+    }
+
+    public static int lastNotificationId = 0;
+
+    /**
+     * Gets the last notification id so everyone has a unique id
+     * @return New notification id
+     */
+    public static int getNewNotificationId() {
+        lastNotificationId++;
+        return lastNotificationId;
+    }
+
+    /**
+     * Sends out a notification
+     * @param notificationId Id of the notification
+     * @param notification Notification builder to push out
+     */
+    public static void pushNotification(int notificationId, NotificationCompat.Builder notification) {
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(Context);
+        notificationManager.notify(notificationId, notification.build());
+    }
+
+    /**
+     * Sends out a notification
+     * @param notification Notification builder to push out
+     */
+    public static void pushNotification(NotificationCompat.Builder notification) {
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(Context);
+        notificationManager.notify(lastNotificationId, notification.build());
+        lastNotificationId++;
+    }
+
+    /**
+     * Checks whether or not the NotificationListenerService has bind permissions
+     * @return We can listen for notifications
+     */
+    public static boolean isNotificationServiceEnabled() {
+        try {
+            String enabledNotificationListeners = Settings.Secure.getString(Context.getContentResolver(), "enabled_notification_listeners");
+            if (TextUtils.isEmpty(enabledNotificationListeners))
+                return false;
+
+            String packageName = Context.getPackageName();
+            ComponentName serviceComponent = new ComponentName(Context, NotificationListenerService.class);
+            String serviceComponentName = serviceComponent.flattenToString();
+
+            String[] listeners = enabledNotificationListeners.split("/");
+            for (String listener : listeners)
+                if (listener.equals(serviceComponentName) || listener.equals(serviceComponent.flattenToShortString()) || listener.contains(packageName))
+                    return true;
+
+            listeners = enabledNotificationListeners.split(":");
+            for (String listener : listeners)
+                if (listener.equals(serviceComponentName) || listener.equals(serviceComponent.flattenToShortString()) || listener.contains(packageName))
+                    return true;
+
+            return false;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
 
     // Create the top menu
     @Override
@@ -225,42 +310,34 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
 
-        switch (id) {
-            /*case R.id.menu_pair_server:
-                addDialog.show();
-                break;*/
+        if (id == R.id.menu_rename_client) {
+            renameClientDialog();
+        } else if (id == R.id.menu_about) {
+            // Get app name and version from manifest
+            String appName = getString(R.string.app_name);
+            String versionName = BuildConfig.VERSION_NAME;
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("About " + appName)
+                    .setMessage("Version " + versionName + "\n\nU(of)SC Capstone Project by:" +
+                            "\nMatthew Sprinkle\nWill Amos\nRidge Johnson\nCody Newberry" +
+                            "\n\nVisit our GitHub page for more information.");
 
-            case R.id.menu_rename_client:
-                renameClientDialog();
-                break;
+            builder.setNegativeButton("View on GitHub", (dialog, id12) -> {
+                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/SCCapstone/Neptune"));
+                startActivity(browserIntent);
+            });
+            builder.setPositiveButton("Okay", (dialog, id1) -> dialog.cancel());
 
-            case R.id.menu_about:
-                // Get app name and version from manifest
-                String appName = getString(R.string.app_name);
-                String versionName = BuildConfig.VERSION_NAME;
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle("About " + appName)
-                        .setMessage("Version " + versionName + "\n\nU(of)SC Capstone Project by:" +
-                                "\nMatthew Sprinkle\nWill Amos\nRidge Johnson\nCody Newberry" +
-                                "\n\nVisit our GitHub page for more information.");
+            AlertDialog dialog = builder.create();
+            dialog.show();
 
-                builder.setNegativeButton("View on GitHub", (dialog, id12) -> {
-                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/SCCapstone/Neptune"));
-                    startActivity(browserIntent);
-                });
-                builder.setPositiveButton("Okay", (dialog, id1) -> dialog.cancel());
+            if (aboutShownCount >= 5 && aboutShownCount < 15) {
+                Toast.makeText(Context, "🌊King Neptune🌊", Toast.LENGTH_SHORT).show();
+            } else if (aboutShownCount >= 15) {
+                Toast.makeText(Context, "Stop clicking the about window :)", Toast.LENGTH_LONG).show();
+            }
 
-                AlertDialog dialog = builder.create();
-                dialog.show();
-
-                if (aboutShownCount >= 5 && aboutShownCount < 15) {
-                    Toast.makeText(Context, "🌊King Neptune🌊", Toast.LENGTH_SHORT).show();
-                } else if (aboutShownCount >= 15) {
-                    Toast.makeText(Context, "Stop clicking the about window :)", Toast.LENGTH_LONG).show();
-                }
-
-                aboutShownCount++;
-                break;
+            aboutShownCount++;
         }
 
         return super.onOptionsItemSelected(item);
@@ -319,12 +396,10 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         //public Config config
         TextView serverName = view.findViewById(R.id.server_name);
         ImageButton serverSyncButton = view.findViewById(R.id.server_item_sync);
+        ImageButton serverSyncIssueButton = view.findViewById(R.id.server_item_sync_issue);
         ProgressBar serverSyncProgress = view.findViewById(R.id.server_item_sync_progress);
         ImageButton serverDeleteButton = view.findViewById(R.id.server_item_delete);
         ProgressBar serverDeleteProgress = view.findViewById(R.id.server_item_delete_progress);
-        TextView ip = findViewById(R.id.lblMyIP);
-        ip.setText(server.ipAddress.getIPAddress());
-        //ip.setVisibility(View.VISIBLE);
 
         serverName.setText(server.friendlyName);
         serverName.setOnClickListener(view1 -> {
@@ -334,42 +409,41 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             serverSettingsActivityResults.launch(serverSettingsActivity);
         });
 
-
-
-        serverSyncButton.setOnClickListener(v -> new Thread(() -> {
+        View.OnClickListener syncButtonListener = v -> new Thread(() -> {
             try {
-                Drawable drawable = getDrawable(R.drawable.ic_round_sync_24);
-                serverSyncButton.setImageDrawable(drawable);
                 hideOrShowImageButtonProgressBar(serverSyncButton, serverSyncProgress, false);
+                runOnUiThread(() -> serverSyncIssueButton.setVisibility(View.GONE));
                 Log.i("MainActivity", "Syncing with " + server.friendlyName);
                 server.sync();
+
+                if (server.getConnectionManager().isConnected()) {
+                    hideOrShowImageButtonProgressBar(serverSyncButton, serverSyncProgress, true);
+                    runOnUiThread(() -> serverSyncIssueButton.setVisibility(View.GONE));
+                } else {
+                    hideOrShowImageButtonProgressBar(serverSyncIssueButton, serverSyncProgress, true);
+                    runOnUiThread(() -> serverSyncButton.setVisibility(View.GONE));
+                }
             } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                hideOrShowImageButtonProgressBar(serverSyncButton, serverSyncProgress, true);
+                hideOrShowImageButtonProgressBar(serverSyncIssueButton, serverSyncProgress, true);
+                runOnUiThread(() -> serverSyncProgress.setVisibility(View.GONE));
             }
-        }).start());
+        }).start();
+
+        serverSyncButton.setOnClickListener(syncButtonListener);
+        serverSyncIssueButton.setOnClickListener(syncButtonListener);
 
         try {
             server.EventEmitter.addListener("connecting", (objects) -> {
                 hideOrShowImageButtonProgressBar(serverSyncButton, serverSyncProgress, false);
+                runOnUiThread(() -> serverSyncIssueButton.setVisibility(View.GONE));
             });
             server.EventEmitter.addListener("connected", (objects) -> {
                 hideOrShowImageButtonProgressBar(serverSyncButton, serverSyncProgress, true);
-                Drawable drawable = getDrawable(R.drawable.ic_round_sync_24);
-                serverSyncButton.setImageDrawable(drawable);
+                runOnUiThread(() -> serverSyncIssueButton.setVisibility(View.GONE));
             });
             server.EventEmitter.addListener("connection-failed", (objects) -> {
-                hideOrShowImageButtonProgressBar(serverSyncButton, serverSyncProgress, true);
-                Drawable drawable = getDrawable(R.drawable.ic_baseline_sync_problem_24);
-                UiModeManager uiModeManager = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
-                if (uiModeManager.getNightMode() == UiModeManager.MODE_NIGHT_YES) {
-                    drawable.setTint(getColor(com.google.android.material.R.color.m3_sys_color_dark_error));
-                } else {
-                    drawable.setTint(getColor(com.google.android.material.R.color.m3_sys_color_light_error));
-                }
-                serverSyncButton.setImageDrawable(drawable);
-                return;
+                hideOrShowImageButtonProgressBar(serverSyncIssueButton, serverSyncProgress, true);
+                runOnUiThread(() -> serverSyncProgress.setVisibility(View.GONE));
             });
         } catch (Exception e) {
             e.printStackTrace();
@@ -407,8 +481,8 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
      */
     private void hideOrShowImageButtonProgressBar(ImageButton button, ProgressBar progressBar, boolean showButton) {
         runOnUiThread(() -> {
-            button.setVisibility(showButton == true? View.VISIBLE : View.GONE);
-            progressBar.setVisibility(showButton != true? View.VISIBLE : View.GONE);
+            button.setVisibility(showButton ? View.VISIBLE : View.GONE);
+            progressBar.setVisibility(!showButton ? View.VISIBLE : View.GONE);
         });
     }
 
@@ -416,7 +490,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
      * Open the dialog box for renaming the client.
      */
     private void renameClientDialog() {
-        RenameDialog renameDialog = new RenameDialog(Constants.RENAME_DIALOG_CLIENT_NAME, "Client's friendly name:", this.ClientConfig.friendlyName);
+        RenameDialog renameDialog = new RenameDialog(Constants.RENAME_DIALOG_CLIENT_NAME, "Client's friendly name:", ClientConfig.friendlyName);
         renameDialog.show(getSupportFragmentManager(), "rename dialog");
     }
 
@@ -439,15 +513,6 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         } catch (Exception ignored) {
             Log.e(TAG, "Failed to process rename dialog, id: " + id + ". Text: " + text);
         }
-    }
-
-    /**
-     * When a different activity returns to MainActivity, with something for it, whether that be an action or information, this method will handle it, depending
-     * on what activity is sending the information. It'll handle the information in a certain way depending on what information is returned.
-     */
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
     }
 
 
