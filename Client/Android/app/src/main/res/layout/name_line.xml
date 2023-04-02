@@ -37,15 +37,14 @@
 
                 <ImageView
                     android:id="@+id/delete"
-                    android:layout_width="29dp"
-                    android:layout_height="29dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:layout_alignParentTop="true"
                     android:layout_alignParentEnd="true"
                     android:layout_marginTop="10dp"
                     android:layout_marginEnd="15dp"
-                    android:background="#E91E63"
                     android:clickable="true"
-                    app:srcCompat="@drawable/better_del"
+                    app:srcCompat="@android:drawable/ic_menu_delete"
                     tools:ignore="TouchTargetSizeCheck, ,SpeakableTextPresentCheck" />
 
                 <ImageView

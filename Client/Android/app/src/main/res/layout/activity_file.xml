@@ -13,7 +13,6 @@
         android:layout_marginTop="28dp"
         android:layout_marginStart="-20dp"
         android:text="@string/destination_folder"
-        android:textColor="@color/black"
         android:textSize="20sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.091"
@@ -33,22 +32,11 @@
         app:layout_constraintTop_toBottomOf="@+id/destinationFolderTitle"
         app:layout_constraintVertical_bias="1.0" />
 
-    <!--<TextView
-        android:id="@+id/notifyDescription"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/notify_description"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.154"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/notifyOnReceived" />-->
-
     <CheckBox
         android:id="@+id/serverUploadFile"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="52dp"
         android:text="@string/allow_server_upload_file"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.057"

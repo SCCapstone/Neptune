@@ -64,7 +64,7 @@
         android:layout_marginTop="8dp"
         android:layout_marginBottom="7dp"
         android:background="@color/black"
-        app:layout_constraintBottom_toTopOf="@+id/textView7"
+        app:layout_constraintBottom_toTopOf="@+id/connectionSettings"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/fileTextView"
@@ -152,13 +152,12 @@
         app:layout_constraintTop_toBottomOf="@+id/chkFileSharingEnabled" />
 
     <TextView
-        android:id="@+id/textView7"
+        android:id="@+id/connectionSettings"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginTop="368dp"
         android:text="@string/connection_settings"
-        android:textColor="@color/black"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -176,7 +175,7 @@
         tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
 
     <TextView
-        android:id="@+id/textView8"
+        android:id="@+id/ipAddress"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
@@ -186,7 +185,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.081"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView7" />
+        app:layout_constraintTop_toBottomOf="@+id/connectionSettings" />
 
     <ImageView
         android:id="@+id/notifSets"
