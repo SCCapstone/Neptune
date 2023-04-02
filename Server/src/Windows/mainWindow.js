@@ -952,7 +952,7 @@ class thisTest extends NeptuneWindow {
 			this.chkSyncClipboard.addEventListener('stateChanged', (state) => {
 				this.updateEnableClipboardSharing(state === 2? true : false);
 				if (this.actionToggleClipboardSharing.isChecked() !== (state === 2))
-					this.actionToggleClipboardSharing.setChecked(state === true);
+					this.actionToggleClipboardSharing.setChecked(state === 2);
 			});
 
 			verticalLayout_2.addWidget(this.chkSyncClipboard);
@@ -1020,7 +1020,7 @@ class thisTest extends NeptuneWindow {
 			this.chkFileSharingEnable.addEventListener('stateChanged', (state) => {
 				this.updateEnableFileSharing(state == 2? true : false);
 				if (this.actionToggleFileSharing.isChecked() !== (state === 2))
-					this.actionToggleFileSharing.setChecked(state === true);
+					this.actionToggleFileSharing.setChecked(state === 2);
 			});
 
 			fileSharingCheckboxes.addWidget(this.chkFileSharingEnable);

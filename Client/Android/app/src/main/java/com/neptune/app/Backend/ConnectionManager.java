@@ -667,6 +667,11 @@ public class ConnectionManager {
                 return; // Do not recreate if already connected ..?
             }
             webSocketClient.close(1000, "reconnecting");
+            Handler handler = new Handler();
+            handler.postDelayed(() -> {
+                if (!webSocketConnected)
+                    createWebSocketClient(true);
+            }, 5000);
         }
         webSocketClient = HTTPClient.newWebSocket(webSocketRequest, new WebSocketListener() {
             @Override
