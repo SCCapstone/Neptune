@@ -6,6 +6,7 @@ import android.content.ClipboardManager;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -283,22 +284,47 @@ public class Clipboard {
                 imageFile.createNewFile(); // Create file if it does not already exist
             }
 
-            FileOutputStream outputStream = new FileOutputStream(imageFile);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream); // Compress image
-            outputStream.close();
-            uri = FileProvider.getUriForFile(MainActivity.Context,BuildConfig.APPLICATION_ID + ".provider", imageFile);
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytes); // Compress image
+            String path = MediaStore.Images.Media.insertImage(MainActivity.Context.getContentResolver(), bitmap,
+                    "Neptune clipboard image",
+                    "Clipboard image from server");
+            uri = Uri.parse(path);
+            bytes.close();
 
             if (uri != null) {
-                ContentValues values = new ContentValues(2);
-                values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-                values.put(MediaStore.Images.Media.DATA, uri.toString());
+                // Grant permission to access the content URI to other apps
+                int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+                MainActivity.Context.grantUriPermission(BuildConfig.APPLICATION_ID + ".provider", uri, flags);
 
-                ContentResolver theContent = MainActivity.Context.getContentResolver();
-                Uri imageUri = theContent.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
                 ClipData clipData = ClipData.newUri(MainActivity.Context.getContentResolver(), "Neptune-Server: Image", uri);
                 ClipboardManager clipboard = (ClipboardManager) MainActivity.Context.getSystemService(Context.CLIPBOARD_SERVICE);
                 clipboard.setPrimaryClip(clipData);
             }
+
+            /*FileOutputStream outputStream = new FileOutputStream(imageFile);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream); // Compress image
+            outputStream.close();
+            uri = FileProvider.getUriForFile(MainActivity.Context,"com.neptune.app.provider", imageFile);
+
+            if (uri != null) {
+                // Grant permission to access the content URI to other apps
+                int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+                MainActivity.Context.grantUriPermission("com.neptune.app.provider", uri, flags);
+
+
+
+                ContentResolver theContent = MainActivity.Context.getContentResolver();
+                ContentValues values = new ContentValues(3);
+                values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+                values.put(MediaStore.Images.Media.DISPLAY_NAME, "clipboard_image.jpg");
+                values.put(MediaStore.Images.Media.DATA, uri.toString());
+
+                Uri imageUri = theContent.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                ClipData clipData = ClipData.newUri(MainActivity.Context.getContentResolver(), "Neptune-Server: Image", imageUri);
+                ClipboardManager clipboard = (ClipboardManager) MainActivity.Context.getSystemService(Context.CLIPBOARD_SERVICE);
+                clipboard.setPrimaryClip(clipData);
+            }*/
         } catch (IOException e) {
             Log.e(TAG, "Unable to set clipboard image due to IOException.");
             e.printStackTrace();
@@ -324,7 +350,8 @@ public class Clipboard {
         if (clipboardData.has("Image")) {
             try {
                 setClipboardImage(clipboardData.get("Image").getAsString());
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                e.printStackTrace();
                 noErrors = false;
             }
         }
