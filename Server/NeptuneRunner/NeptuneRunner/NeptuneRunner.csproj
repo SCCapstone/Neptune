@@ -53,7 +53,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>KingNeptune.ico</ApplicationIcon>
+    <ApplicationIcon>Android Icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -85,6 +85,7 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Android Icon.ico" />
     <Content Include="KingNeptune.ico" />
     <Resource Include="KingNeptune.ico" />
   </ItemGroup>

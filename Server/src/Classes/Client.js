@@ -640,7 +640,7 @@ class Client extends ClientConfig {
 			this.#connectionManager.destroy(true);
 			this.#notificationManager.destroy(true);
 		} catch (err) {
-			this.log.error(err);
+			this.log.error(err, false);
 		}
 		finally {
 			global.Neptune.clientManager.dropClient(this);

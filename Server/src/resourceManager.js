@@ -19,7 +19,7 @@ class ResourceManager {
 	/**
 	 * @type {QIcon} Main application icon. Used in windows and tray icon.
 	 */
-	ApplicationIcon = new QIcon(path.resolve(__dirname, "../Resources/coconut.jpg"));
+	ApplicationIcon = new QIcon(path.resolve(__dirname, "../Resources/coconut.png"));
 
     constructor() {}
 
