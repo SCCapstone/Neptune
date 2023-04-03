@@ -477,7 +477,7 @@ public class ServerSettingsActivity extends AppCompatActivity {
     private void deleteServer() {
         askForConfiguration("Delete " + server.friendlyName + "?", "Are you sure you want to delete the server?", (dialog,id) -> {
             Intent intent = new Intent();
-            intent.putExtra(Constants.EXTRA_SERVER_ID, this.server.serverId);
+            intent.putExtra(Constants.EXTRA_SERVER_ID, this.server.serverId.toString());
             setResult(Activity.RESULT_OK, intent);
             finish();
         });

@@ -15,4 +15,7 @@ public class Constants {
     public static final String UPLOAD_FILES_NOTIFICATION_CHANNEL_NAME = "File uploads";
     public static final String UPLOAD_FILES_NOTIFICATION_CHANNEL_ID = "neptune.notifications.fileuploads";
     public static final int UPLOAD_FILES_NOTIFICATION_CHANNEL_IMPORTANCE = NotificationManager.IMPORTANCE_DEFAULT;
+
+
+    public static final String SERVER_EVENT_CONFIGURATION_UPDATE = "configuration_update";
 }

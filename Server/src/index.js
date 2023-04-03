@@ -24,7 +24,7 @@ const debug = true; // change this later idk
 const displaySilly = false; // output the silly log level to console (it goes	every other level > silly, silly is the lowest priority, literal spam)
 Error.stackTraceLimit = (debug)? 8 : 4;
 
-Neptune.version = new Version(0, 8, 9, ((debug)?"debug":"release"), "RC1");
+Neptune.version = new Version(0, 9, 0, ((debug)?"debug":"release"), "RC1");
 
 global.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune. Allows us to get around providing `Neptune` to everything
 
@@ -1230,7 +1230,7 @@ async function main() {
 								{
 									"id": "showme",
 									"type": "button",
-									"contents": "Open downloads folder"
+									"contents": "Show me in folder"
 								},
 							]
 						},

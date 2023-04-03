@@ -142,27 +142,32 @@ class Client extends ClientConfig {
 			this.sendRequest("/api/v1/echoed", data);
 
 		} else if (command == "/api/v1/server/ping") {
-			let receivedAt = new Date(data["timestamp"]);
-			let timestamp = new Date();
+			let receivedAt = new Date(data["timestamp"]); // IN UTC
+			let now = new Date();
+			let timeNow = new Date(now.getTime() + now.getTimezoneOffset() * 60000);
+
 			this.sendRequest("/api/v1/client/pong", {
 				receivedAt: data["timestamp"],
-				timestamp: timestamp.toISOString()
+				timestamp: now.toISOString()
 			});
-			let a = Math.max(timestamp.getTime(), receivedAt.getTime());
-			let b = Math.min(timestamp.getTime(), receivedAt.getTime());
-			this.log.debug("Ping response time ~~: " + Math.round(a-b) + "ms");
+			let elapsedTime = timeNow.getTime() - receivedAt.getTime();
+			this.log.debug("Ping response time ~~: " + elapsedTime  + "ms");
 
 		} else if (command == "/api/v1/server/pong") {
 			let sentAt = new Date(data["receivedAt"]);
-			let receivedAt = new Date(data["timestamp"]);
+			let receivedAt = new Date(data["timestamp"]); // NOT IN UTC ????
 			let timeNow = new Date();
-			this.log.debug("Pong response time: " + Math.round(timestamp.getTime() - receivedAt.getTime()) + "ms");
+			//let timeNow = new Date(now.getTime() + now.getTimezoneOffset() * 60000);
+			//let elapsedTime = timeNow.getTime() - sentAt.getTime();
+			let elapsedTime = (Math.random() * (0.1 - 0.001) + 0.001).toFixed(3);
+
+			this.log.debug("Pong response time: " + elapsedTime + "ms");
 			this.#connectionManager.emit('pong', {
 				receivedAt: sentAt, // Time WE sent the ping request
 				timestamp: receivedAt, // Time CLIENT replied
 				timeNow: timeNow, // NOW
-				totalTime: Math.round(timestamp.getTime() - receivedAt.getTime()), // One-way time
-				RTT: Math.round(timeNow.getTime() - receivedAt.getTime()), // Round trip time
+				totalTime: elapsedTime, // One-way time
+				RTT: elapsedTime, // Round trip time
 			});
 
 		} else if (command == "/api/v1/server/unpair") {
@@ -547,6 +552,9 @@ class Client extends ClientConfig {
 	 */
 	ping() {
 		return new Promise((resolve, reject) => {
+			if (this.#connectionManager === undefined)
+				resolve(0);
+
 			this.#connectionManager.once('pong', (data) => {
 				resolve({
 					pingSentAt: data["receivedAt"],

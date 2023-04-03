@@ -263,6 +263,9 @@ class ConnectionManager extends EventEmitter {
 			this.#client.pairId = newPairId;
 			this.#client.pairKey = newPairKey;
 			this.#client.friendlyName = packet.data.friendlyName;
+
+			this.#client._dateAdded = new Date();
+
 			this.#client.save();
 			
 			this.sendRequest("/api/v1/server/newPairResponse", {

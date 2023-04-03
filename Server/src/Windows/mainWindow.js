@@ -343,7 +343,7 @@ class thisTest extends NeptuneWindow {
 			this.chkFileSharingEnable.setChecked(client.fileSharingSettings.enabled === true);
 			this.btnSendFile.setEnabled(client.fileSharingSettings.enabled === true);
 
-			this.chkFileSharingAutoAccept.setChecked(client.fileSharingSettings.autoReceiveFromClient === true);
+			this.chkFileSharingAutoAccept.setChecked(client.fileSharingSettings.requireConfirmationOnClinetUploads === true);
 			this.chkFileSharingAutoAccept.setEnabled(client.fileSharingSettings.enabled === true);
 
 			this.chkFileSharingNotify.setChecked(client.fileSharingSettings.notifyOnReceive === true);
@@ -376,8 +376,8 @@ class thisTest extends NeptuneWindow {
 
 			// file sharing
 			client.fileSharingSettings.enabled = this.chkFileSharingEnable.isChecked(); //(client.fileSharingSettings.enabled === true);
-			client.fileSharingSettings.autoReceiveFromClient = this.chkFileSharingAutoAccept.isChecked(); //(client.fileSharingSettings.autoReceiveFromClient === true);
-			client.fileSharingSettings.notifyOnReceive = this.chkFileSharingNotify.isChecked(); //(client.fileSharingSettings.notifyOnReceive === true);
+			client.fileSharingSettings.requireConfirmationOnClinetUploads = !this.chkFileSharingAutoAccept.isChecked(); //(client.fileSharingSettings.autoReceiveFromClient === true);
+			client.fileSharingSettings.notifyOnClientUpload = this.chkFileSharingNotify.isChecked(); //(client.fileSharingSettings.notifyOnReceive === true);
 			client.fileSharingSettings.allowClientToUpload = this.chkFilesharingAllowClientToUpload.isChecked(); //(client.fileSharingSettings.allowClientToUpload === true);
 
 			client.fileSharingSettings.receivedFilesDirectory = this.txtFileSharingSaveDirectory.text(); //(client.fileSharingSettings.receivedFilesDirectory);
@@ -550,10 +550,15 @@ class thisTest extends NeptuneWindow {
 			this.actionView_connection_details.setText("View connection details");
 			this.actionView_connection_details.addEventListener('triggered', () => {
 				let selectedItem = this.GetSelectedClient();
-				if (selectedItem !== undefined) {
+				if (selectedItem !== undefined && selectedItem.isConnected) {
 					let newConnectionDetails = this.newChildWindow('newConnectionDetails');
 					newConnectionDetails.setClient(selectedItem);
 					newConnectionDetails.show();
+				} else if (!selectedItem.isConnected) {
+					let okayButton = new NodeGUI.QPushButton();
+					okayButton.setText("Okay");
+					this.displayMessageBox("Not connected", "Device is not connected",
+						[{ button: okayButton, buttonRole: NodeGUI.ButtonRole.AcceptRole }]);
 				}
 			});
 
@@ -728,7 +733,7 @@ class thisTest extends NeptuneWindow {
 
 			// file
 			this.menuFile.addAction(this.actionPair_client);
-			this.menuFile.addAction(this.actionRefresh_device_list);
+			// this.menuFile.addAction(this.actionRefresh_device_list);
 			this.menuFile.addSeparator();
 			this.menuFile.addAction(this.menuClient_settings_action);
 			this.menuFile.addSeparator();
@@ -744,6 +749,7 @@ class thisTest extends NeptuneWindow {
 			this.menuHelp.addAction(this.actionAbout_Neptune);
 
 			this.menuBar.addMenu(this.menuFile);
+			this.menuBar.addAction(this.actionRefresh_device_list);
 			this.menuBar.addAction(this.actionRefresh_client_info);
 			// menuBar.addMenu(this.menuClient_settings);
 			this.menuBar.addMenu(this.menuHelp);

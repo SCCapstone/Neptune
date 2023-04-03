@@ -258,6 +258,11 @@ public class Server extends ServerConfig {
                     }
 
 
+                    this.save();
+
+                    EventEmitter.emit(Constants.SERVER_EVENT_CONFIGURATION_UPDATE);
+
+
                 // File stuff
                 } else if (command.equals("/api/v1/client/filesharing/receive") && apiDataPackage.isJsonObject()) {
                     // Download a file! (preferably in a new thread!)
@@ -701,7 +706,9 @@ public class Server extends ServerConfig {
                 if (directoryDocumentFile == null) {
                     NotificationCompat.Builder notification = MainActivity.createBaseNotification(Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_ID,
                         "Failed to receive incoming file",
-                        "Cannot save the file to your server's specified receive folder. Please pick a new folder to save incoming files to.");
+                        "Cannot save the file");
+
+                    notification.setContentText("Cannot save the file to your server's specified receive folder. Please pick a new folder to save incoming files to.");
 
                     notification.setSubText(friendlyName);
                     MainActivity.pushNotification(notification);
@@ -711,7 +718,7 @@ public class Server extends ServerConfig {
                 if  (!directoryDocumentFile.canWrite()) {
                     NotificationCompat.Builder notification = MainActivity.createBaseNotification(Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_ID,
                             "Failed to receive incoming file",
-                            "Cannot save the file to your server's specified receive folder. Please pick a new folder to save incoming files to.");
+                            "Please pick a new folder to save incoming files to.");
 
                     notification.setSubText(friendlyName);
                     MainActivity.pushNotification(notification);
@@ -932,7 +939,9 @@ public class Server extends ServerConfig {
             this.syncConfiguration();
             this.sendBatteryInfo();
             this.ping();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+            currentlySyncing = false;
+        }
         finally {
             currentlySyncing = false;
         }

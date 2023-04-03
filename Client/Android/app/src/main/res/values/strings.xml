@@ -7,8 +7,8 @@
     <string name="menu_rename_client_text">Rename client</string>
     <string name="menu_about_neptune_text">About Neptune</string>
     <string name="main_activity_device_ip">Device IP: %s</string>
-    <string name="main_activity_friendly_name">Device IP: %s</string>
-    <string name="main_activity_version">Device IP: %s</string>
+    <string name="main_activity_friendly_name">Device name: %s</string>
+    <string name="main_activity_version">Version: %s</string>
 
     <!-- Server entry (main activity) -->
     <string name="server_item_line_delete_button_text">Delete and unpair server</string>

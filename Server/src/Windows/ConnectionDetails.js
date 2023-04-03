@@ -126,15 +126,16 @@ class connectionDetails extends NeptuneWindow {
 
 		this.closeButton = this.createButton("closeButton", "Close Connection Window");
         this.closeButton.setInlineStyle("font-size: 16px; font-weight: light; padding: 5px; min-width: 225px; max-width: 225px; margin-left: 90px;");
+		this.closeButton.addEventListener('clicked', () => this.close());
 
 
+		let maybeThis = this;
 		this.pingButton.addEventListener('clicked', () => {
 			this.client.ping().then((pingData) => {
-				this.pingLabel.setText("RTT latency: " + pingData.RTT + "ms");
+				maybeThis.pingLabel.setText("RTT latency: " + pingData.RTT + "ms");
 			});
 		});
 		// this.unpairButton.addEventListener('clicked', (checked) => console.log("unpair"));
-		this.closeButton.addEventListener('clicked', () => this.close());
     }
 }
 
