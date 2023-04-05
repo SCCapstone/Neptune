@@ -1,9 +1,8 @@
 name: GitHub Server JSDoc Pages
 
 on:
-  push:
-    branches:
-      - master
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -16,7 +15,7 @@ jobs:
         uses: andstor/jsdoc-action@v1
         with:
           source_dir: ./Server/src
-          output_dir: ./docs/dev/Server/
+          output_dir: ./Documents/Dev/Server
           config_file: conf.json
           template: minami
           front_page: README.md
