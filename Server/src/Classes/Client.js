@@ -17,7 +17,9 @@ const crypto = require("node:crypto")
 const fs = require("node:fs");
 
 
-/** @type {import('./NeptuneConfig.js')} */
+const NepConfig = require('./NeptuneConfig.js');
+
+/** @type {NepConfig} */
 var NeptuneConfig = global.Neptune.config;
 
 
@@ -93,7 +95,7 @@ class Client extends ClientConfig {
 	 * Initialize a new Client from the configuration file. If the file does not exist it'll be created.
 	 * 
 	 * Any deviations will error out.
-	 * @param {import('./ConfigurationManager')} configManager ConfigurationManager instance
+	 * @param {ConfigurationManager} configManager ConfigurationManager instance
 	 * @param {string} clientId Unique id of the client (this will be used as a part of the config file name)
 	 */
 	constructor(configurationManager, clientId) {
@@ -516,7 +518,7 @@ class Client extends ClientConfig {
 
 	/**
 	 * ConnectionManager received notification data, push this to the NotificationManager
-	 * @param {import('./Notification.js')} notification Notification received
+	 * @param {Notification.js} notification Notification received
 	 */
 	receiveNotification(notification) {
 		let maybeThis = this;

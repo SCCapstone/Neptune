@@ -7,23 +7,18 @@
  * 		Capstone Project 2022
  */
 
-const Client = require('./Client');
-
 
 /* Imports */
 // const IPAddress = require('IPAddress.js');
 
-/**
- * @typedef {import('./Client.js')} Client
- */
-/**
- * @typedef {import('./ConfigurationManager.js')} ConfigurationManager
- */
 
 const ws = require('ws');
+const Client = require('./Client');
 const crypto = require("node:crypto");
 const EventEmitter = require('node:events');
 const NeptuneCrypto = require('../Support/NeptuneCrypto');
+const ConfigurationManager = require('./ConfigurationManager.js');
+const { Logger } = require('./LogMan');
 
 
 /**
@@ -67,7 +62,7 @@ class ConnectionManager extends EventEmitter {
 	#socketUUID;
 
 	/**
-     * @type {import('./LogMan').Logger}
+     * @type {Logger}
      */
     #log;
 

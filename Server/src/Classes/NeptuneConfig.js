@@ -14,6 +14,7 @@ const crypto = require("node:crypto");
 const Version = require('./Version.js');
 
 const os = require("node:os");
+const ConnectionManager = require('./ConnectionManager.js');
 
 
 /**
@@ -117,7 +118,7 @@ class NeptuneConfig extends ConfigItem {
 	}
 
 	/**
-	 * @param {import('./ConfigurationManager')} configManager ConfigurationManager instance
+	 * @param {ConnectionManager} configManager ConfigurationManager instance
 	 * @param {string} fileName The path to the config file
 	 * @return {NeptuneConfig}
 	 */

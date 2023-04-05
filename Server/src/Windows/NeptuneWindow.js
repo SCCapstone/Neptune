@@ -22,7 +22,8 @@ const fs = require("node:fs")
 class NeptuneWindow extends NodeGUI.QMainWindow {
 
 	/**
-	 * @type {object} A container of widgets added to this window (think labels, buttons). (widget name: the widget)
+	 * A container of widgets added to this window (think labels, buttons). (widget name: the widget)
+	 * @type {object}
 	 */
 	widgets = {}
 
@@ -135,7 +136,7 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 	 * 
 	 * @param {string} checkBoxName Widget name of the check box (used internally)
 	 * @param {string} text The text after the check box
-	 * @returns 
+	 * @returns {NodeGUI.QCheckBox}
 	 */
 	createCheckBox(name, text) {
 		const checkBox = new NodeGUI.QCheckBox();
@@ -156,7 +157,7 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 	// Getters
 	/**
 	 * 
-	 * @return {}
+	 * @return {NodeGUI.QWidget}
 	 */
 	getWidget(name) {
 		if (typeof name !== "string")

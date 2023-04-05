@@ -10,14 +10,13 @@
  */
 
 const NodeGUI = require("@nodegui/nodegui");
-const { connect }= require("http2");
-const ResourceManager = new (require("../ResourceManager"))();
 const NeptuneWindow = require("./NeptuneWindow");
 
 
-const Notifier = require("node-notifier"); // does not work with windows action center!
 const Client = require("../Classes/Client");
 const Notification = require("../Classes/Notification");
+const { Logger } = require("./../Classes/LogMan");
+const ClientManager = require("../Classes/ClientManager");
 
 class thisTest extends NeptuneWindow {
 	/**
@@ -159,7 +158,7 @@ class thisTest extends NeptuneWindow {
 	btnReceiveClipboard;
 
 
-	/** @type {import('./../Classes/LogMan').Logger} */
+	/** @type {Logger} */
 	log;
 
 
@@ -1321,7 +1320,7 @@ class thisTest extends NeptuneWindow {
 				var removeFunction = this.RemoveClientFromDeviceList;
 				var addFunction = this.AddClientToDeviceList;
 
-				/** @type {import('./../Classes/ClientManager.js')} */
+				/** @type {ClientManager} */
 				let clientManager = Neptune.clientManager;
 				let clients = clientManager.getClients();
 				clients.forEach((client, name) => {
@@ -1356,13 +1355,18 @@ class thisTest extends NeptuneWindow {
 		}
 	}
 
+	/**
+	 * @typedef {object} messageboxButtons
+	 * @property {NodeGUI.QPushButton} button
+	 * @property {NodeGUI.ButtonRole} buttonRole
+	 */
 
 	/**
 	 * Displays a message box with custom buttons.
 	 *
 	 * @param {string} title - The title of the message box.
 	 * @param {string} message - The message text of the message box.
-	 * @param {Array<{ button: NodeGUI.QPushButton, buttonRole?: NodeGUI.ButtonRole }>} buttons - An array of objects representing each custom button to add to the message box. Each object should contain a `button` property representing the `QPushButton` object, and an optional `buttonRole` property representing the button role (defaults to `ButtonRole.AcceptRole` if not specified).
+	 * @param {messageboxButtons[]} buttons - An array of objects representing each custom button to add to the message box. Each object should contain a `button` property representing the `QPushButton` object, and an optional `buttonRole` property representing the button role (defaults to `ButtonRole.AcceptRole` if not specified).
 	 *
 	 * @returns {NodeGUI.DialogCode} - Whether the dialog was accepted `NodeGUI.DialogCode.Accepted` or rejected `NodeGUI.DialogCode.Rejected`.
 	 */

@@ -31,7 +31,7 @@ Other properties:
 
 
 conInitUUID: A collection of connection initiation request data.
-```json
+```json5
 {
 	"UUID": {
 		"log": {}, // LogMan.Logger object for logging
@@ -78,7 +78,7 @@ For server, (as in like the application running), Neptune.events will fire off f
 
 
 `NeptuneConfig.js`: `Config.json`:
-```JSON
+```JSON5
 {
 	"encryption": {
 		"enabled": false,	// If file encryption is enabled
@@ -104,7 +104,7 @@ For server, (as in like the application running), Neptune.events will fire off f
 
 
 Client example config, `clientId.json`:
-```JSON
+```JSON5
 {
 	"IPAddress": "127.0.0.1:25565",
 	"clientId": "clientId",
@@ -163,6 +163,22 @@ Here is a run down of what NeptuneRunner does:
 
 
 
+## Notifications
+Neptune Runner creates a startmenu shortcut on run and calls `ToastNotificationManagerCompat.CreateToastNotifier`, which, presumably (it's not documented what it actually does),creates a registry key (`\HKCU\SOFTWARE\Classes\CLSID\<Application GUID>\`) and registers a new COM Object.\
+This is a requirement for receiving activation data from toast notifications on Windows. Without this, after a notification times out into the action center (or otherwise is in the action center) the application (us) is not activated and does not receive any updates for that toast.\
+(We'll only get updates for notifications in the action center IF we register a startmenu shortcut and create the registery key).
+
+Learn more about toast notifications on Windows here: https://learn.microsoft.com/en-us/windows/apps/design/shell/tiles-and-notifications/toast-notifications-overview \
+Toast content: https://learn.microsoft.com/en-us/windows/apps/design/shell/tiles-and-notifications/adaptive-interactive-toasts?tabs=xml \
+COM activation (relating to toast notifications): https://learn.microsoft.com/en-us/windows/apps/design/shell/tiles-and-notifications/send-local-toast-other-apps
+
+
+If you wish to remove NeptuneRunner's startmenu shortcut or COM object in registery, run NeptuneRunner with the argument `-uninstall` (so, `NeptuneRunner.exe -uninstall`).\
+Alternatively you could just delete the shortcut.
+
+
+
+
 
 ## NeptuneRunner IPC:
 NeptuneRunner creates a named pipe (stage 4). This named pipe is used for Neptune Server to send/receive notification data, fix window taskbar settings, etc.
@@ -215,13 +231,13 @@ notify-push: Tells NeptuneRunner to create (or update) a toast notification\
 `clientName`: client's friendly name, not used\
 `applicationName`: application name provided by the client of the notification (the application that sent this notification on the phone)\
 `timestamp`: the notification's timestamp as provided by the client\
-`createNew`: if true, we DO NOT update the notification! If NeptuneRunner finds 
+`createNew`: if true, we DO NOT update the notification! If NeptuneRunner finds\
+_among others_
 
 
 notify-delete: Tells NeptuneRunner to delete a toast notification\
 `id`: notification id to delete\
 `clientId`: client id that pushed the notification
-
 
 
 notify-dismissed: Toast notification was dismissed by the user\

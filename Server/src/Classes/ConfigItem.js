@@ -7,6 +7,8 @@
  * 		Capstone Project 2022
  */
 
+const ConfigurationManager = require('./ConfigurationManager');
+const { Logger } = require('./LogMan');
 const Version = require('./Version');
 
 /**
@@ -21,10 +23,10 @@ class ConfigItem {
 
 
 
-	/** @type {import('./ConfigurationManager')} */
+	/** @type {ConfigurationManager} */
 	#configManager;
 
-	/** @type {import('./LogMan').Logger} */
+	/** @type {Logger} */
 	log;
 
 	/**
@@ -43,7 +45,7 @@ class ConfigItem {
 
 
 	/**
-	 * @param {import('./ConfigurationManager')} configManager ConfigurationManager instance
+	 * @param {ConfigurationManager} configManager ConfigurationManager instance
 	 * @param {string} fileName The path to the config file
 	 * @return {ConfigItem}
 	 */

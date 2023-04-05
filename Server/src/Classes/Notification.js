@@ -7,9 +7,13 @@
  * 		Capstone Project 2022
  */
 
-const EventEmitter = require('node:events');
-const Notifier = require("node-notifier"); // does not work with windows action center!
-const Client = require('./Client.js');
+
+let Notifier = require("node-notifier"); // does not work with windows action center!
+let Client = require('./Client.js');
+
+let { PipeDataReceivedEventArgs } = require('./NeptuneRunner.js');
+
+let { Logger } = require('./LogMan')
 
 
 /**
@@ -32,6 +36,10 @@ const Client = require('./Client.js');
  * 
  */
 
+
+/**
+ * Neptune
+ */
 const Neptune = global.Neptune;
 
 /**
@@ -81,7 +89,7 @@ class Notification extends EventEmitter {
 
 
     /**
-     * @type {import('./LogMan').Logger}
+     * @type {Logger}
      */
     #log;
 
@@ -342,7 +350,7 @@ class Notification extends EventEmitter {
     /**
      * Processes IPC activation (NeptuneRunner)
      * @param {Notification} notification
-     * @param {import('./NeptuneRunner.js').PipeDataReceivedEventArgs} ipcData
+     * @param {PipeDataReceivedEventArgs} ipcData
      */
     #IPCActivation(notification, ipcData) {
         try {

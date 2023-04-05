@@ -13,6 +13,7 @@ const NeptuneWindow = require("./NeptuneWindow");
 const NodeGUI = require("@nodegui/nodegui");
 const ResourceManager = new (require("../ResourceManager"))();
 const connectWindow = require("./connectWindow");
+const Client = require("../Classes/Client");
 
 class deviceInfo extends NeptuneWindow {
     
@@ -30,10 +31,6 @@ class deviceInfo extends NeptuneWindow {
 			`
 		);
 
-        /** @type {import(./../Classes/Client.js)} **/
-		var client = global.client;
-
-        //let name = "Device Name: " + client.friendlyName;
 		const nameLabel = this.createLabel("name", "name");
         nameLabel.setInlineStyle("font-size: 30px; font-weight: light; qproperty-alignment: AlignCenter; margin: 2px;");
 

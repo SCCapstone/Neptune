@@ -1,14 +1,32 @@
 ## Neptune\Server
 
-
-Server component. Receives notification data from clients (the Android app).
-
+Server component. Receives notification data from clients (the Android app).\
 Written in Node.JS (targeting Node.JS 18 as that will become the main LTS version until \~2025).\
-Node.JS can be downloaded [here](https://nodejs.org/en/download/current/) (be sure to grab version 18).
+
+In order to properly take advantage of Windows Toast notifications, NeptuneRunner is required to run Neptune. NeptuneRunner is a special program just for Windows that enables notification support.\
+More information about NeptuneRunner is here: [doc.md#neptunerunner](doc.md#neptunerunner)
 
 
+## Setup
+You'll need Node.JS (version >=18) and Visual C++ Redistributable >=2019 (you likely have this). The node modules in the package file.
+
+
+Dependencies:
+
+1) Node.JS can be downloaded [here](https://nodejs.org/en/download/current/) (be sure to grab version 18 under the LTS tab). 
+2) NodeGUI requires at least the 2019 version of Visual C++. You'll likely already have this installed on your computer as it is an incredibly common dependency. It can be downloaded [here](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170).
+
+
+Node modules:\
 Install all dependencies (node_modules) by running `Install node modules.bat` or typing `npm i`\
-To run, just open this directory in your command prompt of the month and type `npm start`\
+
+
+First run:\
+After installing NodeJS, Visual C++, and the dependencies, do a first time run of Neptune using the command `npm run debug`.\
+This _does not_ use NeptuneRunner, so notifications will **not** work as expected! NeptuneRunner is required for notifications to work. To start the server using NeptuneRunner, just type `npm start`.\
+This is how you will start Neptune normally, `npm start`.\
+To start Neptune _without_ proper notification support, run `npx qode ./src/index.js`. Again, this **will not** have properly functioning notifications, but it does start up a bit faster.
+
 Configuration options available in `./data/NeptuneConfig.json` (may be encrypted, disabled in debug mode.)
 
 
@@ -35,6 +53,8 @@ To debug, run: `npm run debug`
 This starts qode with `--inspector`, which opens the the Node.JS debugger (web socket). You can use tools such as Chrome, Visual Studio Code and Visual Studio to then debug the code.
 
 
+
+
 ## Testing
 Testing utilizes Jest.\
 To run all tests, run: `npm run test`\
@@ -56,9 +76,9 @@ Behavioral/GUI tests end in `.guitest.js` and regular tests end in `.test.js`.\
 
 Since this is a Node.JS application, `npm` will be used as our package manager for modules.
 
-To "package" our Node.JS server application into a "one-click" executable we will use PKG: https://www.npmjs.com/package/pkg
+To "package" our Node.JS server application into a "one-click" executable we will use nodegui-packer.
 
-Packages:
+Packages:\
     `@nodegui/nodegui`: The GUI we're using. NodeJS compatible version of Qt\
     `webpack`: For combining all our files and node_modules into one file.\
     `webpack-cli`: Command line utilities for webpack\

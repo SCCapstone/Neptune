@@ -9,21 +9,23 @@
 
 const EventEmitter = require('node:events');
 const Client = require('./Client');
+const ConfigurationManager = require('./ConfigurationManager.js');
+const NepConfig = require('./NeptuneConfig.js');
 
-/** @type {import('./NeptuneConfig.js')} */
+/** @type {NepConfig} */
 var NeptuneConfig = global.Neptune.config;
 
 /**
  * Management class for clients
  */
 class ClientManager extends EventEmitter {
-    /** @typedef {import('./Client')} Client */
+    /** @typedef {} Client */
 
 
     /** @type {Map<string, Client>} */
     #clients = new Map();
 
-    /** @type {import('./ConfigurationManager.js')} */
+    /** @type {ConfigurationManager} */
     #configManager;
 
     #log;

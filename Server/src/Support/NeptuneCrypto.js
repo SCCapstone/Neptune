@@ -1,3 +1,7 @@
+/**
+ * @namespace
+ * 
+ */
 var NeptuneCrypto = {}
 
 const hkdf = require("futoin-hkdf"); // wait what https://nodejs.org/api/crypto.html#cryptohkdfdigest-ikm-salt-info-keylen-callback
@@ -78,6 +82,9 @@ class InvalidDecryptionKey extends Error {
 	}
 }
 
+/**
+ * Errors thrown by NeptuneCrypto 
+ */
 NeptuneCrypto.Errors = {
 	DataNotEncrypted: DataNotEncrypted,
 	EncryptedDataSplitError: EncryptedDataSplitError,
@@ -312,6 +319,7 @@ NeptuneCrypto.encrypt = function(plainText, key, salt, options) {
  * @throws {EncryptedDataInvalidVersion} Not sure how to decrypt this data, how is it stored (which parts mean what)?
  * @throws {UnsupportedCipher} Unsupported cipher used to encrypt the data
  * @throws {InvalidDecryptionKey} Wrong decryption key used
+ * @throws {MissingDecryptionKey} Missing the decryption key
  * 
  * @param {(string|Buffer)} encryptedText Encrypted data provided by the encrypt function (at some point).
  * @param {string} key Key used to encrypt the data. HKDF used to derive actual encryption key.

@@ -17,7 +17,8 @@ const path = require('node:path');
  */
 class ResourceManager {
 	/**
-	 * @type {QIcon} Main application icon. Used in windows and tray icon.
+     * Main application icon. Used in windows and tray icon.
+	 * @type {QIcon}
 	 */
 	ApplicationIcon = new QIcon(path.resolve(__dirname, "../Resources/coconut.png"));
 

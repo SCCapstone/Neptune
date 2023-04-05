@@ -8,11 +8,8 @@
  */
 
 const ConfigItem = require('./ConfigItem.js');
+const ConfigurationManager = require('./ConfigurationManager.js');
 const IPAddress = require('./IPAddress.js');
-/**
- * @typedef {import('./IPAddress.js')} IPAddress
- * 
- */
 
 /**
  * Client configuration data
@@ -216,7 +213,7 @@ class ClientConfig extends ConfigItem {
 
 
 	/**
-	 * @param {import('./ConfigurationManager')} configManager ConfigurationManager instance
+	 * @param {ConfigurationManager} configManager ConfigurationManager instance
 	 * @param {string} fileName The path to the config file
 	 * @return {ClientConfig}
 	 */

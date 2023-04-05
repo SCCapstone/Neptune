@@ -89,7 +89,6 @@ class connectionDetails extends NeptuneWindow {
         this.setFixedSize(600, 300);
         this.setWindowFlag(NodeGUI.WindowType.Dialog | NodeGUI.WindowType.MSWindowsFixedSizeDialogHint, true);
 
-        /** @type {import(./../Classes/Client.js)} **/
 		this.clientSection = this.createLabel("clientLabel", "Connected Client");
 		this.clientSection.setInlineStyle("font-size: 16px; font-weight: light; qproperty-alignment: AlignCenter");
 

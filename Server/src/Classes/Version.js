@@ -79,7 +79,7 @@ class Version {
 	/**
 	 * Convert the version to a readable string following the semantic styling
 	 * @param {boolean} wrapInBracket Whether to wrap the prerelease and metadata information in brackets (v1.4.2{debug}[Metadata]) or the semantic way (v1.4.2-debug+Metadata)
-	 * @returns 
+	 * @returns {string} String representation of the version, either in the semantic way or in brackets.
 	 */
 	toString(wrapInBracket) {
 		let str = `${this.major}.${this.minor}.${this.patch}`;

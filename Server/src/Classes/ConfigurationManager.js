@@ -16,8 +16,8 @@ const NeptuneCrypto = require('./../Support/NeptuneCrypto.js');
 const ConfigItem = require('./ConfigItem.js');
 const NeptuneConfig = require('./NeptuneConfig');
 const ClientConfig = require('./ClientConfig.js');
+const { Logger } = require("./LogMan.js");
 const Neptune = global.Neptune;
-
 
 /**
  * Manager class for configuration items
@@ -46,7 +46,7 @@ class ConfigurationManager {
 	}
 
 	/**
-	 * @type {import('./LogMan').Logger}
+	 * @type {Logger}
 	 */
 	#log;
 
