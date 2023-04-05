@@ -43,6 +43,9 @@ jobs:
           destination: ./Documents/_site
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
+        with:
+          source: ./Documents/
+          destination: ./Documents/_site
 
   # Deployment job
   deploy:
