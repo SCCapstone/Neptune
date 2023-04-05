@@ -9,9 +9,10 @@
  */
 
 
+// ---==---
+
 // Which came first? Chicken or the egg?
 const Version = require('./Classes/Version.js');
-const Neptune = {};
 const isWin = process.platform === "win32"; // Can change notification handling behavior
 
 
@@ -20,14 +21,18 @@ const isWin = process.platform === "win32"; // Can change notification handling 
 
 
 // Global behavioral changes (static stuff)
+/**
+ * Debug mode - special stuff
+ * @type {boolean}
+ */
 const debug = true; // change this later idk
-const displaySilly = false; // output the silly log level to console (it goes	every other level > silly, silly is the lowest priority, literal spam)
+
+/**
+ * output the silly log level to console (it goes	every other level > silly, silly is the lowest priority, literal spam)
+ * @type {boolean}
+ */
+const displaySilly = false; // 
 Error.stackTraceLimit = (debug)? 8 : 4;
-
-Neptune.version = new Version(0, 9, 0, ((debug)?"debug":"release"), "RC1");
-
-global.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune. Allows us to get around providing `Neptune` to everything
-
 global.consoleVisible = true;
 
 
@@ -49,6 +54,9 @@ const keytar = require("keytar");
 
 // GUI
 const NodeGUI = require("@nodegui/nodegui");
+/**
+ * NodeGUI application instance 
+ */
 const qApp = NodeGUI.QApplication.instance();
 // Interaction
 const readline = require("readline");
@@ -66,24 +74,41 @@ const NeptuneConfig = require('./Classes/NeptuneConfig.js');
 const ClientManager = require('./Classes/ClientManager.js');
 const Notification = require('./Classes/Notification.js');
 const NotificationManager = require('./Classes/NotificationManager.js');
-/** @typedef {import('./Classes/Client')} Client */
-/** @type {import('./Classes/LogMan').LogMan} */
-const LogMan = require('./Classes/LogMan.js').LogMan;
+const Client = require('./Classes/Client.js')
+const { LogMan, Logger } = require('./Classes/LogMan.js');
 const IPAddress = require("./Classes/IPAddress.js");
 const NeptuneCrypto = require('./Support/NeptuneCrypto.js');
-const { fileURLToPath } = require('node:url');
 
 
+/** @namespace Neptune */
+const Neptune = {};
 
+/**
+ * Neptune version
+ * @type {Version}
+ */
+Neptune.version = new Version(0, 9, 0, ((debug)?"debug":"release"), "RC1");
+
+/** @type {Neptune} */
+global.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune. Allows us to get around providing `Neptune` to everything
 
 
 // Type definitions
+/**
+ * True if running on Windows
+ * @type {boolean}
+ */
 Neptune.isWindows = isWin;
+
+/**
+ * True if in debug mode
+ * @type {boolean}
+ */
 Neptune.debugMode = debug;
 
 /** @type {ConfigurationManager} */
 Neptune.configManager;
-/** @type {import('./Classes/NeptuneConfig')} */
+/** @type {NeptuneConfig} */
 Neptune.config;
 /** @type {ClientManager} */
 Neptune.clientManager;
@@ -92,8 +117,10 @@ Neptune.notificationManager;
 
 
 
+
+
 // Logging
-/** @type {LogMan} */
+/** @type {LogMan.ConstructorOptions} */
 let logOptions = {
 	fileWriteLevel: {
 		silly: debug
@@ -105,9 +132,17 @@ let logOptions = {
 	consoleMessageCharacterLimit: (debug? 750 : 1250),
 	fileMessageCharacterLimit: (debug? 4000 : 7500),
 }
+/**
+ * Neptune Log creator
+ * @type {LogMan}
+ */
 Neptune.logMan = new LogMan("Neptune", "./logs", logOptions);
 // Log name: Neptune, in the logs folder, do not display silly messages (event fired!)
 
+/**
+ * Neptune main logger
+ * @type {Logger}
+ */
 Neptune.log = Neptune.logMan.getLogger("Neptune"); // You can call this (log) to log as info
 
 Neptune.logMan.on('close', () => { // Reopen log file if closed (and not shutting down)
@@ -146,9 +181,22 @@ class EmitterLogger extends require('events') {
 	}
 }
 
+/**
+ * Neptune events
+ * @namespace
+ */
 Neptune.events = {
-	application: new EmitterLogger("application"), // Application events (UI related, shutting down)
-	server: new EmitterLogger("server") // Server events (new device connected, device paired)
+	/**
+	 * Application events (UI related)
+	 * @type {EventEmitter}
+	 */
+	application: new EmitterLogger("application"),
+
+	/**
+	 * Server events (new device connected, device paired)
+	 * @type {EventEmitter}
+	 */
+	server: new EmitterLogger("server")
 }
 
 
@@ -166,6 +214,12 @@ async function Shutdown(shutdownTimeout) {
 	Neptune.events.application.emit('shutdown', shutdownTimeout)
 }
 process.Shutdown = Shutdown;
+
+/**
+ * @event Neptune.events.application#shutdown
+ * @type {object}
+ * @property {number} shutdownTimeout - Amount of time to wait before shutting down completely.
+ */
 Neptune.events.application.on('shutdown', (shutdownTimeout) => {
 	Neptune.log.info("Shutdown signal received, shutting down in " + (shutdownTimeout/1000) + " seconds.");
 
@@ -499,8 +553,16 @@ async function main() {
 	 * 
 	 */
 
+	/**
+	 * Web log
+	 * @type {Logger}
+	 */
 	Neptune.webLog = Neptune.logMan.getLogger("Web");
 	
+	/**
+	 * Express app
+	 * @type {Express}
+	 */
 	const app = Express();
 	const WebSocketServer = require('ws').Server;
 	app.set('trust proxy', true);
@@ -749,7 +811,6 @@ async function main() {
 					conInitObject.clientId = NeptuneCrypto.decrypt(conInitObject.clientId, conInitObject.secret);
 
 				// Get/create client object
-				/** @type {Client} client **/
 				client = Neptune.clientManager.getClient(conInitObject.clientId)
 				client.clientId = conInitObject.clientId;
 				conInitObject.client = client;
@@ -963,18 +1024,23 @@ async function main() {
 
 
 	/**
-	 * @type {object} Neptune.filesharing
+	 * Holds file sharing setup functions
+	 * @namespace
 	 */
 	Neptune.filesharing = {};
 
-	/** @type {Map<String, fileSharingObject>} fileUUIDs - A collection of file sharing ids. Key is the fileUUID */
+	/**
+	 * A collection of file sharing ids. Key is the fileUUID
+	 * @type {Map<String, fileSharingObject>}
+	 */
 	let fileUUIDs = {};
 
 	/**
 	 * Used by the Client class to setup a file download
+	 * @function Neptune.filesharing.newClientDownload
 	 * @param {Client} client - Client that will be downloading this file.
 	 * @param {string} filepath - Path to the file being downloaded by the client.
-	 * @return {string} fileUUID
+	 * @return {fileSharingObject} fileSharingObject
 	 */
 	Neptune.filesharing.newClientDownload = function(client, filepath) {
 		if (client === undefined)
@@ -1009,9 +1075,10 @@ async function main() {
 
 	/**
 	 * Used by the Client class to setup a file upload
+	 * @alias Neptune.filesharing.newClientUpload
 	 * @param {Client} client - Client that will be uploading this file.
 	 * @param {string} saveToDirectory - Path to save the uploaded file to.
-	 * @return {string} fileUUID
+	 * @return {fileSharingObject} fileSharingObject
 	 */
 	Neptune.filesharing.newClientUpload = function(client, fileName, saveToDirectory) {
 		if (!client.fileSharingSettings.enabled || !client.fileSharingSettings.allowClientToUpload)
@@ -1212,6 +1279,7 @@ async function main() {
 			let acceptedFunction = function() {
 
 				if (client.fileSharingSettings.notifyOnClientUpload) {
+					let actionButtonContents = "Show me in folder";
 					let notification = new Notification({
 						clientId: "Neptune",
 						friendlyName: "MainWindow",
@@ -1230,7 +1298,7 @@ async function main() {
 								{
 									"id": "showme",
 									"type": "button",
-									"contents": "Show me in folder"
+									"contents": actionButtonContents
 								},
 							]
 						},
@@ -1253,7 +1321,7 @@ async function main() {
 
 							console.log(button);
 
-							if (button === "open downloads folder") {
+							if (button == actionButtonContents.toLowerCase()) {
 								// Opens the file browser and selects the received file
 								let absolutePath = path.resolve(__dirname, "..", fileSharingObject.filePath, fileName);
 								if (process.platform === 'win32') {
@@ -1459,7 +1527,6 @@ async function main() {
 					}
 					console.log("showing window: " + windowName)
 					delete require.cache[require.resolve("./Windows/" + windowName + ".js")]
-					/** @type {import('./Windows/NeptuneWindow.js')} */
 					let uWindow = new (require("./Windows/" + windowName + ".js"))();
 					uWindow.show();
 				}
