@@ -13,7 +13,9 @@ let Client = require('./Client.js');
 
 let { PipeDataReceivedEventArgs } = require('./NeptuneRunner.js');
 
-let { Logger } = require('./LogMan')
+let { Logger } = require('./LogMan');
+
+let EventEmitter = require("node:events");
 
 
 /**
@@ -251,8 +253,9 @@ class Notification extends EventEmitter {
                     reply: false,
                 }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
                     try {
-                        if (err) {
-                            logger.error(err, false);
+                        if (err || response === undefined) {
+                            logger.error("Possible error OR no response data, err: " + err + " -- response: " + response, false);
+                            maybeThis.error();
                         } else {
                             let action = metadata.action === "dismissed"? "dismissed" : "activated";
                             let id = metadata.button === undefined? "" : Buffer.from(metadata.button, "utf8").toString("base64");
@@ -287,6 +290,8 @@ class Notification extends EventEmitter {
                 logger.error(e, false);
 
                 // maybe use QT to push balloon notification ..?
+                // damn straight
+                maybeThis.error();
             }
         }
 
@@ -370,12 +375,41 @@ class Notification extends EventEmitter {
                 notification.activate(dataPackage);
             } else if (ipcData.Command == "notify-dismissed") {
                 notification.dismiss(dataPackage);
+            } else if (ipcData.Command == "notify-error") {
+                this.#log.error("Failed to display a notification using NeptuneRunner, see console for more info.");
+                this.#log.error("Failed reason: " + ipcData["failureReason"] + " -- more details: " + ipcData["failureMoreDetails"], false);
+                error(); // backup methods
             }
         } catch (e) {
             console.error(e);
             //this.#log.error("Error on processing IPC activation data, check log for details.");
             //this.#log.error(e, false);
         } 
+    }
+
+    /**
+     * Called when the notification failed to be displayed.
+     * 
+     * Utilizes the TrayIcon we created for MainWindow to send out a balloon tooltip icon.
+     * 
+     */
+    error() {
+        // do some check to whether or not we actually have to do this
+        if (global.Neptune.sendNotification !== undefined && typeof global.Neptune.sendNotification === "function") {
+            let text = this.data.contents.text + this.data.contents.subtext
+            if (text === undefined)
+                text = " "
+            if (text.length == 0)
+                text = " "
+
+            let maybeThis = this;
+            global.Neptune.sendNotification(this.#client.friendlyName + ": " + this.data.title, text, 5000, () => {
+                maybeThis.activate({
+                    action: "activated",
+                    actionParameters: {}
+                });
+            });
+        }
     }
 
 

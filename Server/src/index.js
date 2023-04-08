@@ -36,6 +36,33 @@ Error.stackTraceLimit = (debug)? 8 : 4;
 global.consoleVisible = true;
 
 
+/** @namespace Neptune */
+const Neptune = {};
+/** @type {Neptune} */
+global.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune. Allows us to get around providing `Neptune` to everything
+
+/**
+ * Neptune version
+ * @type {Version}
+ */
+Neptune.version = new Version(0, 9, 0, ((debug)?"debug":"release"), "RC1");
+
+
+// Type definitions
+/**
+ * True if running on Windows
+ * @type {boolean}
+ */
+Neptune.isWindows = isWin;
+
+/**
+ * True if in debug mode
+ * @type {boolean}
+ */
+Neptune.debugMode = debug;
+
+
+
 
 /*
  * Pull in externals here, imports, libraries
@@ -58,6 +85,8 @@ const NodeGUI = require("@nodegui/nodegui");
  * NodeGUI application instance 
  */
 const qApp = NodeGUI.QApplication.instance();
+global.qApp = qApp;
+
 // Interaction
 const readline = require("readline");
 
@@ -80,31 +109,6 @@ const IPAddress = require("./Classes/IPAddress.js");
 const NeptuneCrypto = require('./Support/NeptuneCrypto.js');
 
 
-/** @namespace Neptune */
-const Neptune = {};
-
-/**
- * Neptune version
- * @type {Version}
- */
-Neptune.version = new Version(0, 9, 0, ((debug)?"debug":"release"), "RC1");
-
-/** @type {Neptune} */
-global.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune. Allows us to get around providing `Neptune` to everything
-
-
-// Type definitions
-/**
- * True if running on Windows
- * @type {boolean}
- */
-Neptune.isWindows = isWin;
-
-/**
- * True if in debug mode
- * @type {boolean}
- */
-Neptune.debugMode = debug;
 
 /** @type {ConfigurationManager} */
 Neptune.configManager;
@@ -520,6 +524,31 @@ async function main() {
 	Neptune.log.debug("Tray shown");
 	tray.show();
 	global.tray = tray; // prevents garbage collection of tray (not a fan!)
+
+	let onClickTrayFunction; // tray icon click event3
+	tray.addEventListener('messageClicked', () => {
+		if (typeof onClickTrayFunction === "function")
+			onClickTrayFunction();
+	});
+
+	/**
+	 * Sends a balloon tooltip notification using the QSystemTrayIcon class in NodeGUI and the global qApp instance.
+	 *
+	 * @function Neptune.sendNotification
+	 * @param {string} title - The title of the notification.
+	 * @param {string} message - The message of the notification.
+	 * @param {number} timeout - The timeout of the notification in milliseconds.
+	 * @param {function} onClick - The function called whenever the balloon is clicked.
+	 */
+	Neptune.sendNotification = function(title, message, timeout, onClick) {
+		tray.showMessage(title, message, ResourceManager.ApplicationIcon, timeout);
+
+		if (typeof onClick === "function")
+			onClickTrayFunction = onClick;
+		else
+			onClickTrayFunction = undefined;
+	}
+
 
 
 	// Main window
@@ -1036,6 +1065,32 @@ async function main() {
 	let fileUUIDs = {};
 
 	/**
+	* Sanitizes a filename for Windows and Linux devices by removing illegal characters and reserved file names on Windows.
+	* If the filename is empty (excluding the file extension), sets it to "file".
+	*
+	* @param {string} filename - The filename to sanitize.
+	* @returns {string} The sanitized filename.
+	*/
+	function sanitizeFilename(filename) {
+		// Remove illegal characters
+		const sanitizedFilename = filename.replace(/[<>:"/\\|?*\x00-\x1F]/g, '');
+
+		// Remove reserved file names for Windows
+		const filenameWithoutExtension = path.parse(sanitizedFilename).name;
+		const extension = path.parse(sanitizedFilename).ext;
+
+		if (os.platform() == "win32") {
+			const reservedNames = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'];
+			if (filenameWithoutExtension.length > 0 && reservedNames.includes(filenameWithoutExtension.toUpperCase())) {
+				return "file_" + sanitizedFilename;
+			}
+		}
+
+		return filenameWithoutExtension.length > 0 ? sanitizedFilename : 'file' + extension;
+	}
+
+
+	/**
 	 * Used by the Client class to setup a file download
 	 * @function Neptune.filesharing.newClientDownload
 	 * @param {Client} client - Client that will be downloading this file.
@@ -1043,11 +1098,16 @@ async function main() {
 	 * @return {fileSharingObject} fileSharingObject
 	 */
 	Neptune.filesharing.newClientDownload = function(client, filepath) {
-		if (client === undefined)
-			return;
+		if (client === undefined) {
+			Neptune.log.error("newClientDownload: client is undefined!");
+			throw new Error("client is undefined.");
+		}
+			
 
-		if (!client.fileSharingSettings.enabled) // don't check this, client does that: || !client.fileSharingSettings.allowClientToDownload)
-			return;
+		if (!client.fileSharingSettings.enabled) { // don't check this, client does that: || !client.fileSharingSettings.allowClientToDownload)
+			Neptune.log.error("newClientDownload: client has file sharing disabled (likely forgot to save the settings!)");
+			throw new Error("file sharing disabled for " + client.friendlyName + ".\nBe sure to check \"Enable file sharing\" and save the settings.");
+		}
 
 		if (fs.existsSync(filepath) && fs.lstatSync(filepath).isFile()) {
 			let fileUUID = crypto.randomUUID();
@@ -1081,8 +1141,21 @@ async function main() {
 	 * @return {fileSharingObject} fileSharingObject
 	 */
 	Neptune.filesharing.newClientUpload = function(client, fileName, saveToDirectory) {
-		if (!client.fileSharingSettings.enabled || !client.fileSharingSettings.allowClientToUpload)
-			return;
+		if (client === undefined) {
+			Neptune.log.error("newClientDownload: client is undefined!");
+			throw new Error("client is undefined.");
+		}
+			
+
+		if (!client.fileSharingSettings.enabled) {
+			Neptune.log.error("newClientDownload: client has file sharing disabled (likely forgot to save the settings!)");
+			throw new Error("file sharing disabled for " + client.friendlyName + ".\nBe sure to check \"Enable file sharing\" and save the settings.");
+		}
+
+		if (!client.fileSharingSettings.allowClientToUpload) {
+			Neptune.log.error("newClientDownload: client is not allowed to upload files");
+			throw new Error("receiving files for " + client.friendlyName + " is disabled.\nBe sure to check \"Enable file sharing\" and save the settings.");
+		}
 
 		try {
 			if (!fs.existsSync(saveToDirectory))
@@ -1090,6 +1163,9 @@ async function main() {
 
 			if (fs.existsSync(saveToDirectory) && fs.lstatSync(saveToDirectory).isDirectory()) {
 				let fileUUID = crypto.randomUUID();
+
+				// Sanitize file name (remove illegal characters + reserved file names on windows)
+				filename = sanitizeFilename(filename);
 
 				/** @type {fileSharingObject} */
 				let fileSharingObject = {

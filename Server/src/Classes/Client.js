@@ -505,7 +505,10 @@ class Client extends ClientConfig {
 	sendFile(filePath) {
 		let fileSharingObject = global.Neptune.filesharing.newClientDownload(this, filePath);
 
-		if (fileSharingObject !== undefined);
+		if (fileSharingObject === undefined) {
+			this.log.error("fileSharingObject is undefined, why? File path: " + filePath);
+			throw new Error("file sharing object is undefined.");
+		}
 
 		this.log.info("Server request file download (-> client), new fileUUID: " + fileSharingObject.fileUUID);
 		this.sendRequest("/api/v1/client/filesharing/receive", {
