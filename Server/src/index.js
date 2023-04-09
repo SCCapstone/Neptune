@@ -95,6 +95,9 @@ const readline = require("readline");
 const http = require('http');
 const Express = require('express'); // also kinda important
 const multer = require('multer');
+const ciao = require("@homebridge/ciao"); // MDNS broadcasts
+const responder = ciao.getResponder();
+
 
 
 // Classes
@@ -219,13 +222,25 @@ async function Shutdown(shutdownTimeout) {
 }
 process.Shutdown = Shutdown;
 
+var shuttingDown = false;
+
 /**
  * @event Neptune.events.application#shutdown
  * @type {object}
  * @property {number} shutdownTimeout - Amount of time to wait before shutting down completely.
  */
 Neptune.events.application.on('shutdown', (shutdownTimeout) => {
+	if (shuttingDown)
+		return;
+
 	Neptune.log.info("Shutdown signal received, shutting down in " + (shutdownTimeout/1000) + " seconds.");
+	shuttingDown = true;
+
+	try {
+		if (Neptune.mdnsService !== undefined) {
+			Neptune.mdnsService.destroy();
+		}
+	} catch {}
 
 	setTimeout(()=>{
 		Neptune.log.info("Goodbye world!");
@@ -643,6 +658,30 @@ async function main() {
 
 		mainWindow.show();
 	});
+
+
+	// advertise ourselves via mdns
+
+	/**
+	 * MDNS Service
+	 * @type {ciao.CiaoService}
+	 */
+	Neptune.mdnsService = responder.createService({
+		name: "Server:" + Neptune.config.serverId,
+		type: 'neptune',
+		port: Neptune.config.web.port,
+		txt: {
+			version: Neptune.version.toString(),
+			name: Neptune.config.friendlyName,
+		}
+	})
+
+
+	Neptune.mdnsService.advertise().then(() => {
+		Neptune.webLog.verbose("MDNS service now advertising");
+	});
+
+
 
 
 

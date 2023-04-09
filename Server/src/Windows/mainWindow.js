@@ -344,7 +344,7 @@ class thisTest extends NeptuneWindow {
 			this.chkFileSharingEnable.setChecked(client.fileSharingSettings.enabled === true);
 			this.actionToggleFileSharing.setChecked(client.fileSharingSettings.enabled === true);
 			this.chkFileSharingAutoAccept.setChecked(client.fileSharingSettings.requireConfirmationOnClinetUploads !== true);
-			this.chkFileSharingNotify.setChecked(client.fileSharingSettings.notifyOnReceive === true);
+			this.chkFileSharingNotify.setChecked(client.fileSharingSettings.notifyOnClientUpload === true);
 			this.chkFilesharingAllowClientToUpload.setChecked(client.fileSharingSettings.allowClientToUpload === true);
 			this.actionToggleAllowClientToUpload.setChecked(client.fileSharingSettings.allowClientToUpload === true);
 			this.txtFileSharingSaveDirectory.setText(client.fileSharingSettings.receivedFilesDirectory !== undefined? client.fileSharingSettings.receivedFilesDirectory : "");

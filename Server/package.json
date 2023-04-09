@@ -30,6 +30,7 @@
   },
   "homepage": "https://github.com/SCCapstone/Neptune",
   "dependencies": {
+    "@homebridge/ciao": "^1.1.5",
     "@nodegui/nodegui": "^0.57.1",
     "@types/node": "^18.7.14",
     "clean-webpack-plugin": "^4.0.0",

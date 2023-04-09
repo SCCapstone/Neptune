@@ -2,16 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.neptune.app">
-
     <!-- For filesharing -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-
-    <!-- Self-explanatory -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" /> <!-- Self-explanatory -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-
-    <!-- Selecting which app notifications are synced -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" /> <!-- Selecting which app notifications are synced -->
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
@@ -27,6 +22,10 @@
         android:theme="@style/Theme.NeptuneClientFrontEnd"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
+        <activity
+            android:name=".AddDeviceActivity"
+            android:exported="false"
+            android:label="Add device" />
         <activity
             android:name=".NotificationsActivity"
             android:exported="false"
@@ -44,11 +43,13 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <receiver android:name=".Backend.NotificationReceiver"
+        <receiver
+            android:name=".Backend.NotificationReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
@@ -65,9 +66,7 @@
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
-        </provider>
-
-        <!-- Service listening for and sending notification data to the server(s) -->
+        </provider> <!-- Service listening for and sending notification data to the server(s) -->
         <service
             android:name=".Backend.NotificationListenerService"
             android:exported="false"
@@ -76,9 +75,7 @@
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
-        </service>
-
-        <!-- Sync service -->
+        </service> <!-- Sync service -->
         <service
             android:name=".Backend.NeptuneKeepAlive"
             android:exported="false"

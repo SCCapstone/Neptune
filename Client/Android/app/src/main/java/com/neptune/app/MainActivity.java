@@ -9,16 +9,13 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
-import android.app.UiModeManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.ColorFilter;
-import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.net.nsd.NsdManager;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -41,7 +38,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
@@ -52,6 +48,8 @@ import com.neptune.app.Backend.ClientConfig;
 import com.neptune.app.Backend.ConfigurationManager;
 import com.neptune.app.Backend.Exceptions.InvalidIPAddress;
 import com.neptune.app.Backend.IPAddress;
+import com.neptune.app.Backend.MDNSDiscoveryListener;
+import com.neptune.app.Backend.MDNSResolver;
 import com.neptune.app.Backend.NotificationListenerService;
 import com.neptune.app.Backend.NotificationManager;
 import com.neptune.app.Backend.Server;
@@ -67,7 +65,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
     public static ServerManager serverManager;
     public static com.neptune.app.Backend.NotificationManager notificationManager;
-    private ConfigurationManager configurationManager;
+    public static ConfigurationManager configurationManager;
 
     public static ClientConfig ClientConfig;
 
@@ -81,6 +79,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
     private final HashMap<Server, View> serversShown = new HashMap<>();
 
     private ActivityResultLauncher<Intent> serverSettingsActivityResults;
+    private ActivityResultLauncher<Intent> addServerActivityResults;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,7 +89,6 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
 
         setContentView(R.layout.activity_main);
 
-        Button addServer = findViewById(R.id.addDev);
         addLine = findViewById(R.id.container);
         //notifyListTest = findViewById(R.id.notifTest);
         buildAddDialog();
@@ -118,7 +116,29 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         }
 
         // Setup MainActivity
-        addServer.setOnClickListener(view -> addDialog.show());
+        addServerActivityResults = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    try {
+                        Server[] servers = serverManager.getServers();
+                        for (Server server : servers) {
+                            if (!serversShown.containsKey(server))
+                                addServerToList(server);
+                        }
+                        serverManager.connectToServers();
+                    } catch (Exception e) {
+                        showErrorMessage("Failed to load server manager",
+                                "There was an error adding and reconnecting to all servers.\n\n" +
+                                        "error.getMessage(): " + e.getMessage());
+                    }
+                }
+        );
+        Button addServer = findViewById(R.id.addDev);
+        addServer.setOnClickListener(view -> {
+            //addDialog.show();
+            Intent addServerIntent = new Intent(MainActivity.this, AddDeviceActivity.class);
+            addServerActivityResults.launch(addServerIntent);
+        });
 
         lblFriendlyName = findViewById(R.id.lblMyFriendlyName);
         lblFriendlyName.setText(getString(R.string.main_activity_friendly_name, ClientConfig.friendlyName));

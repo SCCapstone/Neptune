@@ -65,6 +65,13 @@ class preferencePage extends NeptuneWindow {
                 global.Neptune.clientManager.getClients().forEach(client => {
                     client.syncConfiguration();
                 });
+
+                global.Neptune.mdnsService.updateTxt({
+                    version: global.Neptune.version.toString(),
+                    name: global.Neptune.config.friendlyName,
+                });
+
+                global.Neptune.config.save();
             });
             closeWindowButton.addEventListener('clicked',  (checked) => this.close());
         }
