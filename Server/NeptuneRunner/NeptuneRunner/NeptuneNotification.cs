@@ -587,7 +587,6 @@ namespace NeptuneRunner {
             try {
                 if (Program.ToastNotifier == null) {
                     try {
-                        ToastNotificationManager.GetDefault().History.Clear();
                         Program.ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
                     } catch (Exception) {
                         // well
@@ -600,9 +599,8 @@ namespace NeptuneRunner {
                 try {
                     toast = GetToastNotification();
 
-                    ToastNotificationHistory notificationHistory = ToastNotificationManager.GetDefault().History;
 
-                    IReadOnlyList <ToastNotification> history = notificationHistory.GetHistory(TaskBar.ApplicationId);
+                    IReadOnlyList <ToastNotification> history = ToastNotificationManagerCompat.History.GetHistory();
                     // Check if the notification is already posted, is so update it
                     if (toast.Tag != null && history.Any(n => n.Tag == toast.Tag)) {
                         return Update() == NotificationUpdateResult.Succeeded;
@@ -617,7 +615,7 @@ namespace NeptuneRunner {
 
                         try {
                             // my LAST attempt I'm DYING
-                            ToastNotificationManager.History.Clear(TaskBar.ApplicationId); // Clear notifications
+                            ToastNotificationManagerCompat.History.Clear(); // Clear notifications
                             Program.ToastNotifier.Show(toast);
                         } catch (Exception eee) {
                             // oh my why
@@ -625,7 +623,7 @@ namespace NeptuneRunner {
                         }
                     } else {
                         // uh??
-                        ToastNotificationManager.History.Remove(toast.Tag, toast.Group, TaskBar.ApplicationId);
+                        ToastNotificationManagerCompat.History.Remove(toast.Tag, toast.Group);
                         Program.ToastNotifier.Show(toast);
                     }
                     string breakPointa = e.Message;
@@ -640,11 +638,16 @@ namespace NeptuneRunner {
 
         public NotificationUpdateResult Update() {
             try {
+                if (Program.ToastNotifier == null) {
+                    try {
+                        Program.ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
+                    } catch (Exception) {}
+                }
 
                 if (Type == NeptuneNotificationType.Progress) {
                     if (Contents.ProgressBarData.GetPrecentage() == 1) {
                         // Done!
-                        ToastNotificationManager.GetDefault().History.Remove(Id, ClientId, TaskBar.ApplicationId);
+                        ToastNotificationManagerCompat.History.Remove(Id, ClientId);
                         return NotificationUpdateResult.Succeeded;
                     } else {
                         var data = new NotificationData {
@@ -656,7 +659,7 @@ namespace NeptuneRunner {
                         return Program.ToastNotifier.Update(data, Id, ClientId);
                     }
                 } else {
-                    return ToastNotificationManager.CreateToastNotifier(TaskBar.ApplicationId).Update(GetToastNotification().Data, Id, ClientId);
+                    return Program.ToastNotifier.Update(GetToastNotification().Data, Id, ClientId);
                 }
             } catch (Exception) {
                 return NotificationUpdateResult.Failed;
@@ -676,7 +679,7 @@ namespace NeptuneRunner {
 
         public void Delete() {
             try {
-                ToastNotificationManager.GetDefault().History.Remove(Id, ClientId, TaskBar.ApplicationId);
+                ToastNotificationManagerCompat.History.Remove(Id, ClientId);
 
                 DeleteImages();
             } catch (Exception) { }

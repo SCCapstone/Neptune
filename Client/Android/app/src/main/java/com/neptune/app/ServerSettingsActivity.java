@@ -21,6 +21,7 @@ import androidx.documentfile.provider.DocumentFile;
 
 import com.neptune.app.Backend.Exceptions.TooManyEventListenersException;
 import com.neptune.app.Backend.Exceptions.TooManyEventsException;
+import com.neptune.app.Backend.Interfaces.ICallback;
 import com.neptune.app.Backend.Server;
 
 import java.io.IOException;
@@ -61,6 +62,8 @@ public class ServerSettingsActivity extends AppCompatActivity {
 
     private ActivityResultLauncher<Intent> folderPickerLauncher;
     private ActivityResultLauncher<Intent> filePickerLauncher;
+
+    private ICallback updateSettingsCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,6 +129,14 @@ public class ServerSettingsActivity extends AppCompatActivity {
 
         chkFileSharingEnable.setOnCheckedChangeListener((compoundButton, isChecked) -> updateFileSharingSettings());
         btnFileSharingManageDestination.setOnClickListener((view) -> openFolderPickerToSetDestinationDirectory());
+
+        try {
+            this.updateSettingsCallback = (objects) -> {
+                runOnUiThread(() -> pullSettings());
+            };
+
+            server.EventEmitter.on(Constants.SERVER_EVENT_CONFIGURATION_UPDATE, this.updateSettingsCallback);
+        } catch (Exception ignored) {}
 
         final boolean[] syncing = {false};
         btnSync.setOnClickListener((view) -> {
@@ -221,6 +232,7 @@ public class ServerSettingsActivity extends AppCompatActivity {
 
     @Override
     public boolean onSupportNavigateUp() {
+        server.EventEmitter.removeListener(Constants.SERVER_EVENT_CONFIGURATION_UPDATE, this.updateSettingsCallback);
         onBackPressed();
         return true;
     }
@@ -464,6 +476,7 @@ public class ServerSettingsActivity extends AppCompatActivity {
 
         try {
             server.save();
+            server.sync();
             runOnUiThread(() -> Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show());
         } catch (IOException e) {
             Log.e(TAG, "saveSettings: failed to save to server", e);

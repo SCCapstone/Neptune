@@ -88,6 +88,46 @@ For server, (as in like the application running), Neptune.events will fire off f
 `NotificationManager.events`
 
 
+### ConnectionManager
+`command`: string apiUrl, object commandData\
+Called when an API call is received, used by Client to process requests.
+
+`paired`: no args\
+When the client pairs.
+
+
+`websocket_connected`: no args\
+When the client connects to the websocket
+
+`websocket_disconnected`: int code, string reason\
+When the client disconnects from the websocket
+
+`ping`: ??data??\
+When the client pings the websocket
+
+
+### Client
+`.eventEmitter`
+
+`connected`: no args\
+When the connection manager is setup.
+
+`configuration_update`: no args\
+For MainWindow to get notified when a device configuration has been updated by the client.
+
+
+`websocket_connected`: no args\
+When the client connects to the websocket. Rebroadcast of `ConnectionManager#websocket_connected`.
+
+`websocket_disconnected`: int code, string reason\
+When the client disconnects from the websocket. Rebroadcast of `ConnectionManager#websocket_connected`.
+
+
+### ClientManager
+`removed`: Client client
+
+`added`: Client client
+
 ---
 
 

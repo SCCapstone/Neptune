@@ -64,6 +64,9 @@ public class Clipboard {
                         try {
                             String encodedHtml = NeptuneCrypto.convertStringToBase64(item.getHtmlText()); // Text -> base64
                             json.addProperty("HTML", "data:" + mimeType + ";base64, " + encodedHtml); // Add HTML data
+
+                            String plainText = NeptuneCrypto.convertStringToBase64(item.getText().toString()); // Plain text -> base64
+                            json.addProperty("Text", "data:text/plain;base64, " + plainText);
                         } catch (Exception e) {
                             e.printStackTrace();
                         }

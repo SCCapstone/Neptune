@@ -11,6 +11,7 @@ using Windows.Data.Json;
 using Windows.UI.Notifications;
 using Microsoft.Toolkit.Uwp.Notifications;
 using NeptuneRunner.Notifications;
+using Windows.UI.Notifications.Management;
 
 namespace NeptuneRunner {
     internal class Program {
@@ -253,16 +254,37 @@ namespace NeptuneRunner {
 
             // Clear all notifications + icons/images
             try {
+                NotificationRegisty.RegisterAppForNotificationSupport(true); // Setup notification support
+                                                                             //Notifications.NotificationActivator.Initialize(ToastActivated); // Initialize
+
+                ToastNotificationManagerCompat.OnActivated += ToastNotificationManagerCompat_OnActivated;
+                ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
+            } catch (Exception) {
+                try {
+                    ToastNotificationManagerCompat.Uninstall();
+                    NotificationRegisty.UninstallShortcut();
+
+                    NotificationRegisty.RegisterAppForNotificationSupport(true);
+                    ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
+                } catch (Exception e) {
+                    MessageBox.Show("Neptune was unable to register the ToastNotifier into Windows. Because of this, notifications quality will be degraded. "
+                        + Environment.NewLine + "Restarting Neptune may help, but do make sure notifications are enabled for your system in the Settings app."
+                        + Environment.NewLine + "Error: " + e.Message, "Error registering toast notifier!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+
+            try {
                 // Delete temp images
                 string tempDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "temp", "notificationImages");
                 if (Directory.Exists(tempDirectory)) {
                     Directory.Delete(tempDirectory, true);
                 }
 
-                ToastNotificationManager.History.Clear(TaskBar.ApplicationId); // Clear notifications
+                ToastNotificationManagerCompat.History.Clear(); // Clear notifications
             } catch (Exception e) {
                 string a = e.Message;
             }
+
 
             NeptuneProcess = new Process {
                 StartInfo = new ProcessStartInfo() {
@@ -289,6 +311,7 @@ namespace NeptuneRunner {
             IPC = new InterprocessCommunication("NeptuneRunnerIPC", "BigweLQytERRx243O5otGgm8UsBhrdVE", "kBoWq2BtM2yqfCntSnLUe6I7lZVjwyEl");
             IPC.DataReceived += IPC_DataReceived;
             IPC.CreateNamedPipe();
+            IAsyncResult ipcAsyncResult = IPC.Listen();
 
             // Start
             NeptuneProcess.Start();
@@ -300,27 +323,7 @@ namespace NeptuneRunner {
             Console.TreatControlCAsInput = false;
             Console.CancelKeyPress += Console_CancelKeyPress;
 
-            IAsyncResult ipcAsyncResult = IPC.Listen();
 
-            try {
-                NotificationRegisty.RegisterAppForNotificationSupport(true); // Setup notification support
-                                                                             //Notifications.NotificationActivator.Initialize(ToastActivated); // Initialize
-
-                ToastNotificationManagerCompat.OnActivated += ToastNotificationManagerCompat_OnActivated;
-                ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
-            } catch (Exception) {
-                try {
-                    ToastNotificationManagerCompat.Uninstall();
-                    NotificationRegisty.UninstallShortcut();
-
-                    NotificationRegisty.RegisterAppForNotificationSupport(true);
-                    ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
-                } catch (Exception e) {
-                    MessageBox.Show("Neptune was unable to register the ToastNotifier into Windows. Because of this, notifications quality will be degraded. "
-                        + Environment.NewLine + "Restarting Neptune may help, but do make sure notifications are enabled for your system in the Settings app."
-                        + Environment.NewLine + "Error: " + e.Message, "Error registering toast notifier!", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
 
 
 
@@ -513,7 +516,7 @@ namespace NeptuneRunner {
                             { "failureReason", "GenericError" },
                             { "failureMoreDetails", "Generic error encountered." }
                         };
-                        IPCDataQueue.Enqueue(IPC.KeyValuePairsToDataString("notify-dismissed", data));
+                        IPCDataQueue.Enqueue(IPC.KeyValuePairsToDataString("notify-failed", data));
                     }
 
                 } else if (dataKeyValues.ContainsKey("notify-delete")) {

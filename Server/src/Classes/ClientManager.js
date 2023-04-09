@@ -9,7 +9,7 @@
 
 const EventEmitter = require('node:events');
 const Client = require('./Client');
-const ConfigurationManager = require('./ConfigurationManager.js');
+//const ConfigurationManager = require('./ConfigurationManager.js');
 const NepConfig = require('./NeptuneConfig.js');
 
 /** @type {NepConfig} */
@@ -19,9 +19,6 @@ var NeptuneConfig = global.Neptune.config;
  * Management class for clients
  */
 class ClientManager extends EventEmitter {
-    /** @typedef {} Client */
-
-
     /** @type {Map<string, Client>} */
     #clients = new Map();
 
@@ -73,6 +70,9 @@ class ClientManager extends EventEmitter {
         if (client === undefined) {
             //let config = this.#configManager.loadConfig(global.Neptune.config.clientDirectory + clientId);
             client = new Client(this.#configManager, clientId);
+            if (client.clientId === undefined)
+                client.delete();
+
             this.#clients.set(clientId, client);
             this.emit('added', client);
         }

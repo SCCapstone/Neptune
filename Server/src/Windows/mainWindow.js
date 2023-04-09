@@ -190,6 +190,9 @@ class thisTest extends NeptuneWindow {
 	 */
 	AddClientToDeviceList(client) {
 		let listItem = new NodeGUI.QListWidgetItem();
+		if (client.friendlyName == undefined)
+			return;
+
 		listItem.setText(client.friendlyName);
 		if (this.enableToolTips) {
 			if (client.isPaired)
@@ -328,32 +331,24 @@ class thisTest extends NeptuneWindow {
 
 
 			// clipboard
+			this.updateEnableClipboardSharing(client.clipboardSettings.enabled);
 			this.chkSyncClipboard.setChecked(client.clipboardSettings.enabled === true);
-
+			this.actionToggleClipboardSharing.setChecked(client.clipboardSettings.enabled === true);
 			this.chkAutoSendClipboard.setChecked(client.clipboardSettings.autoSendToClient === true);
-			this.chkAutoSendClipboard.setEnabled(client.clipboardSettings.enabled === true);
-
 			this.chkClipboardAllowClientToGet.setChecked(client.clipboardSettings.allowClientToGet === true);
-			this.chkClipboardAllowClientToGet.setEnabled(client.clipboardSettings.enabled === true);
 			
 
 
 			// file sharing
+			this.updateEnableFileSharing(client.fileSharingSettings.enabled);
 			this.chkFileSharingEnable.setChecked(client.fileSharingSettings.enabled === true);
-			this.btnSendFile.setEnabled(client.fileSharingSettings.enabled === true);
-
-			this.chkFileSharingAutoAccept.setChecked(client.fileSharingSettings.requireConfirmationOnClinetUploads === true);
-			this.chkFileSharingAutoAccept.setEnabled(client.fileSharingSettings.enabled === true);
-
+			this.actionToggleFileSharing.setChecked(client.fileSharingSettings.enabled === true);
+			this.chkFileSharingAutoAccept.setChecked(client.fileSharingSettings.requireConfirmationOnClinetUploads !== true);
 			this.chkFileSharingNotify.setChecked(client.fileSharingSettings.notifyOnReceive === true);
-			this.chkFileSharingNotify.setEnabled(client.fileSharingSettings.enabled === true);
-
 			this.chkFilesharingAllowClientToUpload.setChecked(client.fileSharingSettings.allowClientToUpload === true);
-			this.chkFilesharingAllowClientToUpload.setEnabled(client.fileSharingSettings.enabled === true);
-
+			this.actionToggleAllowClientToUpload.setChecked(client.fileSharingSettings.allowClientToUpload === true);
 			this.txtFileSharingSaveDirectory.setText(client.fileSharingSettings.receivedFilesDirectory !== undefined? client.fileSharingSettings.receivedFilesDirectory : "");
 			//this.txtFileSharingSaveDirectory.setEnabled(client.fileSharingSettings.enabled === true);
-			this.btnFileSharingSaveDirectoryBrowse.setEnabled(client.fileSharingSettings.enabled === true);
 		}
 	}
 	saveClientData() {
@@ -363,6 +358,9 @@ class thisTest extends NeptuneWindow {
 			this.scrollArea.setEnabled(false);
 			this.actionRefresh_client_info.setEnabled(false);
 		} else {
+			if (client.friendlyName !== undefined)
+				this.log.debug("Configuration saved for: " + client.friendlyName, false);
+
 			this.menuClient_settings_action.setEnabled(true);
 			this.scrollArea.setEnabled(true);
 			this.actionRefresh_client_info.setEnabled(true);
@@ -384,6 +382,8 @@ class thisTest extends NeptuneWindow {
 
 			client.save();
 			client.syncConfiguration();
+
+			this.updateClientData();
 		}
 	}
 
@@ -427,9 +427,9 @@ class thisTest extends NeptuneWindow {
 				if (client !== undefined) {
 					client.notificationSettings.enabled = checked;
 					this.chkSyncNotifications.setChecked(checked);
-					this.log("Saving + syncing configuration");
 					client.save();
 					client.syncConfiguration();
+					this.saveClientData();
 				}
 			});
 
@@ -441,13 +441,9 @@ class thisTest extends NeptuneWindow {
 				let client = this.GetSelectedClient()
 				if (client !== undefined) {
 					this.updateEnableClipboardSharing(checked);
-
 					if (this.chkSyncClipboard.isChecked() !== checked)
 						this.chkSyncClipboard.setChecked(checked === true);
-
-					this.log("Saving + syncing configuration");
-					client.save();
-					client.syncConfiguration();
+					this.saveClientData();
 				}
 			});
 
@@ -782,7 +778,15 @@ class thisTest extends NeptuneWindow {
 			// this.deviceList.setToolTip("Client device selector.");
 			this.deviceList.setAutoScroll(true);
 			this.deviceList.addEventListener('itemSelectionChanged', () => {
+				/** @type {ClientManager} */
+				let clientManager = Neptune.clientManager;
+				let clients = clientManager.getClients();
+
 				if (this.GetSelectedClient() == undefined) {
+					clients.forEach((client, name) => {
+						client.eventEmitter.removeAllListeners();
+					});
+
 					this.menuClient_settings_action.setEnabled(false);
 					this.scrollArea.setEnabled(false);
 					this.actionRefresh_client_info.setEnabled(false);
@@ -790,6 +794,13 @@ class thisTest extends NeptuneWindow {
 					this.lblClientBatteryLevel.setText("");
 					this.updateClientData();
 				} else {
+					clients.forEach((client, name) => {
+						client.eventEmitter.on('configuration_update', () => this.updateClientData());
+						client.eventEmitter.on('connected', () => this.updateClientData());
+						client.eventEmitter.on('websocket_connected', () => this.updateClientData());
+						client.eventEmitter.on('websocket_disconnected', () => this.updateClientData());
+					});
+
 					this.updateClientData();
 					this.menuClient_settings_action.setEnabled(true);
 					this.scrollArea.setEnabled(true);
@@ -918,11 +929,12 @@ class thisTest extends NeptuneWindow {
 				this.chkSyncNotifications.setToolTip("Receive notifications from the client device.");
 			this.chkSyncNotifications.setText("Sync notifications");
 			this.chkSyncNotifications.setChecked(true);
-			this.chkSyncNotifications.addEventListener('stateChanged', (state) => {
+			this.chkSyncNotifications.addEventListener('clicked', (state) => {
 				let client = this.GetSelectedClient();
 				if (client !== undefined) {
 					client.notificationSettings.enabled = (state === 2);
 					this.actionSync_notifications.setChecked(state === 2);
+					this.saveClientData();
 				}
 			});
 
@@ -954,10 +966,11 @@ class thisTest extends NeptuneWindow {
 			if (this.enableToolTips)
 				this.chkSyncClipboard.setToolTip("Allow syncing the clipboard between this computer and the client device.");
 			this.chkSyncClipboard.setText("Enable sharing clipboard");
-			this.chkSyncClipboard.addEventListener('stateChanged', (state) => {
+			this.chkSyncClipboard.addEventListener('clicked', (state) => {
 				this.updateEnableClipboardSharing(state === 2? true : false);
 				if (this.actionToggleClipboardSharing.isChecked() !== (state === 2))
 					this.actionToggleClipboardSharing.setChecked(state === 2);
+				this.saveClientData();
 			});
 
 			verticalLayout_2.addWidget(this.chkSyncClipboard);
@@ -970,10 +983,11 @@ class thisTest extends NeptuneWindow {
 				this.chkAutoSendClipboard.setToolTip("Automatically send this computer's clipboard data to the client.");
 			this.chkAutoSendClipboard.setStyleSheet("margin-left: 25px;");
 			this.chkAutoSendClipboard.setText("Automatically send to client");
-			this.chkAutoSendClipboard.addEventListener('stateChanged', (state) => {
+			this.chkAutoSendClipboard.addEventListener('clicked', (state) => {
 				let client = this.GetSelectedClient();
 				if (client !== undefined) {
 					client.clipboardSettings.synchronizeClipboardToClient = (state === 2);
+					this.saveClientData();
 				}
 			});
 
@@ -987,10 +1001,11 @@ class thisTest extends NeptuneWindow {
 				this.chkClipboardAllowClientToGet.setToolTip("Allows the client to request and receive this computer's clipboard contents.");
 			this.chkClipboardAllowClientToGet.setStyleSheet("margin-left: 25px;");
 			this.chkClipboardAllowClientToGet.setText("Allow client to request clipboard data");
-			this.chkClipboardAllowClientToGet.addEventListener('stateChanged', (state) => {
+			this.chkClipboardAllowClientToGet.addEventListener('clicked', (state) => {
 				let client = this.GetSelectedClient();
 				if (client !== undefined)
 					client.clipboardSettings.allowClientToGet = (state === 2);
+				this.saveClientData();
 			});
 
 			verticalLayout_2.addWidget(this.chkClipboardAllowClientToGet);
@@ -1022,10 +1037,11 @@ class thisTest extends NeptuneWindow {
 			if (this.enableToolTips)
 				this.chkFileSharingEnable.setToolTip("Enable sending and receiving files for this client.");
 			this.chkFileSharingEnable.setText("Enable file sharing");
-			this.chkFileSharingEnable.addEventListener('stateChanged', (state) => {
+			this.chkFileSharingEnable.addEventListener('clicked', (state) => {
 				this.updateEnableFileSharing(state == 2? true : false);
 				if (this.actionToggleFileSharing.isChecked() !== (state === 2))
 					this.actionToggleFileSharing.setChecked(state === 2);
+				this.saveClientData();
 			});
 
 			fileSharingCheckboxes.addWidget(this.chkFileSharingEnable);
@@ -1038,10 +1054,11 @@ class thisTest extends NeptuneWindow {
 				this.chkFileSharingAutoAccept.setToolTip("Automatically accept incoming files from this device.");
 			this.chkFileSharingAutoAccept.setStyleSheet("margin-left: 25px;");
 			this.chkFileSharingAutoAccept.setText("Automatically accept incoming files");
-			this.chkFileSharingAutoAccept.addEventListener('stateChanged', (state) => {
+			this.chkFileSharingAutoAccept.addEventListener('clicked', (state) => {
 				let client = this.GetSelectedClient();
 				if (client !== undefined)
-					client.fileSharingSettings.autoReceiveFromClient = (state === 2);
+					client.fileSharingSettings.requireConfirmationOnClinetUploads = (state !== 2);
+				this.saveClientData();
 			});
 
 			fileSharingCheckboxes.addWidget(this.chkFileSharingAutoAccept);
@@ -1054,10 +1071,11 @@ class thisTest extends NeptuneWindow {
 				this.chkFileSharingNotify.setToolTip("Notify on incoming files for this device.");
 			this.chkFileSharingNotify.setStyleSheet("margin-left: 25px;");
 			this.chkFileSharingNotify.setText("Notify on receive");
-			this.chkFileSharingNotify.addEventListener('stateChanged', (state) => {
+			this.chkFileSharingNotify.addEventListener('clicked', (state) => {
 				let client = this.GetSelectedClient();
 				if (client !== undefined)
 					client.fileSharingSettings.notifyOnReceive = (state === 2);
+				this.saveClientData();
 			});
 
 			fileSharingCheckboxes.addWidget(this.chkFileSharingNotify);
@@ -1070,11 +1088,12 @@ class thisTest extends NeptuneWindow {
 				this.chkFilesharingAllowClientToUpload.setToolTip("Allows the client to browse the files on this computer.");
 			this.chkFilesharingAllowClientToUpload.setStyleSheet("margin-left: 25px;");
 			this.chkFilesharingAllowClientToUpload.setText("Allow client to upload files.");
-			this.chkFilesharingAllowClientToUpload.addEventListener('stateChanged', (state) => {
+			this.chkFilesharingAllowClientToUpload.addEventListener('clicked', (state) => {
 				let client = this.GetSelectedClient();
 				if (client !== undefined) {
 					client.fileSharingSettings.allowClientToUpload = (state === 2);
 					this.actionToggleAllowClientToUpload.setChecked(state === 2);
+					this.saveClientData();
 				}
 			});
 
@@ -1124,6 +1143,7 @@ class thisTest extends NeptuneWindow {
 						client.fileSharingSettings.receivedFilesDirectory = selectedFolder;
 						saveDirectory = client.getReceivedFilesDirectory(); // runs checks ?
 						this.txtFileSharingSaveDirectory.setText(saveDirectory);
+						this.saveClientData();
 					}
 				}
 			});
@@ -1159,31 +1179,31 @@ class thisTest extends NeptuneWindow {
 			verticalLayout_4.setObjectName("verticalLayout_4");
 			verticalLayout_4.setContentsMargins(0, 0, 0, 0);
 			let hlaySaveButton = new NodeGUI.QBoxLayout(NodeGUI.Direction.LeftToRight);
-			hlaySaveButton.setObjectName("hlaySaveButton");
-			this.btnSave = new NodeGUI.QPushButton(bottomButtonContiner);
-			this.btnSave.setObjectName("btnSave");
-			// QSizePolicy sizePolicy3(QSizePolicy::Fixed, QSizePolicy::Fixed);
-			// sizePolicy3.setHorizontalStretch(0);
-			// sizePolicy3.setVerticalStretch(0);
-			// sizePolicy3.setHeightForWidth(btnSave.sizePolicy().hasHeightForWidth());
-			this.btnSave.setSizePolicy(NodeGUI.QSizePolicyPolicy.Fixed, NodeGUI.QSizePolicyPolicy.Fixed);
-			this.btnSave.setMinimumSize(200, 30);
-			this.btnSave.setFont(font1);
-			this.btnSave.setCursor(NodeGUI.CursorShape.PointingHandCursor);
-			if (this.enableToolTips)
-				this.btnSave.setToolTip("Save client settings.");
-			this.btnSave.setText("Save");
-			this.btnSave.addEventListener('clicked', () => {
-				let client = this.GetSelectedClient();
-				if (client !== undefined) {
-					this.saveClientData();
-				}
-			});
+			// hlaySaveButton.setObjectName("hlaySaveButton");
+			// this.btnSave = new NodeGUI.QPushButton(bottomButtonContiner);
+			// this.btnSave.setObjectName("btnSave");
+			// // QSizePolicy sizePolicy3(QSizePolicy::Fixed, QSizePolicy::Fixed);
+			// // sizePolicy3.setHorizontalStretch(0);
+			// // sizePolicy3.setVerticalStretch(0);
+			// // sizePolicy3.setHeightForWidth(btnSave.sizePolicy().hasHeightForWidth());
+			// this.btnSave.setSizePolicy(NodeGUI.QSizePolicyPolicy.Fixed, NodeGUI.QSizePolicyPolicy.Fixed);
+			// this.btnSave.setMinimumSize(200, 30);
+			// this.btnSave.setFont(font1);
+			// this.btnSave.setCursor(NodeGUI.CursorShape.PointingHandCursor);
+			// if (this.enableToolTips)
+			// 	this.btnSave.setToolTip("Save client settings.");
+			// this.btnSave.setText("Save");
+			// this.btnSave.addEventListener('clicked', () => {
+			// 	let client = this.GetSelectedClient();
+			// 	if (client !== undefined) {
+			// 		this.saveClientData();
+			// 	}
+			// });
 
-			hlaySaveButton.addWidget(this.btnSave);
+			// hlaySaveButton.addWidget(this.btnSave);
 
 
-			verticalLayout_4.addLayout(hlaySaveButton);
+			// verticalLayout_4.addLayout(hlaySaveButton);
 
 			let hlayDeleteButton = new NodeGUI.QBoxLayout(NodeGUI.Direction.LeftToRight);
 			hlayDeleteButton.setObjectName("hlayDeleteButton");

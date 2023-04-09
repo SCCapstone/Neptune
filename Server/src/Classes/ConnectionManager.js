@@ -13,12 +13,11 @@
 
 
 const ws = require('ws');
-const Client = require('./Client');
+//const Client = require('./Client.js');
 const crypto = require("node:crypto");
 const EventEmitter = require('node:events');
-const NeptuneCrypto = require('../Support/NeptuneCrypto');
-const ConfigurationManager = require('./ConfigurationManager.js');
-const { Logger } = require('./LogMan');
+const NeptuneCrypto = require('../Support/NeptuneCrypto.js');
+const { Logger } = require('./LogMan.js');
 
 
 /**
@@ -87,7 +86,7 @@ class ConnectionManager extends EventEmitter {
 		// if (!(client instanceof Client))
 		// 	throw new TypeError("client expected Client got " + (typeof client).toString());
 
-		this.#log = Neptune.logMan.getLogger("ConManager-" + client.clientId);
+		this.#log = global.Neptune.logMan.getLogger("ConManager-" + client.clientId);
 
 		this.#client = client;
 		this.#secret = sharedSecret;
@@ -170,7 +169,7 @@ class ConnectionManager extends EventEmitter {
 
 
 	pair() {
-
+		// yes
 	}
 	unpair() {
 		this.sendRequest("/api/v1/server/unpair", {});
@@ -270,8 +269,10 @@ class ConnectionManager extends EventEmitter {
 				friendlyName: global.Neptune.config.friendlyName
 			});
 
+			this.emit("paired");
+
 			this.#log.info("Successfully paired! PairId: " + newPairId);
-			Neptune.clientManager.updateSavedClientsInNeptuneConfig();
+			global.Neptune.clientManager.updateSavedClientsInNeptuneConfig();
 		}
 	}
 
@@ -313,6 +314,7 @@ class ConnectionManager extends EventEmitter {
 		this.#webSocket.on('close', (code, reason) => {
 			// clean up!
 			this.#log.info("WebSocket: client disconnected (code: " + code + ", reason: " + reason + ").");
+			this.emit('websocket_connected', code, reason);
 		});
 
 		this.#webSocket.on('pong', (data) => {
@@ -323,7 +325,7 @@ class ConnectionManager extends EventEmitter {
 		this.#webSocket.on('open', () => {
 			// opened up
 			this.#log.debug("WebSocket: opened");
-
+			this.emit('websocket_connected');
 		});
 
 		this.#webSocket.on('ping', (data) => {

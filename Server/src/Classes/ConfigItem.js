@@ -7,7 +7,7 @@
  * 		Capstone Project 2022
  */
 
-const ConfigurationManager = require('./ConfigurationManager');
+//const ConfigurationManager = require('./ConfigurationManager.js');
 const { Logger } = require('./LogMan');
 const Version = require('./Version');
 

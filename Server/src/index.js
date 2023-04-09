@@ -1079,7 +1079,7 @@ async function main() {
 		const filenameWithoutExtension = path.parse(sanitizedFilename).name;
 		const extension = path.parse(sanitizedFilename).ext;
 
-		if (os.platform() == "win32") {
+		if (isWin) {
 			const reservedNames = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'];
 			if (filenameWithoutExtension.length > 0 && reservedNames.includes(filenameWithoutExtension.toUpperCase())) {
 				return "file_" + sanitizedFilename;
@@ -1165,7 +1165,7 @@ async function main() {
 				let fileUUID = crypto.randomUUID();
 
 				// Sanitize file name (remove illegal characters + reserved file names on windows)
-				filename = sanitizeFilename(filename);
+				fileName = sanitizeFilename(fileName);
 
 				/** @type {fileSharingObject} */
 				let fileSharingObject = {
@@ -1188,9 +1188,6 @@ async function main() {
 			}
 		} catch (e) {
 			Neptune.webLog.error(e, false);
-
-			if (res != undefined)
-				res.status(500).send("{}");
 		}
 	}
 
@@ -1363,7 +1360,7 @@ async function main() {
 						action: 'create',
 						applicationPackage: 'com.neptune.server',
 						applicationName: 'Neptune Server',
-						notificationId: 'fileReceivedNotification',
+						notificationId: 'fileReceivedNotification-' + fileUUID,
 						title: 'Received file from ' + (fileSharingObject.clientName != undefined? fileSharingObject.clientName : 'a client') + '.',
 						type: 'standard',
 
@@ -1453,7 +1450,7 @@ async function main() {
 					action: 'create',
 					applicationPackage: 'com.neptune.server',
 					applicationName: 'Neptune Server',
-					notificationId: 'fileReceivedNotification',
+					notificationId: 'fileRequestNotification-' + fileUUID,
 					title: 'Accept incoming file?',
 					type: 'standard',
 

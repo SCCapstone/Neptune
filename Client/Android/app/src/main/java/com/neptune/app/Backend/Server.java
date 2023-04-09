@@ -922,7 +922,7 @@ public class Server extends ServerConfig {
 
         connectionManager.pair();
     }
-
+    
     /**
      * Connect, set up websocket, sync configuration and send battery info.
      */

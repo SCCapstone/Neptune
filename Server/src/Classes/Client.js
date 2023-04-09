@@ -9,6 +9,7 @@
  * 		The client device object for server (client being the other guy)
  */
 
+/** Connection manager */
 const ConnectionManager = require('./ConnectionManager.js');
 const NotificationManager = require('./NotificationManager.js');
 const IPAddress = require('./IPAddress.js');
@@ -22,6 +23,8 @@ const NepConfig = require('./NeptuneConfig.js');
 /** @type {NepConfig} */
 var NeptuneConfig = global.Neptune.config;
 
+
+const EventEmitter = require("node:events");
 
 
 const ClientConfig = require('./ClientConfig.js');
@@ -68,6 +71,14 @@ class Client extends ClientConfig {
 	 */
 	batteryTimeRemaining;
 
+
+	/**
+	 * Event emitter
+	 * @type {EventEmitter}
+	 */
+	eventEmitter;
+
+
 	/**
 	 * Whether this client has connected and is connected.
 	 */
@@ -104,6 +115,8 @@ class Client extends ClientConfig {
 		this.clientId = clientId;
 		this.#notificationManager = new NotificationManager(this);
 		this.log = global.Neptune.logMan.getLogger("Client-" + clientId);
+
+		this.eventEmitter = new EventEmitter();
 	}
 
 	/**
@@ -132,6 +145,15 @@ class Client extends ClientConfig {
 		this.#connectionManager.on('command', (command, data) => {
 			this.#handleCommand(command, data);
 		});
+
+		this.#connectionManager.on('websocket_connected', () => {
+			this.eventEmitter.emit("websocket_connected");
+		});
+		this.#connectionManager.on('websocket_disconnected', () => {
+			this.eventEmitter.emit("websocket_disconnected");
+		});
+
+		this.eventEmitter.emit("connected");
 	}
 
 	/**
@@ -197,6 +219,7 @@ class Client extends ClientConfig {
 			let chargeMessage = (this.batteryChargerType!="discharging")? "charging via " + this.batteryChargerType + timeRemainingMsg : "discharging";
 			this.log.debug("Received battery data from client. Client is at " + this.batteryLevel + "% and is " + chargeMessage + ". Temperature: " + this.batteryTemperature);
 
+			this.eventEmitter.emit("configuration_update");
 			this.sendRequest("/api/v1/server/ack", {});
 
 
@@ -241,6 +264,7 @@ class Client extends ClientConfig {
 				this.friendlyName = data["friendlyName"];
 
 			this.save();
+			this.eventEmitter.emit("configuration_update");
 
 			this.sendRequest("/api/v1/server/ack", {});
 
@@ -521,7 +545,7 @@ class Client extends ClientConfig {
 
 	/**
 	 * ConnectionManager received notification data, push this to the NotificationManager
-	 * @param {Notification.js} notification Notification received
+	 * @param {Notification} notification Notification received
 	 */
 	receiveNotification(notification) {
 		let maybeThis = this;
