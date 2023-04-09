@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -51,7 +52,7 @@ namespace NeptuneRunner {
         public static void TryEnableAnsiCodesForHandle() {
             var consoleHandle = GetStdHandle(-11);
             GetConsoleMode(consoleHandle, out var consoleBufferModes);
-            consoleBufferModes |= 0x0200;
+            consoleBufferModes |= 0x0004;
             SetConsoleMode(consoleHandle, (int)consoleBufferModes);
         }
 

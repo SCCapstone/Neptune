@@ -583,66 +583,59 @@ namespace NeptuneRunner {
             return toast;
         }
 
-        public async void CreateCollection() {
+        public bool Push() {
             try {
-                if (ClientName != null && ClientName != "") {
-                    System.Uri icon = new System.Uri("ms-appx:///Assets/KingNeptune.ico");
-
-
-                    ToastCollection toastCollection;
-                    toastCollection = new ToastCollection(ClientId, "Neptune - " + ClientName, ClientId, icon);
-                    ToastNotificationManagerForUser toastNotificationManager = ToastNotificationManager.GetDefault();
-                    if (toastNotificationManager != null) {
-                        // You can't do this outside of WinUI/UWP!!!
-                        ToastCollectionManager collectionManager = toastNotificationManager.GetToastCollectionManager(TaskBar.ApplicationId);
-                        await collectionManager.SaveToastCollectionAsync(toastCollection);
+                if (Program.ToastNotifier == null) {
+                    try {
+                        ToastNotificationManager.GetDefault().History.Clear();
+                        Program.ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
+                    } catch (Exception) {
+                        // well
+                        return false;
                     }
                 }
-            } catch (Exception) { }
-        }
 
-        public async static void DeleteCollection(string name) {
-            var collectionManager = ToastNotificationManager.GetDefault().GetToastCollectionManager();
-            await collectionManager.RemoveToastCollectionAsync(name);
-        }
 
-        public async void Push() {
-            ToastNotification toast = null;
-            try {
-                toast = GetToastNotification();
-                var notifier = Program.ToastNotifier;
-                if (ClientName != null && ClientName != "") {
-                    try {
-                        var collection = await ToastNotificationManager.GetDefault().GetToastNotifierForToastCollectionIdAsync(ClientName);
-                        if (collection != null) {
-                            collection.Show(toast);
-                        } else {
-                            CreateCollection();
-                            collection = await ToastNotificationManager.GetDefault().GetToastNotifierForToastCollectionIdAsync(ClientName);
-                            if (collection != null) {
-                                collection.Show(toast);
-                            } else {
-                                notifier.Show(toast);
-                            }
+                ToastNotification toast = null;
+                try {
+                    toast = GetToastNotification();
+
+                    ToastNotificationHistory notificationHistory = ToastNotificationManager.GetDefault().History;
+
+                    IReadOnlyList <ToastNotification> history = notificationHistory.GetHistory(TaskBar.ApplicationId);
+                    // Check if the notification is already posted, is so update it
+                    if (toast.Tag != null && history.Any(n => n.Tag == toast.Tag)) {
+                        return Update() == NotificationUpdateResult.Succeeded;
+                    }
+
+                    Program.ToastNotifier.Show(toast);
+                } catch (Exception e) {
+                    if (e.Message.Contains("notification has already been posted")) {
+                        if (Update() == NotificationUpdateResult.Succeeded) {
+                            return true;
                         }
-                        _hasBeenDisplayed = true;
-                    } catch (Exception) {
+
+                        try {
+                            // my LAST attempt I'm DYING
+                            ToastNotificationManager.History.Clear(TaskBar.ApplicationId); // Clear notifications
+                            Program.ToastNotifier.Show(toast);
+                        } catch (Exception eee) {
+                            // oh my why
+                            string breakPointaaa = eee.Message;
+                        }
+                    } else {
+                        // uh??
+                        ToastNotificationManager.History.Remove(toast.Tag, toast.Group, TaskBar.ApplicationId);
                         Program.ToastNotifier.Show(toast);
                     }
-                } else
-                    Program.ToastNotifier.Show(toast);
-            } catch (Exception e) {
-                if (e.Message == "The notification has already been posted.\r\n\r\nThe notification has already been posted.\r\n") {
-                    if (toast != null) {
-                        try {
-                            Program.ToastNotifier.Update(toast.Data, Id, ClientId);
-                        } catch (Exception ee) {
-                            string breakPointaa = ee.Message;
-                        }
-                    }
+                    string breakPointa = e.Message;
                 }
-                string breakPointa = e.Message;
+            } catch (Exception) {
+                return false;
             }
+
+
+            return true;
         }
 
         public NotificationUpdateResult Update() {
@@ -663,9 +656,9 @@ namespace NeptuneRunner {
                         return Program.ToastNotifier.Update(data, Id, ClientId);
                     }
                 } else {
-                    return Program.ToastNotifier.Update(GetToastNotification().Data, Id, ClientId);
+                    return ToastNotificationManager.CreateToastNotifier(TaskBar.ApplicationId).Update(GetToastNotification().Data, Id, ClientId);
                 }
-            } catch (Exception e) {
+            } catch (Exception) {
                 return NotificationUpdateResult.Failed;
             }
         }

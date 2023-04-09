@@ -184,42 +184,48 @@ namespace NeptuneRunner {
 
             // Find NeptuneServer
             Console.Write("\t>searching for qode");
-            while (ExePath == null) {
-                if (Directory.Exists(Path.Combine(WorkingDirectory, "dist"))) {
-                    if (File.Exists(Path.Combine(WorkingDirectory, "qode.exe")) && RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                        ExePath = Path.Combine(WorkingDirectory, "qode.exe");
+            try {
+                while (ExePath == null) {
+                    if (Directory.Exists(Path.Combine(WorkingDirectory, "dist")) || Directory.Exists(Path.Combine(WorkingDirectory, "src"))) {
+                        if (File.Exists(Path.Combine(WorkingDirectory, "qode.exe")) && RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+                            ExePath = Path.Combine(WorkingDirectory, "qode.exe");
 
-                    } else if (File.Exists(Path.Combine(WorkingDirectory, "qode")) && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                        ExePath = Path.Combine(WorkingDirectory, "qode");
+                        } else if (File.Exists(Path.Combine(WorkingDirectory, "qode")) && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+                            ExePath = Path.Combine(WorkingDirectory, "qode");
 
-                    } else if (File.Exists(Path.Combine(WorkingDirectory, "node_modules", ".bin", "qode.cmd")) && RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                        ExePath = Path.Combine(WorkingDirectory, "node_modules", ".bin", "qode.cmd");
-                        RevertToShellLaunch = true;
-                    } else if (File.Exists(Path.Combine(WorkingDirectory, "node_modules", ".bin", "qode")) && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                        ExePath = Path.Combine(WorkingDirectory, "node_modules", ".bin", "qode");
-                        RevertToShellLaunch = true;
+                        } else if (File.Exists(Path.Combine(WorkingDirectory, "node_modules", ".bin", "qode.cmd")) && RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+                            ExePath = Path.Combine(WorkingDirectory, "node_modules", ".bin", "qode.cmd");
+                            RevertToShellLaunch = true;
+                        } else if (File.Exists(Path.Combine(WorkingDirectory, "node_modules", ".bin", "qode")) && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+                            ExePath = Path.Combine(WorkingDirectory, "node_modules", ".bin", "qode");
+                            RevertToShellLaunch = true;
+                        } else {
+                            Console.Error.WriteLine("Unable to find Qode executable!");
+                            string qodeName = "qode.exe";
+                            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+                                qodeName = "qode executable";
+                            }
+
+                            Console.WriteLine("Please place " + qodeName + " into the same folder as this application, or move this application to the root of NeptuneServer.");
+                            Console.WriteLine();
+                            Console.WriteLine("Search path: " + WorkingDirectory);
+                            Console.WriteLine();
+                            Console.WriteLine("Press any key to exit.");
+                            Console.ReadKey();
+
+                        }
                     } else {
-                        Console.Error.WriteLine("Unable to find Qode executable!");
-                        string qodeName = "qode.exe";
-                        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                            qodeName = "qode executable";
+                        if (!Directory.Exists(Path.Combine(WorkingDirectory, "..\\"))) {
+                            break;
                         }
 
-                        Console.WriteLine("Please place " + qodeName + " into the same folder as this application, or move this application to the root of NeptuneServer.");
-                        Console.WriteLine();
-                        Console.WriteLine("Search path: " + WorkingDirectory);
-                        Console.WriteLine();
-                        Console.WriteLine("Press any key to exit.");
-                        Console.ReadKey();
-
+                        WorkingDirectory = Directory.GetParent(WorkingDirectory).ToString();
                     }
-                } else {
-                    if (!Directory.Exists(Path.Combine(WorkingDirectory, "..\\"))) {
-                        break;
-                    }
-
-                    WorkingDirectory = Directory.GetParent(WorkingDirectory).ToString();
                 }
+            } catch (Exception) {
+                Console.WriteLine("Unable to find Neptune's \"dist\" or \"src\" folder.");
+                Console.Read();
+                return;
             }
 
 
@@ -235,7 +241,8 @@ namespace NeptuneRunner {
                 Console.WriteLine("Search path: " + WorkingDirectory);
                 Console.WriteLine();
                 Console.WriteLine("Press any key to exit.");
-                Console.ReadKey();
+                Console.Read();
+                return;
             }
 
 
@@ -252,16 +259,16 @@ namespace NeptuneRunner {
                     Directory.Delete(tempDirectory, true);
                 }
 
-                ToastNotificationManagerCompat.History.Clear(); // Clear notifications
+                ToastNotificationManager.History.Clear(TaskBar.ApplicationId); // Clear notifications
             } catch (Exception e) {
                 string a = e.Message;
             }
 
             NeptuneProcess = new Process {
                 StartInfo = new ProcessStartInfo() {
-                    StandardErrorEncoding = System.Text.Encoding.UTF8,
-                    StandardOutputEncoding = System.Text.Encoding.UTF8,
-                    //StandardInputEncoding = System.Text.Encoding.UTF8,
+                    StandardErrorEncoding = Encoding.UTF8,
+                    StandardOutputEncoding = Encoding.UTF8,
+                    //StandardInputEncoding = Encoding.UTF8,
 
                     RedirectStandardError = true,
                     RedirectStandardOutput = true,
@@ -300,14 +307,14 @@ namespace NeptuneRunner {
                                                                              //Notifications.NotificationActivator.Initialize(ToastActivated); // Initialize
 
                 ToastNotificationManagerCompat.OnActivated += ToastNotificationManagerCompat_OnActivated;
-                ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier();
+                ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
             } catch (Exception) {
                 try {
                     ToastNotificationManagerCompat.Uninstall();
                     NotificationRegisty.UninstallShortcut();
 
                     NotificationRegisty.RegisterAppForNotificationSupport(true);
-                    ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier();
+                    ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
                 } catch (Exception e) {
                     MessageBox.Show("Neptune was unable to register the ToastNotifier into Windows. Because of this, notifications quality will be degraded. "
                         + Environment.NewLine + "Restarting Neptune may help, but do make sure notifications are enabled for your system in the Settings app."
@@ -416,85 +423,97 @@ namespace NeptuneRunner {
                         return;
                     }
 
+                    try {
+                        // Needs updating to support new API specs
 
-                    // Needs updating to support new API specs
+                        bool updateOnly = false;
+                        NeptuneNotification notification = null;
+                        string activeNotificationsKey = dataKeyValues["clientId"] + "_" + dataKeyValues["id"];
 
-                    bool updateOnly = false;
-                    NeptuneNotification notification = null;
-                    string activeNotificationsKey = dataKeyValues["clientId"] + "_" + dataKeyValues["id"];
-
-                    if (!dataKeyValues.ContainsKey("createNew") && ActiveNotifications.ContainsKey(activeNotificationsKey)) {
-                        notification = ActiveNotifications[activeNotificationsKey];
-                        updateOnly = true;
-                    }
+                        if (!dataKeyValues.ContainsKey("createNew") && ActiveNotifications.ContainsKey(activeNotificationsKey)) {
+                            notification = ActiveNotifications[activeNotificationsKey];
+                            updateOnly = true;
+                        }
 
 
-                    if (notification == null || !updateOnly)
-                        notification = new NeptuneNotification(dataKeyValues["id"], dataKeyValues["title"], dataKeyValues["text"]);
+                        if (notification == null || !updateOnly)
+                            notification = new NeptuneNotification(dataKeyValues["id"], dataKeyValues["title"], dataKeyValues["text"]);
 
-                    if (dataKeyValues.ContainsKey("action")) {
-                        if (dataKeyValues["action"] == "delete") {
+                        if (dataKeyValues.ContainsKey("action")) {
+                            if (dataKeyValues["action"] == "delete") {
+                                ActiveNotifications.Remove(activeNotificationsKey);
+                                notification.Delete();
+                                return;
+                            }
+                        }
+                        notification.Title = dataKeyValues["title"];
+                        notification.Contents.Text = dataKeyValues["text"];
+
+
+                        if (dataKeyValues.ContainsKey("clientId"))
+                            notification.ClientId = dataKeyValues["clientId"];
+                        if (dataKeyValues.ContainsKey("clientName"))
+                            notification.ClientName = dataKeyValues["clientName"];
+
+                        if (dataKeyValues.ContainsKey("applicationName"))
+                            notification.ApplicationName = dataKeyValues["applicationName"];
+                        if (dataKeyValues.ContainsKey("applicationPackage"))
+                            notification.ApplicationPackageName = dataKeyValues["applicationPackage"];
+                        if (dataKeyValues.ContainsKey("timestamp"))
+                            DateTime.TryParse(dataKeyValues["timestamp"], null, System.Globalization.DateTimeStyles.RoundtripKind, out notification.TimeStamp);
+                        if (dataKeyValues.ContainsKey("silent"))
+                            notification.IsSilent = dataKeyValues["silent"] == "true";
+
+                        if (dataKeyValues.ContainsKey("type")) {
+                            try {
+                                notification.Type = (NeptuneNotificationType)Enum.Parse(typeof(NeptuneNotificationActionType), dataKeyValues["type"], true);
+                            } catch (Exception) {
+                                notification.Type = NeptuneNotificationType.Standard;
+                            }
+                        }
+
+                        if (dataKeyValues.ContainsKey("contents")) {
+                            JsonObject contents = e.DecodeBase64String(dataKeyValues["contents"]);
+                            notification.Contents.LoadFromJsonObject(contents);
+                        }
+
+                        if (notification.ActivatedHasListeners())
+                            notification.Activated -= Notification_Activated;
+                        notification.Activated += Notification_Activated;
+                        if (notification.DismissedHasListeners())
+                            notification.Dismissed -= Notification_Dismissed;
+                        notification.Dismissed += Notification_Dismissed;
+                        if (notification.FailedHasListeners())
+                            notification.Failed -= Notification_Failed;
+                        notification.Failed += Notification_Failed;
+
+
+                        if (ActiveNotifications.ContainsKey(activeNotificationsKey))
                             ActiveNotifications.Remove(activeNotificationsKey);
-                            notification.Delete();
-                            return;
+                        ActiveNotifications.Add(dataKeyValues["clientId"] + "_" + dataKeyValues["id"], notification);
+
+
+                        if (!updateOnly) {
+                            if (!notification.Push()) {
+                                throw new Exception();
+                            }
+                        } else {
+                            NotificationUpdateResult result = notification.Update();
+                            if (result == NotificationUpdateResult.Failed || result == NotificationUpdateResult.NotificationNotFound) {
+                                notification.Delete();
+                                notification.IsSilent = true;
+                                if (!notification.Push()) {
+                                    throw new Exception();
+                                }
+                            }
                         }
-                    }
-                    notification.Title = dataKeyValues["title"];
-                    notification.Contents.Text = dataKeyValues["text"];
-
-
-                    if (dataKeyValues.ContainsKey("clientId"))
-                        notification.ClientId = dataKeyValues["clientId"];
-                    if (dataKeyValues.ContainsKey("clientName"))
-                        notification.ClientName = dataKeyValues["clientName"];
-
-                    if (dataKeyValues.ContainsKey("applicationName"))
-                        notification.ApplicationName = dataKeyValues["applicationName"];
-                    if (dataKeyValues.ContainsKey("applicationPackage"))
-                        notification.ApplicationPackageName = dataKeyValues["applicationPackage"];
-                    if (dataKeyValues.ContainsKey("timestamp"))
-                        DateTime.TryParse(dataKeyValues["timestamp"], null, System.Globalization.DateTimeStyles.RoundtripKind, out notification.TimeStamp);
-                    if (dataKeyValues.ContainsKey("silent"))
-                        notification.IsSilent = dataKeyValues["silent"] == "true";
-
-                    if (dataKeyValues.ContainsKey("type")) {
-                        try {
-                            notification.Type = (NeptuneNotificationType)Enum.Parse(typeof(NeptuneNotificationActionType), dataKeyValues["type"], true);
-                        } catch (Exception) {
-                            notification.Type = NeptuneNotificationType.Standard;
-                        }
-                    }
-
-                    if (dataKeyValues.ContainsKey("contents")) {
-                        JsonObject contents = e.DecodeBase64String(dataKeyValues["contents"]);
-                        notification.Contents.LoadFromJsonObject(contents);
-                    }
-
-                    if (notification.ActivatedHasListeners())
-                        notification.Activated -= Notification_Activated;
-                    notification.Activated += Notification_Activated;
-                    if (notification.DismissedHasListeners())
-                        notification.Dismissed -= Notification_Dismissed;
-                    notification.Dismissed += Notification_Dismissed;
-                    if (notification.FailedHasListeners())
-                        notification.Failed -= Notification_Failed;
-                    notification.Failed += Notification_Failed;
-
-
-                    if (ActiveNotifications.ContainsKey(activeNotificationsKey))
-                        ActiveNotifications.Remove(activeNotificationsKey);
-                    ActiveNotifications.Add(dataKeyValues["clientId"] + "_" + dataKeyValues["id"], notification);
-
-
-                    if (!updateOnly) {
-                        notification.Push();
-                    } else {
-                        NotificationUpdateResult result = notification.Update();
-                        if (result == NotificationUpdateResult.Failed || result == NotificationUpdateResult.NotificationNotFound) {
-                            notification.Delete();
-                            notification.IsSilent = true;
-                            notification.Push();
-                        }
+                    } catch (Exception) {
+                        Dictionary<string, string> data = new Dictionary<string, string>(3) {
+                            { "id", dataKeyValues["id"] },
+                            { "failureReason", "GenericError" },
+                            { "failureMoreDetails", "Generic error encountered." }
+                        };
+                        IPCDataQueue.Enqueue(IPC.KeyValuePairsToDataString("notify-dismissed", data));
                     }
 
                 } else if (dataKeyValues.ContainsKey("notify-delete")) {
@@ -509,7 +528,10 @@ namespace NeptuneRunner {
                     }
 
                 }
-            } catch (Exception) { } // meh
+            } catch (Exception exception) {
+                Console.Error.WriteLine("[IPC-Server] Unable to process request!");
+                Console.Error.WriteLine(exception.Message);
+            }
         }
 
         public static void Notification_Dismissed(ToastNotification sender, ToastDismissedEventArgs args) {
@@ -674,6 +696,5 @@ namespace NeptuneRunner {
         public static void P_OutputDataReceived(object sender, DataReceivedEventArgs e) {
             Console.WriteLine(e.Data);
         }
-
     }
 }

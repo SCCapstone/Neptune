@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using System.Runtime.CompilerServices;
 using System.IO;
 using System.Diagnostics;
 
@@ -49,7 +48,7 @@ namespace NeptuneRunner {
     }
 
     internal static class TaskBar {
-        public static readonly string ApplicationId = "Neptune.Server.v1";
+        public static readonly string ApplicationId = "Neptune.Server.V1";
         public static readonly string ApplicationName = "Neptune";
 
         [DllImport("shell32.dll")]
@@ -74,7 +73,7 @@ namespace NeptuneRunner {
             store.SetValue(ref key, ref prop);
         }
 
-        private static void SetValue(IPropertyStore store, PropertyKey key, string value) {
+        internal static void SetValue(IPropertyStore store, PropertyKey key, string value) {
             var prop = new PropVariant(value);
             store.SetValue(ref key, ref prop);
             prop.Clear();

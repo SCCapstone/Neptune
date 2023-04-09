@@ -1,3 +1,5 @@
+## Log data
+
 Inside Neptune, use `global.Neptune.logMan.getLogger("your class name")` to obtain a logger to log data.\
 See LogMan.js, loggers have these functions:\
 `critical(message, outputToConsole=true);`\
@@ -9,6 +11,21 @@ See LogMan.js, loggers have these functions:\
 `debug(message, outputToConsole=true);`\
 `silly(message, outputToConsole=true);`\
 and output to the log file (./logs/Neptune.log) and console (if outputToConsole is true)
+
+
+If you are logging a large chunk of data or otherwise sensitive data, please use the `silly` level. This is because in production mode `silly` is disabled.
+
+### Using logs to debug
+The log offers an incredible tool in debugging the application as it provides you with context on what the application is / was doing.\
+The log file also provides way more data to pick through than the console output alone.
+
+In developer mode (where `debug=false` at the top of the index.js file), a lot of log data is blocked. That is, in a production run we do not log as much data out.\
+This is important in limiting the amount of personal data saved to the disk and also reducing the log file size, as in debug mode with `silly` enabled the log can get quite large (>10mb).
+
+When uploading a bug ticket, please include the log file!
+
+The log file is automatically recreated/reset when the application opens and is saved to `./logs/Neptune.log`.
+
 
 
 
@@ -232,6 +249,7 @@ notify-push: Tells NeptuneRunner to create (or update) a toast notification\
 `applicationName`: application name provided by the client of the notification (the application that sent this notification on the phone)\
 `timestamp`: the notification's timestamp as provided by the client\
 `createNew`: if true, we DO NOT update the notification! If NeptuneRunner finds\
+`contents`: the `contents` property of the notification (in server) represented as a JSON string and encoded as base64. Neptune Runner decodes from Base64 -> JSON then loads the content from that JSON data.
 _among others_
 
 
@@ -249,7 +267,7 @@ notify-dismissed: Toast notification was dismissed by the user\
 notify-failed: Toast notification failed to be displayed\
 `id`: notification id\
 `clientId`: client id that sent this notification\
-`failureReason`: reason the notification failed to send (DisabledForApplication, DisabledForUser, DisabledByGroupPolicy, DisabledByManifest)\
+`failureReason`: reason the notification failed to send (DisabledForApplication, DisabledForUser, DisabledByGroupPolicy, DisabledByManifest, GenericError)\
 `failureMoreDetails`: explains the reason (DisabledForApplication, DisabledForUser, DisabledByGroupPolicy)
 
 
