@@ -466,7 +466,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
             });
             server.EventEmitter.addListener("connection-failed", (objects) -> {
                 hideOrShowImageButtonProgressBar(serverSyncIssueButton, serverSyncProgress, true);
-                runOnUiThread(() -> serverSyncProgress.setVisibility(View.GONE));
+                runOnUiThread(() -> serverSyncButton.setVisibility(View.GONE));
             });
         } catch (Exception e) {
             e.printStackTrace();

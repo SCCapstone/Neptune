@@ -214,21 +214,24 @@ public class AddDeviceActivity extends AppCompatActivity {
 
         serverName.setText(server.friendlyName);
 
-        DialogInterface.OnClickListener confirmationListener = (dialog, which) -> new Thread(() -> {
-            // Add server
-            hideOrShowImageButtonProgressBar(serverSyncButton, serverSyncProgress, false);
-            serverSyncIssueButton.setVisibility(View.GONE);
-            Log.i("AddDeviceActivity", "Adding  " + server.friendlyName);
-            boolean added = addServer(server);
+        DialogInterface.OnClickListener confirmationListener = (dialog, which) -> {
+            dialog.dismiss();
+            new Thread(() -> {
+                // Add server
+                hideOrShowImageButtonProgressBar(serverSyncButton, serverSyncProgress, false);
+                serverSyncIssueButton.setVisibility(View.GONE);
+                Log.i("AddDeviceActivity", "Adding  " + server.friendlyName);
+                boolean added = addServer(server);
 
-            if (added) {
-                showErrorMessage("Server added", server.friendlyName + " has successfully been paired.");
-                removeServer(server.serverId); // We added it, remove it!
-            } else {
-                hideOrShowImageButtonProgressBar(serverSyncIssueButton, serverSyncProgress, true);
-                serverSyncButton.setVisibility(View.GONE);
-            }
-        });
+                if (added) {
+                    runOnUiThread(() -> showErrorMessage("Server added", server.friendlyName + " has successfully been paired."));
+                    removeServer(server.serverId); // We added it, remove it!
+                } else {
+                    hideOrShowImageButtonProgressBar(serverSyncIssueButton, serverSyncProgress, true);
+                    serverSyncButton.setVisibility(View.GONE);
+                }
+            }).start();
+        };
 
         View.OnClickListener syncButtonListener = v -> new Thread(() -> {
             try {
@@ -237,7 +240,6 @@ public class AddDeviceActivity extends AppCompatActivity {
                     builder.setTitle("Pair Device")
                             .setMessage("Are you sure you want to pair with " + server.friendlyName + "?")
                             .setPositiveButton("Pair", (dialog, which) -> {
-                                dialog.dismiss();
                                 confirmationListener.onClick(dialog, which);
                             })
                             .setNegativeButton("Cancel", (dialog, which) -> {
@@ -250,7 +252,7 @@ public class AddDeviceActivity extends AppCompatActivity {
 
             } catch (Exception e) {
                 hideOrShowImageButtonProgressBar(serverSyncIssueButton, serverSyncProgress, true);
-                runOnUiThread(() -> serverSyncProgress.setVisibility(View.GONE));
+                runOnUiThread(() -> serverSyncButton.setVisibility(View.GONE));
                 e.printStackTrace();
             }
         }).start();
