@@ -1,0 +1,26 @@
+name: Server GUI tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  Test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        node_version: ['18']
+        os: [windows-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Dependencies
+        working-directory: ./Server/
+        run: |
+          npm install
+          npm install -g jest
+          
+      - name: Run gui tests
+        working-directory: ./Server/
+        run: npm run test-gui

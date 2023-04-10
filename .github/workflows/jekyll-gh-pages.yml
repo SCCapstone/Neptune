@@ -1,10 +1,12 @@
 # Sample workflow for building and deploying a Jekyll site to GitHub Pages
-name: Deploy Jekyll with GitHub Pages dependencies preinstalled
+name: Build and Deploy Webpage
 
 on:
   # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
+    paths:
+      - Documents/**
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -30,17 +32,21 @@ jobs:
         uses: actions/checkout@v3
       - name: Setup Pages
         uses: actions/configure-pages@v3
+
       - name: Generate Server JSDocs
         uses: andstor/jsdoc-action@v1
         with:
           source_dir: ./Server/src
+          recurse: true
+          template: better-docs
           output_dir: ./Documents/Dev/Server
-          front_page: README.md
+          front_page: ./Server/README.md
       - name: Build with Jekyll
         uses: actions/jekyll-build-pages@v1
         with:
           source: ./Documents/
           destination: ./Documents/_site
+      
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:

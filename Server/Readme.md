@@ -1,4 +1,7 @@
-## Neptune\Server
+[![Server unit tests](https://github.com/SCCapstone/Neptune/actions/workflows/server-unit-tests.yml/badge.svg?branch=main)](https://github.com/SCCapstone/Neptune/actions/workflows/server-unit-tests.yml)
+[![Server GUI tests](https://github.com/SCCapstone/Neptune/actions/workflows/server-gui-tests.yml/badge.svg?branch=main)](https://github.com/SCCapstone/Neptune/actions/workflows/server-gui-tests.yml)
+
+# Neptune\Server
 
 Server component. Receives notification data from clients (the Android app).\
 Written in Node.JS (targeting Node.JS 18 as that will become the main LTS version until \~2025).\
@@ -56,6 +59,8 @@ This starts qode with `--inspector`, which opens the the Node.JS debugger (web s
 
 
 ## Testing
+_\[!\] Unit testing is automatically preformed when you push changes to server code._
+
 Testing utilizes Jest.\
 To run all tests, run: `npm run test`\
 <img src="https://user-images.githubusercontent.com/55852895/215353063-f863a5b7-42f2-4844-a7bc-511fe26d02b2.png" alt="Tests results" width="550px" />
@@ -92,6 +97,7 @@ Packages:\
     `express`: Web application framework, the "web server" portion of server that receives data from the client, hosts the REST API.\
     `multer`: For uploading files (used for notification icons in addition to general documents).\
     `ws`: For socket communications with the client app.\
+    `@homebridge/cia`: MDNS advertising\
     -\
     `futoin-hkdf`: Used to generate a shared encryption key.\
     `keytar`: Interfacing with the OS keychain (Windows Credential Manager, MacOS Keychain)\
