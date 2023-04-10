@@ -15,6 +15,7 @@ const Version = require('./Version.js');
 
 const os = require("node:os");
 const ConnectionManager = require('./ConnectionManager.js');
+const EventEmitter = require('node:events');
 
 
 /**
@@ -80,12 +81,22 @@ class NeptuneConfig extends ConfigItem {
 
 
 	/**
+	 * 
+	 * @typedef {object} NeptuneApplicationSettings
+	 * @property {boolean} [requireSaveButton=false] - Whether or not the save button is visible and required in the MainWindow. If false, settings are saved when changed.
+	 * @property {boolean} [advertiseNeptune=true] - Whether or not to use MDNS to advertise (broadcast) this server on to the network. Doing so allows client devices to pair without entering an IP.
+	 * @property {boolean} [startMinimized=false] - Whether the main window should not be displayed on startup
+	 */
+
+	/**
 	 * This is only used in debugging / development roles
 	 * Think of it as advance tunables
-	 * @type {object}
+	 * @type {NeptuneApplicationSettings}
 	 */
 	applicationSettings = {
-
+		requireSaveButton: false,
+		advertiseNeptune: true,
+		startMinimized: false,
 	}
 
 
@@ -101,6 +112,19 @@ class NeptuneConfig extends ConfigItem {
 	 * @type {string}
 	 */
 	friendlyName = "";
+
+
+	eventEmitter = new EventEmitter();
+
+	save() {
+		super.save();
+		this.eventEmitter.emit("updated");
+	}
+
+	saveSync() {
+		super.saveSync();
+		this.eventEmitter.emit("updated");
+	}
 
 
 	#getComputerName() {

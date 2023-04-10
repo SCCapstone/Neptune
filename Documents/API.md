@@ -1,3 +1,38 @@
+# ZeroConf Service
+Neptune utilizes a ZeroConfig network service to advertise Neptune servers which Neptune clients will see and present to the user for pairing.\
+ZeroConfig, Bonjour, etc, is technology used by many devices and services and has become nearly essential in allowing devices to talk to each other without configuring them, hence the name _zero config(uration)_.\
+Ever wondered why your Chromecast appears on your phone? How Windows is able to detect printers on your network? That would be this (sorta, at the end of the day we're achieving the same goal although some discovery services are technically different).
+
+
+The service name we use is named "neptune" (go figure). The server will advertise itself using "Server:" and the server's UUID. So, the name of the advertisement server sends out is "Server:00000000-0000-0000-0000-000000000000".\
+The advertisement sets the port to the configured port the Server is using (`25560` by default).\
+We also advertise the friendly name of the computer (so the user can see the server's name in the AddDevice page) and the version of Neptune server running.\
+Due to the way these advertisements are broadcast, the device IP is automatically set and correct for whichever interface the broadcast is sent out on.
+
+
+So, this is what a normal advertisement looks like:
+```json5
+{
+    "Name": "Server:00000000-0000-0000-0000-000000000000", // Server:<server UUID>
+    "RegType": "_neptune._tcp", // Service name, protocol (TCP = HTTP)
+    "Domain": "local.", // Always
+    "Address": "<server's address>:25560", // Address of the interface this was broadcasted on
+    "TXT": {
+        "name": "MyComputer", // Server's friendly name
+        "version": "1.0.0-debug+R1" // Server's version
+    }
+}
+```
+
+Here's an example broadcast (ServiceBrowser app for Android):\
+<img alt="Neptune Server ZeroConf broadcast" src="https://user-images.githubusercontent.com/55852895/230802665-2ac4ad7e-1934-4019-8f0c-f16ea8070dc3.png" height="300px" />
+
+_And on the client app:_\
+<img alt="Neptune Client ZeroConf" src="https://user-images.githubusercontent.com/55852895/230803091-21783a82-4ac7-4a9f-8ba4-eedffd7ede8e.png" height="250px" />
+
+
+
+
 # APIs
 
 `/api/v1/client/` <- Hosted by the CLIENT, server sends these commands.\

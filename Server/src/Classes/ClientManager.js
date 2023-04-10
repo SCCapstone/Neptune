@@ -74,8 +74,8 @@ class ClientManager extends EventEmitter {
                 client.delete();
 
             this.#clients.set(clientId, client);
-            this.emit('added', client);
         }
+        this.emit('added', client);
         return client;
     }
 

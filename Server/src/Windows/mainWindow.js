@@ -18,12 +18,24 @@ const Notification = require("../Classes/Notification");
 const { Logger } = require("./../Classes/LogMan");
 const ClientManager = require("../Classes/ClientManager");
 
+
+const NepConfig = require('../Classes/NeptuneConfig.js');
+const { ServiceState } = require("@homebridge/ciao");
+
+/** @type {NepConfig} */
+var NeptuneConfig = global.Neptune.config;
+
+
 class thisTest extends NeptuneWindow {
 	/**
 	 * Whether tooltips are enabled or not. Default no, they're a bit laggy.
 	 * @type {boolean}
 	 */
 	enableToolTips = false;
+
+
+	/** @type {ClientManager} */
+	clientManager = Neptune.clientManager;
 
 
 	/** @type {Map<string, Client>} */
@@ -190,8 +202,16 @@ class thisTest extends NeptuneWindow {
 	 */
 	AddClientToDeviceList(client) {
 		let listItem = new NodeGUI.QListWidgetItem();
-		if (client.friendlyName == undefined)
+		if (client.friendlyName == undefined) {
+			client.eventEmitter.removeAllListeners('paired'); // protect against race conditions
+			client.eventEmitter.once('paired', () => this.AddClientToDeviceList(client));
+			this.log.debug("Attempt to add device with no friendly name. Listening for pair event...");
 			return;
+		}
+
+		if (this.addedClients.has(client.friendlyName)) {
+			return;
+		}
 
 		listItem.setText(client.friendlyName);
 		if (this.enableToolTips) {
@@ -204,6 +224,11 @@ class thisTest extends NeptuneWindow {
 		this.addedClients.set(client.friendlyName, client);
 		this.clientListItems.set(client.friendlyName, listItem);
 		this.deviceList.addItem(listItem);
+		this.log.debug("Added client to device list: " + client.friendlyName);
+
+		if (this.deviceList.count() == 1) {
+			this.deviceList.setCurrentItem(listItem);
+		}
 	}
 
 	/**
@@ -225,8 +250,7 @@ class thisTest extends NeptuneWindow {
 		this.clientListItems.clear();
 		this.deviceList.clear();
 
-		let clientManager = Neptune.clientManager;
-		let clients = clientManager.getClients();
+		let clients = this.clientManager.getClients();
 		clients.forEach((client, name) => {
 			this.AddClientToDeviceList(client);
 		});
@@ -387,6 +411,12 @@ class thisTest extends NeptuneWindow {
 		}
 	}
 
+	clientSettingChanged() {
+		if (!NeptuneConfig.applicationSettings.requireSaveButton) {
+			this.saveClientData();
+		}
+	}
+
 
 	constructor(arg) {
 		super(arg);
@@ -397,6 +427,56 @@ class thisTest extends NeptuneWindow {
 			this.setWindowTitle('Neptune | Main window');
 			this.resize(599, 522);
 			this.setMinimumSize(425, 300);
+
+			NeptuneConfig.eventEmitter.removeAllListeners('updated');
+			NeptuneConfig.eventEmitter.on('updated', () => {
+				if (global.Neptune.shuttingDown)
+					return;
+
+				try {
+					this.log("Configuration updated... applying changes.");
+
+					try {
+						this.clientManager.getClients().forEach(client => {
+							client.syncConfiguration();
+						});
+					} catch {}
+
+					try {
+						if (NeptuneConfig.applicationSettings.requireSaveButton) {
+							this.btnSave.setVisible(true);
+							this.btnSave.setEnabled(true);
+						} else {
+							this.btnSave.setVisible(false);
+							this.btnSave.setEnabled(false);
+						}
+					} catch {}
+
+					try {
+						global.Neptune.mdnsService.updateTxt({
+							version: global.Neptune.version.toString(),
+							name: global.Neptune.config.friendlyName,
+						});
+
+						if (NeptuneConfig.applicationSettings.advertiseNeptune) {
+							if (global.Neptune.mdnsService.serviceState !== ServiceState.ANNOUNCED) {
+								global.Neptune.mdnsService.advertise().then(() => {
+									global.Neptune.webLog.verbose("MDNS service now advertising");
+								});
+							}
+						} else {
+							if (global.Neptune.mdnsService.serviceState !== ServiceState.UNANNOUNCED) {
+								global.Neptune.mdnsService.end().then(() => {
+									global.Neptune.webLog.verbose("MDNS service has stopped advertising!!");
+								});
+							}
+						}
+					} catch {}
+				} catch (e) {
+					this.log.error("Failed to apply configuration changes. See log for more details.");
+					this.log.error("Error: " + e, false);
+				}
+			});
 
 			// Top bar actions
 			// Client settings (menu)
@@ -566,14 +646,18 @@ class thisTest extends NeptuneWindow {
 				this.clientListItems.clear();
 				this.deviceList.clear();
 
-				let clientManager = Neptune.clientManager;
-				let clients = clientManager.getClients();
+				let clients = this.clientManager.getClients();
 				clients.forEach((client, name) => {
 					this.AddClientToDeviceList(client);
 				});
 			});
 
 
+			let preferencePageShown = false;
+			let preferencePage = this.newChildWindow('preferencePage');
+			preferencePage.addEventListener(NodeGUI.WidgetEventTypes.Close, () => {
+				preferencePageShown = false;
+			});
 
 			// Generic
 			this.actionPreferences = new NodeGUI.QAction(this.MainWindow);
@@ -582,9 +666,12 @@ class thisTest extends NeptuneWindow {
 			this.actionPreferences.setText("Preferences");
 			this.actionPreferences.addEventListener('triggered', () => {
 				// Open setting window
-				//console.log("Blah! No preference window... :(");
-				let preferencePage = this.newChildWindow('preferencePage');
-				preferencePage.show();
+				if (preferencePageShown == false) {
+					preferencePage.show();
+					preferencePageShown = true;
+				} else {
+					preferencePage.setFocus(NodeGUI.FocusReason.PopupFocusReason);
+				}
 			});
 
 			this.actionToggleConsoleVisibility = new NodeGUI.QAction(this.MainWindow);
@@ -778,9 +865,7 @@ class thisTest extends NeptuneWindow {
 			// this.deviceList.setToolTip("Client device selector.");
 			this.deviceList.setAutoScroll(true);
 			this.deviceList.addEventListener('itemSelectionChanged', () => {
-				/** @type {ClientManager} */
-				let clientManager = Neptune.clientManager;
-				let clients = clientManager.getClients();
+				let clients = this.clientManager.getClients();
 
 				if (this.GetSelectedClient() == undefined) {
 					clients.forEach((client, name) => {
@@ -799,6 +884,7 @@ class thisTest extends NeptuneWindow {
 						client.eventEmitter.on('connected', () => this.updateClientData());
 						client.eventEmitter.on('websocket_connected', () => this.updateClientData());
 						client.eventEmitter.on('websocket_disconnected', () => this.updateClientData());
+						client.eventEmitter.on('deleted', () => this.deviceList.clearSelection());
 					});
 
 					this.updateClientData();
@@ -934,7 +1020,8 @@ class thisTest extends NeptuneWindow {
 				if (client !== undefined) {
 					client.notificationSettings.enabled = (state === 2);
 					this.actionSync_notifications.setChecked(state === 2);
-					this.saveClientData();
+
+					this.clientSettingChanged();
 				}
 			});
 
@@ -970,7 +1057,8 @@ class thisTest extends NeptuneWindow {
 				this.updateEnableClipboardSharing(state === 2? true : false);
 				if (this.actionToggleClipboardSharing.isChecked() !== (state === 2))
 					this.actionToggleClipboardSharing.setChecked(state === 2);
-				this.saveClientData();
+
+				this.clientSettingChanged();
 			});
 
 			verticalLayout_2.addWidget(this.chkSyncClipboard);
@@ -987,7 +1075,7 @@ class thisTest extends NeptuneWindow {
 				let client = this.GetSelectedClient();
 				if (client !== undefined) {
 					client.clipboardSettings.synchronizeClipboardToClient = (state === 2);
-					this.saveClientData();
+					this.clientSettingChanged();
 				}
 			});
 
@@ -1003,9 +1091,10 @@ class thisTest extends NeptuneWindow {
 			this.chkClipboardAllowClientToGet.setText("Allow client to request clipboard data");
 			this.chkClipboardAllowClientToGet.addEventListener('clicked', (state) => {
 				let client = this.GetSelectedClient();
-				if (client !== undefined)
+				if (client !== undefined) {
 					client.clipboardSettings.allowClientToGet = (state === 2);
-				this.saveClientData();
+					this.clientSettingChanged();
+				}
 			});
 
 			verticalLayout_2.addWidget(this.chkClipboardAllowClientToGet);
@@ -1041,7 +1130,7 @@ class thisTest extends NeptuneWindow {
 				this.updateEnableFileSharing(state == 2? true : false);
 				if (this.actionToggleFileSharing.isChecked() !== (state === 2))
 					this.actionToggleFileSharing.setChecked(state === 2);
-				this.saveClientData();
+				this.clientSettingChanged();
 			});
 
 			fileSharingCheckboxes.addWidget(this.chkFileSharingEnable);
@@ -1056,9 +1145,10 @@ class thisTest extends NeptuneWindow {
 			this.chkFileSharingAutoAccept.setText("Automatically accept incoming files");
 			this.chkFileSharingAutoAccept.addEventListener('clicked', (state) => {
 				let client = this.GetSelectedClient();
-				if (client !== undefined)
+				if (client !== undefined) {
 					client.fileSharingSettings.requireConfirmationOnClinetUploads = (state !== 2);
-				this.saveClientData();
+					this.clientSettingChanged();
+				}
 			});
 
 			fileSharingCheckboxes.addWidget(this.chkFileSharingAutoAccept);
@@ -1073,9 +1163,10 @@ class thisTest extends NeptuneWindow {
 			this.chkFileSharingNotify.setText("Notify on receive");
 			this.chkFileSharingNotify.addEventListener('clicked', (state) => {
 				let client = this.GetSelectedClient();
-				if (client !== undefined)
+				if (client !== undefined) {
 					client.fileSharingSettings.notifyOnReceive = (state === 2);
-				this.saveClientData();
+					this.clientSettingChanged();
+				}
 			});
 
 			fileSharingCheckboxes.addWidget(this.chkFileSharingNotify);
@@ -1093,7 +1184,7 @@ class thisTest extends NeptuneWindow {
 				if (client !== undefined) {
 					client.fileSharingSettings.allowClientToUpload = (state === 2);
 					this.actionToggleAllowClientToUpload.setChecked(state === 2);
-					this.saveClientData();
+					this.clientSettingChanged();
 				}
 			});
 
@@ -1143,7 +1234,7 @@ class thisTest extends NeptuneWindow {
 						client.fileSharingSettings.receivedFilesDirectory = selectedFolder;
 						saveDirectory = client.getReceivedFilesDirectory(); // runs checks ?
 						this.txtFileSharingSaveDirectory.setText(saveDirectory);
-						this.saveClientData();
+						this.clientSettingChanged();
 					}
 				}
 			});
@@ -1179,31 +1270,37 @@ class thisTest extends NeptuneWindow {
 			verticalLayout_4.setObjectName("verticalLayout_4");
 			verticalLayout_4.setContentsMargins(0, 0, 0, 0);
 			let hlaySaveButton = new NodeGUI.QBoxLayout(NodeGUI.Direction.LeftToRight);
-			// hlaySaveButton.setObjectName("hlaySaveButton");
-			// this.btnSave = new NodeGUI.QPushButton(bottomButtonContiner);
-			// this.btnSave.setObjectName("btnSave");
-			// // QSizePolicy sizePolicy3(QSizePolicy::Fixed, QSizePolicy::Fixed);
-			// // sizePolicy3.setHorizontalStretch(0);
-			// // sizePolicy3.setVerticalStretch(0);
-			// // sizePolicy3.setHeightForWidth(btnSave.sizePolicy().hasHeightForWidth());
-			// this.btnSave.setSizePolicy(NodeGUI.QSizePolicyPolicy.Fixed, NodeGUI.QSizePolicyPolicy.Fixed);
-			// this.btnSave.setMinimumSize(200, 30);
-			// this.btnSave.setFont(font1);
-			// this.btnSave.setCursor(NodeGUI.CursorShape.PointingHandCursor);
-			// if (this.enableToolTips)
-			// 	this.btnSave.setToolTip("Save client settings.");
-			// this.btnSave.setText("Save");
-			// this.btnSave.addEventListener('clicked', () => {
-			// 	let client = this.GetSelectedClient();
-			// 	if (client !== undefined) {
-			// 		this.saveClientData();
-			// 	}
-			// });
+			hlaySaveButton.setObjectName("hlaySaveButton");
+			this.btnSave = new NodeGUI.QPushButton(bottomButtonContiner);
+			this.btnSave.setObjectName("btnSave");
+			// QSizePolicy sizePolicy3(QSizePolicy::Fixed, QSizePolicy::Fixed);
+			// sizePolicy3.setHorizontalStretch(0);
+			// sizePolicy3.setVerticalStretch(0);
+			// sizePolicy3.setHeightForWidth(btnSave.sizePolicy().hasHeightForWidth());
+			this.btnSave.setSizePolicy(NodeGUI.QSizePolicyPolicy.Fixed, NodeGUI.QSizePolicyPolicy.Fixed);
+			this.btnSave.setMinimumSize(200, 30);
+			this.btnSave.setFont(font1);
+			this.btnSave.setCursor(NodeGUI.CursorShape.PointingHandCursor);
+			if (this.enableToolTips)
+				this.btnSave.setToolTip("Save client settings.");
+			this.btnSave.setText("Save");
+			this.btnSave.addEventListener('clicked', () => {
+				let client = this.GetSelectedClient();
+				if (client !== undefined) {
+					this.saveClientData();
+				}
+			});
+			hlaySaveButton.addWidget(this.btnSave);
 
-			// hlaySaveButton.addWidget(this.btnSave);
+			verticalLayout_4.addLayout(hlaySaveButton);
 
 
-			// verticalLayout_4.addLayout(hlaySaveButton);
+			if (!NeptuneConfig.applicationSettings.requireSaveButton) {
+				this.btnSave.setVisible(false);
+				this.btnSave.setEnabled(false);
+			}
+
+
 
 			let hlayDeleteButton = new NodeGUI.QBoxLayout(NodeGUI.Direction.LeftToRight);
 			hlayDeleteButton.setObjectName("hlayDeleteButton");
@@ -1340,33 +1437,23 @@ class thisTest extends NeptuneWindow {
 				var removeFunction = this.RemoveClientFromDeviceList;
 				var addFunction = this.AddClientToDeviceList;
 
-				/** @type {ClientManager} */
-				let clientManager = Neptune.clientManager;
-				let clients = clientManager.getClients();
+				let clients = this.clientManager.getClients();
 				clients.forEach((client, name) => {
 					this.AddClientToDeviceList(client);
 				});
 
-
-				// this.addEventListener(NodeGUI.WidgetEventTypes.Hide, () => {
-				// 	clientManager.removeListener('added', (client) => {
-				// 		removeFunction(client);
-				// 	});
-				// 	clientManager.removeListener('removed', (client) => {
-				// 		addFunction(client);
-				// 	});
-
-
-				// 	this.removeEventListener(NodeGUI.WidgetEventTypes.Hide);
-				// });
-
-
-				// clientManager.addListener('added', (client) => {
-				// 	removeFunction(client);
-				// });
-				// clientManager.addListener('removed', (client) => {
-				// 	addFunction(client);
-				// });
+				let maybeThis = this;
+				this.clientManager.addListener('added', (client) => {
+					if (maybeThis.isVisible()) {
+						console.log("ADDED")
+						maybeThis.AddClientToDeviceList(client);
+					}
+				});
+				this.clientManager.addListener('removed', (client) => {
+					if (maybeThis.isVisible()) {
+						maybeThis.RemoveClientFromDeviceList(client);
+					}
+				});
 
 				this.updateClientData();
 			} catch (ee) {}
@@ -1413,7 +1500,7 @@ class thisTest extends NeptuneWindow {
 			messageBox.addButton(button, buttonRole || NodeGUI.ButtonRole.AcceptRole);
 
 			button.addEventListener('clicked', () => {
-		    	messageBox.done(buttonRole || NodeGUI.ButtonRole.AcceptRole);
+				messageBox.done(buttonRole || NodeGUI.ButtonRole.AcceptRole);
 			});
 		});
 

@@ -152,6 +152,9 @@ class Client extends ClientConfig {
 		this.#connectionManager.on('websocket_disconnected', () => {
 			this.eventEmitter.emit("websocket_disconnected");
 		});
+		this.#connectionManager.on('paired', () => {
+			this.eventEmitter.emit('paired');
+		});
 
 		this.eventEmitter.emit("connected");
 	}
@@ -641,7 +644,6 @@ class Client extends ClientConfig {
 				this._pairId = undefined;
 				this._pairKey = undefined;
 			} finally {
-				this.delete();
 				return true;
 			}
 		} else
@@ -664,18 +666,22 @@ class Client extends ClientConfig {
 	}
 
 	delete() {
-		try {
-			this.unpair();
-			this.#connectionManager.destroy(true);
-			this.#notificationManager.destroy(true);
-		} catch (err) {
-			this.log.error(err, false);
-		}
-		finally {
-			global.Neptune.clientManager.dropClient(this);
-			super.delete();
-			this.log.warn("Deleted");
-		}
+		try { this.unpair(); } catch {}
+
+		setTimeout(() => {
+			try {
+				this.#connectionManager.destroy(true);
+				this.#notificationManager.destroy(true);
+			} catch (err) {
+				this.log.error(err, false);
+			}
+			finally {
+				this.eventEmitter.emit('deleted');
+				global.Neptune.clientManager.dropClient(this);
+				super.delete();
+				this.log.warn("Deleted");
+			}
+		}, 500);
 	}
 }
 

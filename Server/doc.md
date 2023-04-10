@@ -115,6 +115,8 @@ When the connection manager is setup.
 `configuration_update`: no args\
 For MainWindow to get notified when a device configuration has been updated by the client.
 
+`paired`: no args\
+Proxy of `ConnectionManager#paired`
 
 `websocket_connected`: no args\
 When the client connects to the websocket. Rebroadcast of `ConnectionManager#websocket_connected`.
@@ -122,11 +124,23 @@ When the client connects to the websocket. Rebroadcast of `ConnectionManager#web
 `websocket_disconnected`: int code, string reason\
 When the client disconnects from the websocket. Rebroadcast of `ConnectionManager#websocket_connected`.
 
+`deleted`: no args\
+Client was deleted
+
 
 ### ClientManager
 `removed`: Client client
 
 `added`: Client client
+
+
+
+### NeptuneConfig
+`.eventEmitter`
+
+`updated`: no args\
+Configuration saved
+
 
 ---
 

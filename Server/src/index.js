@@ -222,7 +222,11 @@ async function Shutdown(shutdownTimeout) {
 }
 process.Shutdown = Shutdown;
 
-var shuttingDown = false;
+/**
+ * Whether Neptune is currently shutting down or not.
+ * @type {boolean}
+ */
+Neptune.shuttingDown = false;
 
 /**
  * @event Neptune.events.application#shutdown
@@ -230,11 +234,11 @@ var shuttingDown = false;
  * @property {number} shutdownTimeout - Amount of time to wait before shutting down completely.
  */
 Neptune.events.application.on('shutdown', (shutdownTimeout) => {
-	if (shuttingDown)
+	if (Neptune.shuttingDown)
 		return;
 
 	Neptune.log.info("Shutdown signal received, shutting down in " + (shutdownTimeout/1000) + " seconds.");
-	shuttingDown = true;
+	Neptune.shuttingDown = true;
 
 	try {
 		if (Neptune.mdnsService !== undefined) {
@@ -578,8 +582,11 @@ async function main() {
 		tActions.showMainWindow.setText("Hide");
 		Neptune.log.silly("mainWindow@Show");
 	});
-	Neptune.log.debug("Main open");
-	mainWindow.show();
+
+	if (!Neptune.config.applicationSettings.startMinimized) {
+		Neptune.log.debug("Main open");
+		mainWindow.show();
+	}
 
 
 
@@ -674,12 +681,13 @@ async function main() {
 			version: Neptune.version.toString(),
 			name: Neptune.config.friendlyName,
 		}
-	})
-
-
-	Neptune.mdnsService.advertise().then(() => {
-		Neptune.webLog.verbose("MDNS service now advertising");
 	});
+
+	if (Neptune.config.applicationSettings.advertiseNeptune) {
+		Neptune.mdnsService.advertise().then(() => {
+			Neptune.webLog.verbose("MDNS service now advertising");
+		});
+	}
 
 
 

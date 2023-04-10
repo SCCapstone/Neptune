@@ -173,11 +173,9 @@ class ConfigurationManager {
 	 * @param {(string|boolean)} [newKey] The new encryption key. If true we'll generate one, if empty or undefined we will disable encryption.
 	 */
 	rekey(newKey) {
-		if (newKey == true) // Generate new key?
-			newKey = NeptuneCrypto.randomString(Neptune.config.encryption.newKeyLength, 33, 220);
-		else
-			if (newKey == false)
-				newKey == "";
+		if (typeof newKey === "boolean") {
+			newKey = (newKey === true)? NeptuneCrypto.randomString(Neptune.config.encryption.newKeyLength, 33, 220) : "";
+		}
 		if (typeof newKey !== "string" && newKey !== undefined)
 			throw new TypeError("newKey expected string got " + (typeof newKey).toString());
 
@@ -200,8 +198,14 @@ class ConfigurationManager {
 
 			// Read -> decrypt -> encrypt (new key) -> write
 			async function updateFile(file) {
-				if (!fs.lstatSync(file).isFile())
+				if (!file.endsWith('.json') || !fs.existsSync(file)) { // configuration file?
+			        return;
+			    }
+
+				var fileStats = fs.lstatSync(file);
+				if (!fileStats.isFile())
 					return;
+
 				let contents;
 				try {
 					contents = fs.readFileSync(file);
@@ -282,7 +286,7 @@ class ConfigurationManager {
 				return;
 			}
 
-			walkDir(this.#configDirectory);
+			walkDir(this.#configDirectory + "/" + Neptune.config.clientDirectory);
 		});
 	}
 

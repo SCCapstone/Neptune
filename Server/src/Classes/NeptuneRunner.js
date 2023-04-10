@@ -103,6 +103,11 @@ class NeptuneRunnerIPC extends EventEmitter {
                 }
             });
 
+            this.pipe.on('error', (err) => {
+                this.log.error("Failed to connect to NeptuneRunner pipe, is it running?");
+                this.log.error(err, false);
+            });
+
             this.pipe.on('data', (data) => {
                 if (!this.#pipeAuthenticated) {
                     if (data == "\x02skey\x1f" + this.#pipeServerKey + "\x1e\x03") {

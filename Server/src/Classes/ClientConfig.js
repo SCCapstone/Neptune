@@ -172,7 +172,7 @@ class ClientConfig extends ConfigItem {
 	 * @type {ClipboardSettings}
 	 */
 	clipboardSettings = {
-		enabled: false,
+		enabled: true,
 		allowClientToSet: true,
 		allowClientToGet: false,
 
@@ -197,7 +197,7 @@ class ClientConfig extends ConfigItem {
 	 * @type {FileSharingSettings}
 	 */
 	fileSharingSettings = {
-		enabled: false,
+		enabled: true,
 
 		allowClientToUpload: true,
 		allowClientToDownload: true,
