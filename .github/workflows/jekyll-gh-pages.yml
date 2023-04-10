@@ -40,7 +40,7 @@ jobs:
           recurse: true
           template: better-docs
           output_dir: ./Documents/Dev/Server
-          front_page: ./Server/README.md
+          front_page: ./Server/Readme.md
       - name: Build with Jekyll
         uses: actions/jekyll-build-pages@v1
         with:
