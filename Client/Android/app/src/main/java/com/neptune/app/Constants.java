@@ -18,4 +18,5 @@ public class Constants {
 
 
     public static final String SERVER_EVENT_CONFIGURATION_UPDATE = "configuration_update";
+    public static final String SERVER_EVENT_REMOVED = "unpaired";
 }

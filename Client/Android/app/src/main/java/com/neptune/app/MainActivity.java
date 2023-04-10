@@ -48,6 +48,7 @@ import com.neptune.app.Backend.ClientConfig;
 import com.neptune.app.Backend.ConfigurationManager;
 import com.neptune.app.Backend.Exceptions.InvalidIPAddress;
 import com.neptune.app.Backend.IPAddress;
+import com.neptune.app.Backend.Interfaces.ICallback;
 import com.neptune.app.Backend.MDNSDiscoveryListener;
 import com.neptune.app.Backend.MDNSResolver;
 import com.neptune.app.Backend.NotificationListenerService;
@@ -453,6 +454,9 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         serverSyncIssueButton.setOnClickListener(syncButtonListener);
 
         try {
+            server.EventEmitter.addListener(Constants.SERVER_EVENT_REMOVED, (objects) -> {
+                runOnUiThread(() -> removeServer(server, view));
+            });
             server.EventEmitter.addListener(Constants.SERVER_EVENT_CONFIGURATION_UPDATE, (objects) -> {
                 runOnUiThread(() -> serverName.setText(server.friendlyName));
             });
@@ -460,14 +464,20 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
                 hideOrShowImageButtonProgressBar(serverSyncButton, serverSyncProgress, false);
                 runOnUiThread(() -> serverSyncIssueButton.setVisibility(View.GONE));
             });
-            server.EventEmitter.addListener("connected", (objects) -> {
+
+            ICallback connected = (objects) -> {
                 hideOrShowImageButtonProgressBar(serverSyncButton, serverSyncProgress, true);
                 runOnUiThread(() -> serverSyncIssueButton.setVisibility(View.GONE));
-            });
-            server.EventEmitter.addListener("connection-failed", (objects) -> {
+            };
+            server.EventEmitter.addListener("connected", connected);
+            server.EventEmitter.addListener("websocket_connected", connected);
+
+            ICallback connectionFailed = (objects) -> {
                 hideOrShowImageButtonProgressBar(serverSyncIssueButton, serverSyncProgress, true);
                 runOnUiThread(() -> serverSyncButton.setVisibility(View.GONE));
-            });
+            };
+            server.EventEmitter.addListener("connection-failed", connectionFailed);
+            server.EventEmitter.addListener("websocket-disconnected", connectionFailed);
         } catch (Exception e) {
             e.printStackTrace();
         } // whatever

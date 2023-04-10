@@ -39,6 +39,7 @@ public class AddDeviceActivity extends AppCompatActivity {
     private final HashMap<String, View> serversShown = new HashMap<>();
 
     private AlertDialog addDialog;
+    private ProgressBar searchingProgressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +47,7 @@ public class AddDeviceActivity extends AppCompatActivity {
         setContentView(R.layout.activity_add_device);
 
         serverList = findViewById(R.id.container);
+        searchingProgressBar = findViewById(R.id.searching_progress_bar);
 
         Button addViaIp = findViewById(R.id.add_server_by_ip);
         addViaIp.setOnClickListener(view -> addDialog.show());
@@ -141,11 +143,13 @@ public class AddDeviceActivity extends AppCompatActivity {
     }
 
     public void showErrorMessage(String title, String message, DialogInterface.OnClickListener okayListener) {
-        AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
-        alertBuilder.setTitle(title);
-        alertBuilder.setMessage(message);
-        alertBuilder.setPositiveButton("Ok", okayListener);
-        alertBuilder.create().show();
+        try {
+            AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
+            alertBuilder.setTitle(title);
+            alertBuilder.setMessage(message);
+            alertBuilder.setPositiveButton("Ok", okayListener);
+            alertBuilder.create().show();
+        } catch (Exception ignored) {}
     }
     public void showErrorMessage(String title, String message) {
         showErrorMessage(title, message, (dialog, which) -> {
@@ -208,11 +212,18 @@ public class AddDeviceActivity extends AppCompatActivity {
 
         //public Config config
         TextView serverName = view.findViewById(R.id.server_name);
+        TextView serverInfoTag = view.findViewById(R.id.server_info_tag);
+
         ImageButton serverSyncButton = view.findViewById(R.id.server_item_sync);
         ImageButton serverSyncIssueButton = view.findViewById(R.id.server_item_sync_issue);
         ProgressBar serverSyncProgress = view.findViewById(R.id.server_item_sync_progress);
 
         serverName.setText(server.friendlyName);
+
+        String infoTag = "";
+        infoTag = getString(R.string.server_add_item_info_tag_ip, server.ipAddress.toString()) + ", "
+                + getString(R.string.server_add_item_info_tag_version, server.version.toString());
+        serverInfoTag.setText(infoTag);
 
         DialogInterface.OnClickListener confirmationListener = (dialog, which) -> {
             dialog.dismiss();
@@ -260,10 +271,12 @@ public class AddDeviceActivity extends AppCompatActivity {
         serverSyncButton.setOnClickListener(syncButtonListener);
         serverSyncIssueButton.setOnClickListener(syncButtonListener);
         serverName.setOnClickListener(syncButtonListener);
+        serverInfoTag.setOnClickListener(syncButtonListener);
 
 
         runOnUiThread(() -> serverList.addView(view));
         serversShown.put(server.serverId, view);
+        runOnUiThread(() -> searchingProgressBar.setVisibility(View.GONE));
     }
 
     public void removeServer(String id) {
@@ -272,6 +285,10 @@ public class AddDeviceActivity extends AppCompatActivity {
                 View view = serversShown.get(id);
                 runOnUiThread(() -> serverList.removeView(view));
                 serversShown.remove(id);
+
+                if (serversShown.size() <= 0) {
+                    runOnUiThread(() -> searchingProgressBar.setVisibility(View.VISIBLE));
+                }
             }
         } catch (Exception ignored) {}
     }

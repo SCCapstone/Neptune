@@ -1247,6 +1247,7 @@ public class ConnectionManager {
 
             Log.i("Connection-Manager", "pair: successful!");
 
+            this.Server.sendBatteryInfo();
         } catch (Exception e) {
             e.printStackTrace();
             throw new FailedToPair(e.getMessage());

@@ -96,7 +96,10 @@ public class Server extends ServerConfig {
                 connectionManager.EventEmitter.addListener("command", this.getCommandListener());
 
             if (connectionManager.EventEmitter.listenersCount("connected") == 0)
-                connectionManager.EventEmitter.addListener("connected", (objects) -> EventEmitter.emit("connected", objects));
+                connectionManager.EventEmitter.addListener("connected", (objects) -> {
+                    this.sendBatteryInfo();
+                    EventEmitter.emit("connected", objects);
+                });
             if (connectionManager.EventEmitter.listenersCount("connecting") == 0)
                 connectionManager.EventEmitter.addListener("connecting", (objects) -> EventEmitter.emit("connecting", objects));
             if (connectionManager.EventEmitter.listenersCount("websocket_connected") == 0)
@@ -137,7 +140,9 @@ public class Server extends ServerConfig {
                     this.connectionManager.sendRequestAsync("/api/v1/echoed", apiDataPackage.getOriginalPacket().get("data"));
 
                 } else if (command.equals("/api/v1/client/unpair")) {
-                    unpair();
+                    this.EventEmitter.emit(Constants.SERVER_EVENT_REMOVED);
+                    Thread.sleep(500);
+                    this.delete();
 
                 } else if (command.equals("/api/v1/client/disconnect")) {
                     this.connectionManager.disconnect();
@@ -900,11 +905,12 @@ public class Server extends ServerConfig {
     public void unpair() {
         try {
             if (pairKey != null) {
-                if (!pairKey.isEmpty()) {
+                if (!pairKey.isEmpty() && this.connectionManager.isWebSocketConnected()) {
                     JsonObject data = new JsonObject();
                     data.addProperty("pairId", this.pairId.toString());
                     data.addProperty("clientId", MainActivity.ClientConfig.clientId.toString());
                     this.connectionManager.sendRequestAsync("/api/v1/server/unpair", data);
+                    Thread.sleep(500); // not ideal, tries to get the message out before killing
                 }
             }
         } catch (Exception ignored) {}
