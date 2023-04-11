@@ -3,6 +3,8 @@
 /dist/
 /deploy/
 /tests/coverage/
+/tests/logs/
+/tests/data/
 
 /data/
 /logs/

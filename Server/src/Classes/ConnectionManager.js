@@ -178,7 +178,14 @@ class ConnectionManager extends EventEmitter {
 
 
 	disconnect() {
-		this.#webSocket.close(1001, "disconnect");
+		if (this.#webSocket !== undefined)
+			this.#webSocket.close(1001, "disconnect");
+		if (this.#sendRequestCallback !== undefined) {
+			if (typeof this.#sendRequestCallback === "function") {
+				this.#sendRequestCallback("{}");
+				this.#sendRequestCallback = undefined;
+			}
+		}
 	}
 	/**
 	 * @param {boolean} force

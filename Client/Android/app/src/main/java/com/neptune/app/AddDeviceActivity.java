@@ -229,8 +229,10 @@ public class AddDeviceActivity extends AppCompatActivity {
             dialog.dismiss();
             new Thread(() -> {
                 // Add server
-                hideOrShowImageButtonProgressBar(serverSyncButton, serverSyncProgress, false);
-                serverSyncIssueButton.setVisibility(View.GONE);
+                runOnUiThread(() -> {
+                    hideOrShowImageButtonProgressBar(serverSyncButton, serverSyncProgress, false);
+                    serverSyncIssueButton.setVisibility(View.GONE);
+                });
                 Log.i("AddDeviceActivity", "Adding  " + server.friendlyName);
                 boolean added = addServer(server);
 
@@ -238,8 +240,10 @@ public class AddDeviceActivity extends AppCompatActivity {
                     runOnUiThread(() -> showErrorMessage("Server added", server.friendlyName + " has successfully been paired."));
                     removeServer(server.serverId); // We added it, remove it!
                 } else {
-                    hideOrShowImageButtonProgressBar(serverSyncIssueButton, serverSyncProgress, true);
-                    serverSyncButton.setVisibility(View.GONE);
+                    runOnUiThread(() -> {
+                        hideOrShowImageButtonProgressBar(serverSyncIssueButton, serverSyncProgress, true);
+                        serverSyncButton.setVisibility(View.GONE);
+                    });
                 }
             }).start();
         };
@@ -262,8 +266,10 @@ public class AddDeviceActivity extends AppCompatActivity {
                 });
 
             } catch (Exception e) {
-                hideOrShowImageButtonProgressBar(serverSyncIssueButton, serverSyncProgress, true);
-                runOnUiThread(() -> serverSyncButton.setVisibility(View.GONE));
+                runOnUiThread(() -> {
+                    hideOrShowImageButtonProgressBar(serverSyncIssueButton, serverSyncProgress, true);
+                    serverSyncButton.setVisibility(View.GONE);
+                });
                 e.printStackTrace();
             }
         }).start();

@@ -331,7 +331,11 @@ class Client extends ClientConfig {
 			if (this.fileSharingSettings.enabled && this.fileSharingSettings.allowClientToUpload) {
 				let saveToDirectory = this.getReceivedFilesDirectory();
 				let fileUUIDPackage = global.Neptune.filesharing.newClientUpload(this, data["filename"], saveToDirectory);
-
+				if (fileUUIDPackage === undefined) {
+					this.log.error("Unable to accept incoming file " + data["filename"]);
+					return;
+				}
+				
 				this.log.info("Client request file upload, new fileUUID: " + fileUUIDPackage.fileUUID);
 				this.sendRequest("/api/v1/server/filesharing/upload/fileUUID", {
 					fileUUID: fileUUIDPackage.fileUUID,
@@ -660,9 +664,9 @@ class Client extends ClientConfig {
 	}
 
 
-	destroyConnectionManager() {
+	destroyConnectionManager(force) {
 		if (this.#connectionManager !== undefined)
-			this.#connectionManager.destroy();
+			this.#connectionManager.destroy(force);
 	}
 
 	delete() {
@@ -670,8 +674,9 @@ class Client extends ClientConfig {
 
 		setTimeout(() => {
 			try {
-				this.#connectionManager.destroy(true);
-				this.#notificationManager.destroy(true);
+				this.destroyConnectionManager(true);
+				if (this.#notificationManager != undefined)
+					this.#notificationManager.destroy(true);
 			} catch (err) {
 				this.log.error(err, false);
 			}

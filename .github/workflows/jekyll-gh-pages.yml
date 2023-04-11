@@ -38,7 +38,7 @@ jobs:
         with:
           source_dir: ./Server/src
           recurse: true
-          template: better-docs
+          template: minami
           output_dir: ./Documents/Dev/Server
           front_page: ./Server/Readme.md
       - name: Build with Jekyll

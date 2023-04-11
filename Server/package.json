@@ -24,9 +24,9 @@
     "start": "if exist NeptuneRunner\\build\\NeptuneRunner.exe ( start NeptuneRunner\\build\\NeptuneRunner.exe -neploc ./src/index.js ) else ( qode ./src/index.js )",
     "start-qode": "qode ./src/index.js",
     "debug": "webpack && tools\\fixBrokenBuildNames.bat && qode --inspect ./dist/index.js",
-    "test": "jest && echo Now running GUI tests && npm run test-gui",
-    "test-code": "jest --config=jest.config.js",
-    "test-gui": "qode ./node_modules/jest/bin/jest --config=jest-GUI.config.js --detectOpenHandles"
+    "test": "npm run test-code && echo Now running GUI tests && npm run test-gui",
+    "test-code": "jest --config=jest.config.js --runInBand",
+    "test-gui": "qode ./node_modules/jest/bin/jest --config=jest-GUI.config.js --detectOpenHandles --runInBand"
   },
   "homepage": "https://github.com/SCCapstone/Neptune",
   "dependencies": {
@@ -43,6 +43,7 @@
     "native-addon-loader": "^2.0.1",
     "node-loader": "^2.0.0",
     "node-notifier": "^10.0.1",
+    "supertest": "^6.3.3",
     "ts-loader": "^9.3.1",
     "typescript": "^4.8.2",
     "webpack": "^5.74.0",
