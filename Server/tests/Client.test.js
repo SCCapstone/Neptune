@@ -116,10 +116,12 @@ describe("Client (no API) tests", () => {
 
 // (client) API tests
 describe('Client API tests', () => {
-    const request = require('supertest');
+    const supertest = require('supertest');
     const { app, httpServer } = require("../src/Classes/ExpressApp.js");
     const NeptuneCrypto = require("../src/Support/NeptuneCrypto.js");
 
+    var request = null;
+    var server = null;
 
     var conInitUUIDs = {};
     var apiClientUUID = crypto.randomUUID();
@@ -183,7 +185,7 @@ describe('Client API tests', () => {
      * Fires off a request to the server
      */
     function sendClientAPIRequest(command, data) {
-        return request(app)
+        return request
             .post('/api/v1/server/socket/' + conInitUUIDs[conInitUUID].socketUUID + '/http')
             .send({
                 conInitUUID: conInitUUID,
@@ -191,6 +193,12 @@ describe('Client API tests', () => {
                 data: encryptServerRequest(data),
             });
     }
+
+
+    beforeAll((done) => {
+        server = app.listen(done);
+        request = supertest.agent(server);
+    });
 
     beforeEach(async () => {
         apiClientUUID = crypto.randomUUID(); // new UUID
@@ -214,7 +222,7 @@ describe('Client API tests', () => {
         });
         var step1ResponseBody = {};
 
-        const initiationStep1 = await request(app)
+        const initiationStep1 = await request
             .post('/api/v1/server/initiateConnection')
             .send(step1Data);
         step1ResponseBody = JSON.parse(initiationStep1.text);
@@ -241,7 +249,7 @@ describe('Client API tests', () => {
 
         var step2Request = generateStep2Request(step1ResponseBody, true); // Generate our response
         var step2ResponseBody = {};
-        const initiationStep2 = await request(app)
+        const initiationStep2 = await request
             .post('/api/v1/server/initiateConnection/' + conInitUUID)
             .send(step2Request);
         step2ResponseBody = initiationStep2.text;
@@ -277,6 +285,12 @@ describe('Client API tests', () => {
         await client.delete();
     });
 
+    afterAll((done) => {
+        setTimeout(() => {
+            server.close(done);
+        }, 5000);
+    });
+
     // should be connected!
     // verify echo endpoint
     test("echo endpoint: /api/v1/echo", async () => {
@@ -292,6 +306,36 @@ describe('Client API tests', () => {
         let responseData = JSON.parse(response.text);
         expect(responseData.command).toBe("/api/v1/echoed");
         expect(decryptServerResponse(responseData.data)).toMatchObject(echoData);
+    });
+
+    // pong emits ??
+    test("pong endpoint: /api/v1/server/pong", async () => {
+        const pongData = {
+            receivedAt: new Date().toISOString(),
+        }
+        pongData.timestamp = new Date(pongData.receivedAt);
+        pongData.timestamp.setSeconds(pongData.timestamp.getSeconds() + 5);
+
+
+        /** @type {Client} */
+        let client = global.Neptune.clientManager.getClient(apiClientUUID);
+        const eventSpy = jest.fn()
+        client.getConnectionManager().on('pong', (data) => {
+            eventSpy();
+
+            expect(data).toHaveProperty("receivedAt", pongData.receivedAt);
+            expect(data).toHaveProperty("timestamp", pongData.timestamp);
+            expect(data).toHaveProperty("timeNow");
+            console.log(data);
+        });
+
+        await new Promise((resolve, reject) => {
+            setTimeout(() => { resolve(true); }, 5000);
+        });
+
+        // 5 seconds has passed
+        let response = await sendClientAPIRequest("/api/v1/server/pong", pongData);
+        expect(eventSpy).toHaveBeenCalledTimes(1);
     });
 
 

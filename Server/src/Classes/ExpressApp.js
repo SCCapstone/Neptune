@@ -19,6 +19,11 @@ const NeptuneCrypto = require('../Support/NeptuneCrypto.js');
 
 const isWin = process.platform === "win32"; // Can change notification handling behavior
 
+/**
+ * Time to wait before ending HTTP requests (if the server never did it itself)
+ * @type {number}
+ */
+const autoKillRequestTimeout = (global.__TESTING !== undefined && global.__TESTING === true)? 5000 : 30000;
 
 /**
  * Web log
@@ -410,7 +415,7 @@ app.post('/api/v1/server/socket/:socketUUID/http', (req, res) => {
 				sentResponse = true;
 				res.status(200).send("{}");
 			}
-		}, 30000);
+		}, autoKillRequestTimeout);
 	} catch (e) {
 		global.Neptune.webLog.error(e, false);
 
