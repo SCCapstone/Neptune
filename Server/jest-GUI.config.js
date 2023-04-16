@@ -11,7 +11,7 @@ module.exports = {
   collectCoverage: false,
 
   // The directory where Jest should output its coverage files
-  coverageDirectory: "tests\\coverage",
+  coverageDirectory: "tests\\coverage-gui",
 
   // Indicates which provider should be used to instrument code for coverage
   coverageProvider: "v8",

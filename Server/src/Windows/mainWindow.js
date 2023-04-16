@@ -626,9 +626,9 @@ class thisTest extends NeptuneWindow {
 			this.actionView_connection_details.addEventListener('triggered', () => {
 				let selectedItem = this.GetSelectedClient();
 				if (selectedItem !== undefined && selectedItem.isConnected) {
-					let newConnectionDetails = this.newChildWindow('newConnectionDetails');
-					newConnectionDetails.setClient(selectedItem);
-					newConnectionDetails.show();
+					let connectionDetails = this.newChildWindow('ConnectionDetails');
+					connectionDetails.setClient(selectedItem);
+					connectionDetails.show();
 				} else if (!selectedItem.isConnected) {
 					let okayButton = new NodeGUI.QPushButton();
 					okayButton.setText("Okay");

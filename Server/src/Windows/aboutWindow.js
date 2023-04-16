@@ -9,11 +9,20 @@
  *     About Window
  */
 
+/**
+ * NodeGUI
+ */
 const NodeGUI = require("@nodegui/nodegui");
 const NeptuneWindow = require("./NeptuneWindow");
 
 
 class aboutWindow extends NeptuneWindow {
+
+    /**
+     * Close window button
+     * @type {NodeGUI.QPushButton}
+     */
+    btnClose;
 
 	constructor(arg) {
 		super(arg);

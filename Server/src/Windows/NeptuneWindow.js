@@ -1,12 +1,12 @@
 /**
- *      _  _ 
- *     | \| |
- *     | .` |
- *     |_|\_|eptune
+ *	  _  _ 
+ *	 | \| |
+ *	 | .` |
+ *	 |_|\_|eptune
  *
- *     Capstone Project 2022
+ *	 Capstone Project 2022
  * 
- *     Base Window
+ *	 Base Window
  */
 
 const NodeGUI = require("@nodegui/nodegui");
@@ -23,9 +23,16 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 
 	/**
 	 * A container of widgets added to this window (think labels, buttons). (widget name: the widget)
-	 * @type {object}
+	 * @deprecated
+	 * @type {Map<string, QWidget>}
 	 */
 	widgets = {}
+
+	/**
+	 * A container of child windows: windows opened by this window.
+	 * @type {Map<string, NeptuneWindow>}
+	 */
+	childWindows = {}
 
 	constructor(arg) {
 		super(arg);
@@ -45,12 +52,15 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 		this.setCentralWidget(this.widgets["centralWidget"]);
 
 		this.setWindowTitle('Neptune');
-		this.resize(800, 600);
+		this.resize(400, 250);
 
 		if (process.platform == 'win32') {
 			// This allows NeptuneRunner to fix the window's taskbar data
 			this.addEventListener(NodeGUI.WidgetEventTypes.Show, () => {
-				global.NeptuneRunnerIPC.pipe.write("fixwinhwnd" + this.winId() + "");
+				try {
+					if (global.NeptuneRunnerIPC !== undefined)
+						global.NeptuneRunnerIPC.pipe.write("fixwinhwnd" + this.winId() + "");
+				} catch {}
 			});
 		}
 	}
@@ -64,106 +74,49 @@ class NeptuneWindow extends NodeGUI.QMainWindow {
 	 */
 	newChildWindow(windowName, args) {
 		windowName.replace(/[^0-9a-zA-Z]/g, ""); // Remove anything not a digit or a character! This will be thrown at the filesystem!
-		if (this.widgets[windowName] !== undefined)
-			return this.widgets[windowName];
+		if (this.childWindows[windowName] !== undefined)
+			return this.childWindows[windowName];
 
 		let newWindow = new (require("./" + windowName + ".js"))(args);
 
-		this.widgets[windowName] = newWindow;
+		this.childWindows[windowName] = newWindow;
 
 		// newWindow.setParent(this); // puts the new window inside us...not what I was thinking?
+		// and no not like a window inside a window, the window's contents in OUR window (...)
 		return newWindow;
 	}
 
-	// Add functions for creating widgets (buttons, labels, etc) below
 
 	/**
-	 * Creates and adds a label to the window
-	 * @param {string} name Widget name of the label (used internally)
-	 * @param {string} [text = ""] Text the label is displaying
-	 * @returns {NodeGUI.QLabel}
+	 * Searches a widget with the given name.
+	 * @param {string} widgetName - The name of the widget to find.
+	 * @returns {QWidget|undefined} - The first widget found with the given name, or undefined if not found.
 	 */
-	createLabel(name, text) {
-		if (typeof name !== "string")
-			throw new TypeError("name expected string got " + (typeof name).toString());
+	getWidget(widgetName) {
+		// Check if the current widget matches the given name
+		let queue = this.children();
 
-		if (text !== undefined)
-			if (typeof text !== "string")
-				throw new TypeError("text expected string got " + (typeof text).toString());
+		while (queue.length > 0) {
+			let widget = queue.shift();
 
-		let label = new NodeGUI.QLabel();
-		label.setText(text);
+			// Check if the current widget matches the given name
+			if (widget && typeof widget.objectName === "function" && widget.objectName() === widgetName) {
+				return widget;
+			}
 
-		this.widgets[name] = label;
-		this.widgets["rootLayout"].addWidget(this.widgets[name]);
+			// Add any child widgets to the queue for processing
+			if (widget && widget.children) {
+				for (let i = 0; i < widget.children().length; i++) {
+					let childWidget = widget.children()[i];
+					if (!childWidget.objectName || typeof childWidget.objectName !== "function")
+						continue;
 
-		return this.widgets[name];
-	}
+					queue.push(childWidget);
+				}
+			}
+		}
 
-	/**
-	 * Creates and adds a button to the window
-	 * @param {string} name Widget name of the button (used internally)
-	 * @param {string} text the button is showing
-	 * @returns {NodeGUI.QPushButton}
-	 */
-	createButton(name, text) {
-		let button = new NodeGUI.QPushButton();
-		button.setText(text);
-		button.setObjectName(name);
-
-		this.widgets[name] = button;
-		this.widgets["rootLayout"].addWidget(this.widgets[name]);
-
-		return this.widgets[name];
-	}
-
-	/**
-	 * 
-	 * @param {string} name Widget name of the input
-	 * @returns {NodeGUI.QLineEdit} 
-	 */
-	createInput(name) {
-		let input = new NodeGUI.QLineEdit();
-		input.setObjectName(name);
-
-		this.widgets[name] = input;
-		this.widgets["rootLayout"].addWidget(this.widgets[name]);
-
-		return this.widgets[name];
-	}
-
-	/**
-	 * 
-	 * @param {string} checkBoxName Widget name of the check box (used internally)
-	 * @param {string} text The text after the check box
-	 * @returns {NodeGUI.QCheckBox}
-	 */
-	createCheckBox(name, text) {
-		const checkBox = new NodeGUI.QCheckBox();
-		checkBox.setObjectName(name);
-		checkBox.setText(text);
-
-		this.widgets[name] = checkBox;
-		this.widgets["rootLayout"].addWidget(this.widgets[name]);
-
-		return this.widgets[name];
-	}
-
-	addToWidgetList(name) {
-		this.widgets[name] = name;
-		this.widgets["rootLayout"].addWidget(this.widgets[name]);
-		return this.widgets[name];
-	}
-	// Getters
-	/**
-	 * 
-	 * @return {NodeGUI.QWidget}
-	 */
-	getWidget(name) {
-		if (typeof name !== "string")
-			throw new TypeError("name expected string got " + (typeof name).toString());
-
-		return this.widgets[name];
+		return undefined;
 	}
 }
 

@@ -4,7 +4,7 @@
  */
  
 module.exports = {
-  testTimeout: 30000, // API (HTTP) can take up to 30 seconds!
+  testTimeout: 15000, // API (HTTP) can take up to 5000ms before being force closed, but this lets us be nice
 
   // All imported modules in your tests should be mocked automatically
   // automock: false,
@@ -142,7 +142,7 @@ module.exports = {
   setupFilesAfterEnv: ["./tests/JestSetupEachTest.js"],
 
   // The number of seconds after which a test is considered as slow and reported as such in the results.
-  // slowTestThreshold: 5,
+  slowTestThreshold: 30,
 
   // A list of paths to snapshot serializer modules Jest should use for snapshot testing
   // snapshotSerializers: [],

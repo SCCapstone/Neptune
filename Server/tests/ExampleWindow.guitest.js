@@ -10,9 +10,8 @@ test('Example Window test', async () => {
 	// Brings up the about window, clicks the "close" button and confirms it is closed
 	let aboutWindow = new (require('../src/Windows/aboutWindow.js'))();
 	aboutWindow.show();
+	expect(aboutWindow.isVisible()).toBe(true);
 
-	let closeButton = aboutWindow.getWidget("closeWindowButton");
-	closeButton.click();
-	// Then
+	aboutWindow.getWidget("btnClose").click();
 	expect(aboutWindow.isVisible()).toBe(false);
 });

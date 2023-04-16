@@ -3,6 +3,7 @@
 /dist/
 /deploy/
 /tests/coverage/
+/tests/coverage-gui/
 /tests/logs/
 /tests/data/
 
