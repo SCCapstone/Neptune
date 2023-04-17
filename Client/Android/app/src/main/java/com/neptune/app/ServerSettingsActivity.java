@@ -264,6 +264,7 @@ public class ServerSettingsActivity extends AppCompatActivity {
         Intent filePickerIntent = new Intent(Intent.ACTION_GET_CONTENT);
         filePickerIntent.setType("*/*");
         filePickerIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        filePickerIntent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
         filePickerIntent.putExtra(Intent.EXTRA_TITLE, "Send a file to " + this.server.friendlyName + ".");
         filePickerLauncher.launch(filePickerIntent);
     }
