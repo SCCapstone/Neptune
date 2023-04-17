@@ -25,8 +25,8 @@
     "start-qode": "qode ./src/index.js",
     "debug": "webpack && tools\\fixBrokenBuildNames.bat && qode --inspect ./dist/index.js",
     "test": "npm run test-code && echo Now running GUI tests && npm run test-gui",
-    "test-code": "jest --config=jest.config.js --runInBand",
-    "test-gui": "qode ./node_modules/jest/bin/jest --config=jest-GUI.config.js --detectOpenHandles --runInBand"
+    "test-code": "jest --config=jest.config.js --coverage",
+    "test-gui": "qode ./node_modules/jest/bin/jest --config=jest-GUI.config.js --detectOpenHandles --runInBand --coverage"
   },
   "homepage": "https://github.com/SCCapstone/Neptune",
   "dependencies": {

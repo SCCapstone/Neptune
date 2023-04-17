@@ -512,6 +512,10 @@ let fileUUIDs = {};
 * @returns {string} The sanitized filename.
 */
 function sanitizeFilename(filename) {
+	if (filename === undefined || typeof filename !== "string") {
+		return "new_file";
+	}
+	
 	// Remove illegal characters
 	const sanitizedFilename = filename.replace(/[<>:"/\\|?*\x00-\x1F]/g, '');
 

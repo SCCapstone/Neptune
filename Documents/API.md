@@ -339,7 +339,7 @@ The server will save all files uploaded, _then_ follow the auto receive/prompt u
 Step one is generating this UUID:
 
 #### Generating a file UUID:
-Server endpoint: `/api/v1/server/filesharing/upload` -> `/api/v1/server/filesharing/upload/fileUUID`
+Server endpoint: `/api/v1/server/filesharing/upload/newFileUUID` -> `/api/v1/server/filesharing/upload/fileUUID`
 
 POST Data:
 ```json5
@@ -529,8 +529,8 @@ There are settings to prevent the other side from "stealing" clipboard data that
 On server, to allow the _client_ to request and get the clipboard data `client.clipboardSettings.allowClientToGet` must be true, otherwise we ignore the request.\
 On client, to allow the _server_ to request and get the clipboard data `server.clipboardSettings.allowServerToGet` must be true, otherwise we ignore the request.
 
-Server endpoint: `/api/v1/server/clipboard/request` -> `/api/v1/server/clipboard/data`\
-Client endpoint: `/api/v1/client/clipboard/request` -> `/api/v1/client/clipboard/data`
+Server endpoint: `/api/v1/server/clipboard/get` -> `/api/v1/server/clipboard/data`\
+Client endpoint: `/api/v1/client/clipboard/get` -> `/api/v1/client/clipboard/data`
 
 POST Data: (no data necessary)
 ```json5

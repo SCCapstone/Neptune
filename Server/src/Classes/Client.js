@@ -165,34 +165,39 @@ class Client extends ClientConfig {
 	 * @param {object} data
 	 */
 	#handleCommand(command, data) {
+		command = command.toLowerCase();
+
 		if (command == "/api/v1/echo") {
 			this.sendRequest("/api/v1/echoed", data);
 
 		} else if (command == "/api/v1/server/ping") {
-			let receivedAt = new Date(data["timestamp"]); // IN UTC
+			let receivedAt = new Date(data["timestamp"]);
+			let receivedAtUTC = new Date(receivedAt.getTime() + receivedAt.getTimezoneOffset() * 60000); // Adjusted to UTC
 			let now = new Date();
+			let nowUTC = new Date(now.getTime() + now.getTimezoneOffset() * 60000);
 
 			this.sendRequest("/api/v1/client/pong", {
 				receivedAt: data["timestamp"],
 				timestamp: now.toISOString() // becomes UTC
 			});
-			let elapsedTime = timeNow.getTime() - receivedAt.getTime();
+			let elapsedTime = nowUTC.getTime() - receivedAtUTC.getTime();
 			this.log.debug("Ping response time ~~: " + elapsedTime  + "ms");
 
 		} else if (command == "/api/v1/server/pong") {
 			let receivedAt = new Date(data["receivedAt"]); // time we sent the PING
+			let receivedAtUTC = new Date(receivedAt.getTime() + receivedAt.getTimezoneOffset() * 60000); // Adjusted to UTC
 			let timestamp = new Date(data["timestamp"]); // time client received the PING
 
 			let now = new Date();
 			let nowUTC = new Date(now.getTime() + now.getTimezoneOffset() * 60000);
-			let elapsedTime = nowUTC.getTime() - receivedAt.getTime();
+			let elapsedTime = nowUTC.getTime() - receivedAtUTC.getTime();
 			//let elapsedTime = (Math.random() * (0.1 - 0.001) + 0.001).toFixed(3);
 
 			this.log.debug("Pong response time: " + elapsedTime + "ms");
 			this.#connectionManager.emit('pong', {
 				receivedAt: receivedAt, // Time WE sent the ping request
 				timestamp: timestamp, // Time CLIENT replied
-				timeNow: nowUTC, // NOW
+				timeNow: now, // NOW
 				totalTime: elapsedTime/2, // One-way time (but actually RTT)
 				RTT: elapsedTime, // Round trip time
 			});
@@ -286,7 +291,7 @@ class Client extends ClientConfig {
 					this.log.silly(data);
 					Clipboard.setStandardizedClipboardData(data).then((success) => {
 						if (success)
-							this.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "success" });
+							this.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "okay" });
 						else
 							this.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "failed" });
 					}).catch((err) => {
@@ -320,13 +325,13 @@ class Client extends ClientConfig {
 					this.log.debug("Client requested clipboard data, sending.");
 					this.sendClipboard(true);
 				} else
-					this.sendRequest("/api/v1/server/data", { status: "getBlocked" });
+					this.sendRequest("/api/v1/server/clipboard/data", { status: "getBlocked" });
 			} else
-				this.sendRequest("/api/v1/server/data", { status: "clipboardSharingOff" });
+				this.sendRequest("/api/v1/server/clipboard/data", { status: "clipboardSharingOff" });
 		} else if (command == "/api/v1/client/clipboard/uploadStatus") {
 			this.clipboardModificationsLocked = false;
 
-		} else if (command == "/api/v1/server/filesharing/upload/newFileUUID") {
+		} else if (command == "/api/v1/server/filesharing/upload/newfileuuid") {
 			// Client is uploading a file.
 			if (this.fileSharingSettings.enabled && this.fileSharingSettings.allowClientToUpload) {
 				let saveToDirectory = this.getReceivedFilesDirectory();
@@ -467,12 +472,6 @@ class Client extends ClientConfig {
 	 * @return {void}
 	 */
 	sendClipboard(isResponse) {
-		Clipboard.getStandardizedClipboardData().then(clipboardData => {
-			try {
-				this.sendRequest("/api/v1/client/clipboard/set", clipboardData)
-			} catch (e) {}
-		});
-
 		let apiUrl = "/api/v1/client/clipboard/set"
 		if (isResponse)
 			apiUrl = "/api/v1/server/clipboard/data";
