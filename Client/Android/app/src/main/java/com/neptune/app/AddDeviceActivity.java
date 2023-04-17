@@ -1,15 +1,10 @@
 package com.neptune.app;
 
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-
-import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.net.nsd.NsdManager;
-import android.net.nsd.NsdServiceInfo;
 import android.os.Bundle;
+import android.text.InputFilter;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -20,9 +15,10 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.neptune.app.Backend.Exceptions.InvalidIPAddress;
-import com.neptune.app.Backend.Exceptions.TooManyEventListenersException;
-import com.neptune.app.Backend.Exceptions.TooManyEventsException;
 import com.neptune.app.Backend.IPAddress;
 import com.neptune.app.Backend.MDNSDiscoveryListener;
 import com.neptune.app.Backend.MDNSResolver;
@@ -112,6 +108,36 @@ public class AddDeviceActivity extends AppCompatActivity {
         final EditText nameField = view.findViewById(R.id.nameEdit);
         final EditText ipAddressField = view.findViewById(R.id.ipEdit);
 
+
+        InputFilter[] filters = new InputFilter[1];
+        filters[0] = new InputFilter() {
+            @Override
+            public CharSequence filter(CharSequence source, int start, int end,
+                                       android.text.Spanned dest, int dstart, int dend) {
+                if (end > start) {
+                    String destTxt = dest.toString();
+                    String resultingTxt = destTxt.substring(0, dstart)
+                            + source.subSequence(start, end)
+                            + destTxt.substring(dend);
+                    if (!resultingTxt
+                            .matches("^\\d{1,3}(\\.(\\d{1,3}(\\.(\\d{1,3}(\\.(\\d{1,3})?)?)?)?)?)?")) {
+                        return "";
+                    } else {
+                        String[] splits = resultingTxt.split("\\.");
+                        for (int i = 0; i < splits.length; i++) {
+                            if (Integer.valueOf(splits[i]) > 255) {
+                                return "";
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+
+        };
+        ipAddressField.setFilters(filters);
+
+
         builder.setView(view);
         builder.setTitle("Enter name")
                 .setPositiveButton("OK", (dialog, which) -> {
@@ -122,11 +148,21 @@ public class AddDeviceActivity extends AppCompatActivity {
                         ipAddressField.setText("");
 
                         Thread thread = new Thread(() -> {
-                            MDNSResolver.NeptuneService service = new MDNSResolver.NeptuneService();
-                            service.friendlyName = name;
-                            service.ipAddress = new IPAddress(ipAddress, 25560);
-                            service.serverId = UUID.randomUUID().toString();
-                            addServer(service);
+                            try {
+                                MDNSResolver.NeptuneService service = new MDNSResolver.NeptuneService();
+                                service.friendlyName = name;
+                                service.ipAddress = new IPAddress(ipAddress, 25560);
+                                service.serverId = UUID.randomUUID().toString();
+                                addServer(service);
+                            } catch (InvalidIPAddress ignored) {
+                                runOnUiThread( () ->
+                                        showErrorMessage("Invalid IP address", "Unable to add server, invalid IP address. Make sure to enter a valid IPv4 address.")
+                                );
+                            } catch (Exception e) {
+                                runOnUiThread( () ->
+                                        showErrorMessage("Unable to add server", "Error encountered pairing with new server: " + e.getMessage())
+                                );
+                            }
                         });
                         thread.setName("ServerAdder-" + name);
                         thread.start();
@@ -149,7 +185,11 @@ public class AddDeviceActivity extends AppCompatActivity {
             alertBuilder.setMessage(message);
             alertBuilder.setPositiveButton("Ok", okayListener);
             alertBuilder.create().show();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+            try {
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+            } catch (Exception ignored_2) {}
+        }
     }
     public void showErrorMessage(String title, String message) {
         showErrorMessage(title, message, (dialog, which) -> {
@@ -208,7 +248,7 @@ public class AddDeviceActivity extends AppCompatActivity {
             return; // already shown / added
         }
 
-        final View view = getLayoutInflater().inflate(R.layout.server_add_item_line, null);
+        View view = getLayoutInflater().inflate(R.layout.server_add_item_line, null);
 
         //public Config config
         TextView serverName = view.findViewById(R.id.server_name);
@@ -220,7 +260,7 @@ public class AddDeviceActivity extends AppCompatActivity {
 
         serverName.setText(server.friendlyName);
 
-        String infoTag = "";
+        String infoTag;
         infoTag = getString(R.string.server_add_item_info_tag_ip, server.ipAddress.toString()) + ", "
                 + getString(R.string.server_add_item_info_tag_version, server.version.toString());
         serverInfoTag.setText(infoTag);
@@ -254,9 +294,7 @@ public class AddDeviceActivity extends AppCompatActivity {
                     AlertDialog.Builder builder = new AlertDialog.Builder(AddDeviceActivity.this);
                     builder.setTitle("Pair Device")
                             .setMessage("Are you sure you want to pair with " + server.friendlyName + "?")
-                            .setPositiveButton("Pair", (dialog, which) -> {
-                                confirmationListener.onClick(dialog, which);
-                            })
+                            .setPositiveButton("Pair", confirmationListener)
                             .setNegativeButton("Cancel", (dialog, which) -> {
                                 // Do nothing, just close the dialog
                                 dialog.dismiss();

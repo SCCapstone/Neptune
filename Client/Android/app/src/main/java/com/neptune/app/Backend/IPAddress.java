@@ -7,6 +7,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class IPAddress {
+    public final static String IPv4_REGEX = "(\\d{1,2}|(0|1)\\" + "d{2}|2[0-4]\\d|25[0-5])";
+
     private String IPAddress;
     private int port;
 
@@ -26,13 +28,11 @@ public class IPAddress {
      * @param address proposed IP address
      * @return valid or not
      */
-    public boolean isValidIPAddress(String address) {
+    public static boolean isValidIPAddress(String address) {
         if (address.isEmpty())
             return false;
 
-        String ipSection = "(\\d{1,2}|(0|1)\\" + "d{2}|2[0-4]\\d|25[0-5])";
-
-        Pattern pattern = Pattern.compile(ipSection + "\\." + ipSection + "\\." + ipSection + "\\." + ipSection);
+        Pattern pattern = Pattern.compile(IPv4_REGEX + "\\." + IPv4_REGEX + "\\." + IPv4_REGEX + "\\." + IPv4_REGEX);
         Matcher matcher = pattern.matcher(address);
         return matcher.matches();
     }
@@ -42,7 +42,7 @@ public class IPAddress {
      * @param port proposed port
      * @return valid or not
      */
-    public boolean isValidPort(int port) {
+    public static boolean isValidPort(int port) {
         return (port > 1000 && port < 65535); // Update later with actual approved Android specs
     }
 

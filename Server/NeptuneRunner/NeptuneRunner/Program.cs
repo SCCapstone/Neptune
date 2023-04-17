@@ -184,13 +184,12 @@ namespace NeptuneRunner {
 
 
             // Find NeptuneServer
-            Console.Write("\t>searching for qode");
+            Console.WriteLine("\t>searching for qode");
             try {
                 while (ExePath == null) {
                     if (Directory.Exists(Path.Combine(WorkingDirectory, "dist")) || Directory.Exists(Path.Combine(WorkingDirectory, "src"))) {
                         if (File.Exists(Path.Combine(WorkingDirectory, "qode.exe")) && RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
                             ExePath = Path.Combine(WorkingDirectory, "qode.exe");
-
                         } else if (File.Exists(Path.Combine(WorkingDirectory, "qode")) && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
                             ExePath = Path.Combine(WorkingDirectory, "qode");
 
@@ -225,7 +224,13 @@ namespace NeptuneRunner {
                 }
             } catch (Exception) {
                 Console.WriteLine("Unable to find Neptune's \"dist\" or \"src\" folder.");
-                Console.Read();
+                Console.WriteLine("Please make sure that .\\src\\ is in the same folder as this application, or move this application to the root of NeptuneServer.");
+                Console.WriteLine();
+                if (!string.IsNullOrEmpty(WorkingDirectory))
+                    Console.WriteLine("Search path: " + WorkingDirectory);
+                Console.WriteLine();
+                Console.WriteLine("Press any key to exit.");
+                Console.ReadKey();
                 return;
             }
 
@@ -242,7 +247,7 @@ namespace NeptuneRunner {
                 Console.WriteLine("Search path: " + WorkingDirectory);
                 Console.WriteLine();
                 Console.WriteLine("Press any key to exit.");
-                Console.Read();
+                Console.ReadKey();
                 return;
             }
 
