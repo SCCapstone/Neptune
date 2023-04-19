@@ -58,10 +58,11 @@ public class ServerSettingsActivity extends AppCompatActivity {
 
 
     // Where the incoming files are save to
-    private Uri incomingFilesDirectoryUri;
+    public static Uri incomingFilesDirectoryUri;
 
     private ActivityResultLauncher<Intent> folderPickerLauncher;
     private ActivityResultLauncher<Intent> filePickerLauncher;
+    private ActivityResultLauncher<Intent> firstTimeFolderPickerLauncher;
 
     private ICallback updateSettingsCallback;
 
@@ -109,6 +110,24 @@ public class ServerSettingsActivity extends AppCompatActivity {
         Button btnSave = findViewById(R.id.server_settings_save);
         Button btnDelete = findViewById(R.id.server_settings_delete);
 
+        firstTimeFolderPickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK) {
+                        Intent data = result.getData();
+                        if ((data != null && data.hasExtra(Constants.EXTRA_SERVER_ID) && data.hasExtra(Constants.CHOOSE_FOLDER))) {
+                            txtFileSharingDestination.setText("Current destination: "+ server.filesharingSettings.receivedFilesDirectory);
+                            saveSettings();
+                        }
+                    }
+                }
+        );
+
+        if(server.filesharingSettings.receivedFilesDirectory==null) {
+            Intent chooseFileDestination = new Intent(ServerSettingsActivity.this, ChooseFileDestinationActivity.class);
+            chooseFileDestination.putExtra(Constants.EXTRA_SERVER_ID, serverId);
+            firstTimeFolderPickerLauncher.launch(chooseFileDestination);
+        }
 
         // Event listeners
         btnSendFile.setOnClickListener((view) -> openFilePickerToSendFileToServer());

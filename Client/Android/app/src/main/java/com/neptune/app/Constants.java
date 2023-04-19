@@ -5,6 +5,7 @@ import android.app.NotificationManager;
 public class Constants {
     public static final String RENAME_DIALOG_CLIENT_NAME = "client.name";
     public static final String EXTRA_SERVER_ID = "serverid";
+    public static final String CHOOSE_FOLDER = "destination";
 
     public static final String INCOMING_FILES_NOTIFICATION_CHANNEL_DESCRIPTION = "Incoming files notifications";
     public static final String INCOMING_FILES_NOTIFICATION_CHANNEL_NAME = "Incoming files";

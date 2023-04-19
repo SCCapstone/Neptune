@@ -23,6 +23,10 @@
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
         <activity
+            android:name=".ChooseFileDestinationActivity"
+            android:exported="false"
+            android:label="Set destination folder"/>
+        <activity
             android:name=".AddDeviceActivity"
             android:exported="false"
             android:label="Add device" />

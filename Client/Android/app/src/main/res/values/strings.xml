@@ -19,7 +19,6 @@
     <string name="server_add_item_info_tag_version">v%s</string>
 
 
-
     <!-- Permissions Screen Strings -->
     <string name="notification_permission_title">Notification Access Required</string>
     <string name="notification_permission_description">
@@ -36,6 +35,12 @@
     <string name="notification_permission_step5">5. Enable the &quot;Allow notification access&quot; switch.</string>
     <string name="notification_permission_step6">6. After enabling the setting, restart Neptune Client.</string>
 
+    <!-- Choosing File Destination Activity Strings -->
+    <string name="filechoosing_title">Choose a File Destination</string>
+    <string name="filechoosing_explanation">
+        You do not have a destination folder for incoming files from this server device saved.
+        The button below will open a dialog allowing you to choose an incoming folder, or create one and choose it.
+    </string>
 
     <!-- Server settings -->
     <string name="title_activity_server_settings">Server Settings</string>
