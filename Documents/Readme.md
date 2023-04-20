@@ -6,6 +6,10 @@ No active internet connection is required, all data is sent between the devices 
 
 _**Final demo video goes here**_
 
+<center>
+	<video src="https://user-images.githubusercontent.com/55852895/233226957-ef83ceb2-306a-4269-858b-2b1586e92638.mp4" height="500px"></video>
+</center>
+
 
 ## Authors
 [Will Amos](https://github.com/wmamos)\
