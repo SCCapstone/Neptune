@@ -8,10 +8,10 @@ _**Final demo video goes here**_
 
 
 ## Authors
-Will Amos\
-Ridge Johnson\
-Cody Newberry\
-Matthew Sprinkle
+[Will Amos](https://github.com/wmamos)\
+[Ridge Johnson](https://github.com/ridgetj)\
+[Cody Newberry](https://cnewb.co/)\
+[Matthew Sprinkle](https://github.com/Sprinklem)
 
 
 ---
@@ -45,7 +45,7 @@ Sending notifications: as of Android 13 applications must request permission to 
 
 Here's a video of setting up the client app:
 <center>
-	<video src="https://user-images.githubusercontent.com/55852895/230439492-05dfcfef-7aa6-4fc2-adee-77450d9b3b30.mp4"></video>
+	<video controls="true" src="https://user-images.githubusercontent.com/55852895/230439492-05dfcfef-7aa6-4fc2-adee-77450d9b3b30.mp4" height="500px"></video>
 </center>
 
 
@@ -82,7 +82,7 @@ The devices can, however, disable file sharing or clipboard sharing for the othe
 
 Here's a demo video:
 <center>
-	<video src="https://user-images.githubusercontent.com/55852895/230435879-1f880635-07e8-4623-b56b-c4fb06e0932e.mp4" height="500px"></video>
+	<video controls="true" src="https://user-images.githubusercontent.com/55852895/230435879-1f880635-07e8-4623-b56b-c4fb06e0932e.mp4" height="500px"></video>
 </center>
 
 
@@ -95,7 +95,7 @@ On first run each application sets the device name to the, well, device's name. 
 You can rename your devices, however, to whatever you want.\
 Here's a demo:
 <center>
-<video src="https://user-images.githubusercontent.com/55852895/230443093-c06f0be8-36b1-47c7-94d1-ed4881f7abb3.mp4" width="500px"></video>
+<video controls="true" src="https://user-images.githubusercontent.com/55852895/230443093-c06f0be8-36b1-47c7-94d1-ed4881f7abb3.mp4" width="650px"></video>
 </center>
 
 
@@ -112,7 +112,7 @@ Same applied to buttons, clicking (or activating) the notification and dismissin
 
 Here is a demo video of different notification types:
 <center>
-	<video src="https://user-images.githubusercontent.com/55852895/230439911-2c6dcee1-ff7c-4cbe-b9f5-098c3d139db7.mp4"></video>
+	<video controls="true" src="https://user-images.githubusercontent.com/55852895/230439911-2c6dcee1-ff7c-4cbe-b9f5-098c3d139db7.mp4" height="750px"></video>
 </center>
 
 
@@ -129,21 +129,21 @@ Server can automatically send the clipboard data whenever the clipboard is updat
 ### Demo using text data:
 _Plain text data._
 <center>
-	<video src="https://user-images.githubusercontent.com/55852895/230440586-534bd125-0d4e-4656-b1aa-b7070024bd65.mp4" width="500px"></video>
+	<video controls="true" src="https://user-images.githubusercontent.com/55852895/230440586-534bd125-0d4e-4656-b1aa-b7070024bd65.mp4" width="650px"></video>
 </center>
 
 
 ### Demo of the automatic clipboard setting for server:
 _Clipboard updates can include text, images, or HTML formatting data._
 <center>
-	<video src="https://user-images.githubusercontent.com/55852895/230440600-0b32ddab-13ec-473b-a376-f7dba72f7c15.mp4" width="500px"></video>
+	<video controls="true" src="https://user-images.githubusercontent.com/55852895/230440600-0b32ddab-13ec-473b-a376-f7dba72f7c15.mp4" width="650px"></video>
 </center>
 
 
 ### Demo of images in the clipboard:
 _Images received on the client are saved to the device's "pictures" folder._
 <center>
-	<video src="https://user-images.githubusercontent.com/55852895/230440615-3b39840b-33ef-44fd-b391-b95a1117e57f.mp4" width="500px"></video>
+	<video controls="true" src="https://user-images.githubusercontent.com/55852895/230440615-3b39840b-33ef-44fd-b391-b95a1117e57f.mp4" width="650px"></video>
 </center>
 
 
@@ -156,10 +156,10 @@ No limits are placed on files types, although files sizes are limited (at least 
 
 Here's a demo of sending files to the server:
 <center>
-	<video src="https://user-images.githubusercontent.com/55852895/230442604-b7ed3f8e-3857-42aa-82de-a4a7923da5c1.mp4" width="500px"></video>
+	<video controls="true" src="https://user-images.githubusercontent.com/55852895/230442604-b7ed3f8e-3857-42aa-82de-a4a7923da5c1.mp4" width="600px"></video>
 </center>
 
 And a demo of sending files to the client:
 <center>
-	<video src="https://user-images.githubusercontent.com/55852895/230442621-6b909714-3ab4-4649-93f1-1b1228426068.mp4" width="500px"></video>
+	<video controls="true" src="https://user-images.githubusercontent.com/55852895/230442621-6b909714-3ab4-4649-93f1-1b1228426068.mp4" width="600px"></video>
 </center>
