@@ -12,6 +12,7 @@ using Windows.UI.Notifications;
 using Microsoft.Toolkit.Uwp.Notifications;
 using NeptuneRunner.Notifications;
 using Windows.UI.Notifications.Management;
+using System.Linq;
 
 namespace NeptuneRunner {
     internal class Program {
@@ -26,7 +27,7 @@ namespace NeptuneRunner {
 
         public static Queue<string> IPCDataQueue = new Queue<string>(0);
 
-        public static ToastNotifierCompat ToastNotifier;
+        public static ToastNotifier ToastNotifier;
 
 
         #region Properties
@@ -262,15 +263,16 @@ namespace NeptuneRunner {
                 NotificationRegisty.RegisterAppForNotificationSupport(true); // Setup notification support
                                                                              //Notifications.NotificationActivator.Initialize(ToastActivated); // Initialize
 
-                ToastNotificationManagerCompat.OnActivated += ToastNotificationManagerCompat_OnActivated;
-                ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
+                //ToastNotificationManagerCompat.OnActivated += ToastNotificationManagerCompat_OnActivated;
+                Notifications.NotificationActivator.Initialize(ToastActivated);
+                ToastNotifier = ToastNotificationManager.CreateToastNotifier(TaskBar.ApplicationId);
             } catch (Exception) {
                 try {
                     ToastNotificationManagerCompat.Uninstall();
                     NotificationRegisty.UninstallShortcut();
 
                     NotificationRegisty.RegisterAppForNotificationSupport(true);
-                    ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
+                    ToastNotifier = ToastNotificationManager.CreateToastNotifier(TaskBar.ApplicationId);
                 } catch (Exception e) {
                     MessageBox.Show("Neptune was unable to register the ToastNotifier into Windows. Because of this, notifications quality will be degraded. "
                         + Environment.NewLine + "Restarting Neptune may help, but do make sure notifications are enabled for your system in the Settings app."
@@ -485,6 +487,10 @@ namespace NeptuneRunner {
                             notification.Contents.LoadFromJsonObject(contents);
                         }
 
+                        if (dataKeyValues.ContainsKey("notificationIcon")) {
+                            notification.SetIconUri(dataKeyValues["notificationIcon"]);
+                        }
+
                         if (notification.ActivatedHasListeners())
                             notification.Activated -= Notification_Activated;
                         notification.Activated += Notification_Activated;
@@ -508,7 +514,7 @@ namespace NeptuneRunner {
                         } else {
                             NotificationUpdateResult result = notification.Update();
                             if (result == NotificationUpdateResult.Failed || result == NotificationUpdateResult.NotificationNotFound) {
-                                notification.Delete();
+                                notification.Delete(false);
                                 notification.IsSilent = true;
                                 if (!notification.Push()) {
                                     throw new Exception();
@@ -552,9 +558,13 @@ namespace NeptuneRunner {
                 ActiveNotifications.Remove(sender.Group + "_" + sender.Tag);
             }
 
+            string tag = sender.Tag;
+            try {
+                tag = Encoding.UTF8.GetString(Convert.FromBase64String(tag));
+            } catch { }
             if (args.Reason == ToastDismissalReason.UserCanceled) {
                 Dictionary<string, string> data = new Dictionary<string, string>(3) {
-                    { "id", sender.Tag },
+                    { "id", tag },
                     { "clientId", sender.Group },
                     { "reason", "user" }
                 };
@@ -596,8 +606,12 @@ namespace NeptuneRunner {
                     break;
             }
 
+            string tag = sender.Tag;
+            try {
+                tag = Encoding.UTF8.GetString(Convert.FromBase64String(tag));
+            } catch { }
             Dictionary<string, string> data = new Dictionary<string, string>(4) {
-                { "id", sender.Tag },
+                { "id", tag },
                 { "clientId", sender.Group },
                 { "failureReason", reason },
                 { "failureMoreDetails", moreDetails }
@@ -629,15 +643,19 @@ namespace NeptuneRunner {
                 userInputText = Convert.ToBase64String(plainTextBytes);
             }
 
-            if (userInput.ContainsKey("comboBox")) {
-                var plainTextBytes = Encoding.UTF8.GetBytes(userInput["comboBox"] as string);
+            if (userInput.ContainsKey("combobox")) {
+                var plainTextBytes = Encoding.UTF8.GetBytes(userInput["combobox"] as string);
                 comboBoxSelectedItem = Convert.ToBase64String(plainTextBytes);
             }
 
+            string tag = sender.Tag;
+            try {
+                tag = Encoding.UTF8.GetString(Convert.FromBase64String(tag));
+            } catch { }
             // Add data for actions
             Dictionary<string, string> data = new Dictionary<string, string>(5)
             {
-                { "id", sender.Tag },
+                { "id", tag },
                 { "clientId", sender.Group },
             };
 
@@ -675,11 +693,41 @@ namespace NeptuneRunner {
             }
             if (e.UserInput.ContainsKey("textInput"))
                 data.Add("textboxText", e.UserInput["textInput"] as string);
-            if (e.UserInput.ContainsKey("comboBox"))
-                data.Add("comboBoxSelectedItem", e.UserInput["comboBox"] as string);
+            if (e.UserInput.ContainsKey("combobox"))
+                data.Add("comboBoxSelectedItem", e.UserInput["combobox"] as string);
 
             IPCDataQueue.Enqueue(IPC.KeyValuePairsToDataString("notify-activated", data));
             Console.WriteLine("[NeptuneRunner]: Toast activated. Args: " + e.Argument);
+        }
+
+        public static void ToastActivated(string appUserModelId, NotificationEventArgs eventArgs) {
+                Console.WriteLine("Notification activated... details as follows");
+                Console.WriteLine("appUserModeId: " + appUserModelId);
+
+            // Why is this being called when the app is open!!??
+            ToastArguments args = ToastArguments.Parse(eventArgs.LaunchArguments);
+            Dictionary<string, string> data = new Dictionary<string, string>(args.Count);
+            foreach (KeyValuePair<string, string> valuePair in args) {
+                data[valuePair.Key] = valuePair.Value;
+            }
+
+            if (args.Contains("action") && args["action"].Split('=').Length == 2) {
+                string buttonId = args["action"].Split('=')[1];
+                data.Add("buttonId", buttonId);
+            }
+            if (eventArgs.UserInput.ContainsKey("textInput"))
+                data.Add("textboxText", eventArgs.UserInput["textInput"] as string);
+            if (eventArgs.UserInput.ContainsKey("combobox"))
+                data.Add("comboBoxSelectedItem", eventArgs.UserInput["combobox"] as string);
+
+            try {
+                string tag = Encoding.UTF8.GetString(Convert.FromBase64String(eventArgs.Tag));
+                data.Add("id", tag);
+            } catch { }
+
+            IPCDataQueue.Enqueue(IPC.KeyValuePairsToDataString("notify-activated", data));
+            Console.WriteLine("[NeptuneRunner]: Toast activated. Args: " + eventArgs.LaunchArguments);
+
         }
 
 

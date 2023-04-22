@@ -45,7 +45,7 @@ global.Neptune = Neptune; // Anywhere down the chain you can use process.Neptune
  * Neptune version
  * @type {Version}
  */
-Neptune.version = new Version(0, 9, 0, ((debug)?"debug":"release"), "RC1");
+Neptune.version = new Version(1, 0, 0, ((debug)?"debug":"release"), "R1");
 
 
 // Type definitions

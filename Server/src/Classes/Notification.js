@@ -19,27 +19,6 @@ let EventEmitter = require("node:events");
 
 
 /**
- * For reason that would take way too long to explain, notifications do not work 100% on Windows
- * 
- * For your application to receive the "activate" or "dismissed" events from the Action Center you need to "install" your application ... 
- * which pretty much means adding a Start Menu icon and registering a COM object
- * 
- *  
- * I did this before in a .NET WPF application, and it took days! Might not be 100% possible in Node.JS because it would just open the Node.JS interpreter and not our application ..
- * miiiiight be possible if we have a small node script `notificationServer.js` that is called by the COM server (when you activate the notification) and then makes a HTTP request to us (server)
- * 
- * This will _eventually_ get implemented, but no where near in time for the PoC. I do not have that much time on my hands!
- * 
- * For now, we'll use the node-notifier script, which works up-until the notification "timesout" (no longer visible to the user, goes to the action center).
- * if anyone asks, it's a bug .. a pretty major one at that.
- * 
- * 
- * node-notifier, MIGHT, work since it does allow you to specify the appId, so notificationServer+node-notifier might be fine.
- * 
- */
-
-
-/**
  * Neptune
  */
 const Neptune = global.Neptune;
@@ -212,6 +191,7 @@ class Notification extends EventEmitter {
 
         let logger = this.#log;
         let maybeThis = this;
+        let name = this.#client.friendlyName;
         let pushNotification = function() { // Using notifier
             try {
                 // don't do media ones :!
@@ -242,8 +222,8 @@ class Notification extends EventEmitter {
                     }
                 }
 
-                maybeThis.#notifierNotification = Notifier.notify({
-                    title: maybeThis.data.title,
+                let notifierData = {
+                    title: name + maybeThis.data.title,
                     message: text,
                     id: maybeThis.data.notificationId,
 
@@ -251,12 +231,17 @@ class Notification extends EventEmitter {
 
                     actions: actions,
                     reply: false,
+                };
 
-                    //appID: "Neptune.Server.V1",
-                }, function(err, response, metadata) { // this is kinda temporary, windows gets funky blah blah blah read note at top
+                if (global.NeptuneRunnerIPC.pipeAuthenticated) {
+                    notifierData.appID = "Neptune.Server.V2"
+                }
+
+
+                maybeThis.#notifierNotification = Notifier.notify(notifierData, (err, response, metadata) => {
                     try {
-                        if (err || response === undefined) {
-                            logger.error("Possible error OR no response data, err: " + err + " -- response: " + response, false);
+                        if (err) {
+                            logger.error("Notifier error: " + err, false);
                             maybeThis.error();
                         } else {
                             let action = metadata.action === "dismissed"? "dismissed" : "activated";
@@ -348,6 +333,7 @@ class Notification extends EventEmitter {
             } catch (e) {
                 this.#log.error("Issue pushing notification via NeptuneRunner, error: " + e.message);
                 this.#log.debug(e);
+                pushNotification();
             }
         } else {
             pushNotification();

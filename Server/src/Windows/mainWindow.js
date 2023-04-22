@@ -21,6 +21,7 @@ const ClientManager = require("../Classes/ClientManager");
 
 const NepConfig = require('../Classes/NeptuneConfig.js');
 const { ServiceState } = require("@homebridge/ciao");
+const { randomUUID } = require("node:crypto");
 
 /** @type {NepConfig} */
 var NeptuneConfig = global.Neptune.config;
@@ -722,9 +723,9 @@ class thisTest extends NeptuneWindow {
 					action: 'create',
 					applicationPackage: 'com.neptune.server',
 					applicationName: 'NeptuneServer',
-					notificationId: '11223344550',
+					notificationId: 'mainwindow.testNotification',
 					title: 'Neptune Test',
-					type: 'standard',
+					type: 'text',
 
 					contents: {
 						text: 'This is a test notification. If you are seeing this, notifications are working!',
@@ -749,7 +750,7 @@ class thisTest extends NeptuneWindow {
 								"hintText": "Type a message...", // Unique to text box, the "hint"
 							},
 							{
-								"id": "textbox", // The 'name' of the action
+								"id": "combobox", // The 'name' of the action
 								"type": "combobox", // Button OR textbox OR combobox
 
 								"choices": [ // Choices the user gets
@@ -764,6 +765,37 @@ class thisTest extends NeptuneWindow {
 					onlyAlertOnce: false,
 					priority: "default",
 					isSilent: false,
+				});
+				notification.once('activate', (data) => {
+					try {
+						let button = "";
+						let textbox = "";
+						let combobox = "";
+						if (data.actionParameters !== undefined) {
+							if (data.actionParameters.id !== undefined) {
+								button = Buffer.from(data.actionParameters.id, "base64").toString("utf8");
+							}
+
+							if (data.actionParameters.text !== undefined) {
+								textbox = Buffer.from(data.actionParameters.text, "base64").toString("utf8");
+							}
+
+							if (data.actionParameters.comboBoxChoice !== undefined) {
+								combobox = Buffer.from(data.actionParameters.comboBoxChoice, "base64").toString("utf8");
+							}
+						}
+
+
+						this.displayMessageBox("Test notification activated", "The test notification was activated! Data:\n"
+							+ ((button !== "")? "Button clicked: " + button : "Notification clicked") + "\n"
+							+ ((textbox !== "")? "Entered text: " + textbox : "No text entered") + "\n"
+							+ ((combobox !== "")? "Combo box selection: " + combobox : "No combo box selection made."));
+					} catch (e) {
+						
+					}
+				});
+				notification.once('dismissed', () => {
+					this.displayMessageBox("Test notification dismissed", "The test notification was dismissed!");
 				});
 				notification.push();
 			});
@@ -1493,6 +1525,12 @@ class thisTest extends NeptuneWindow {
 					global.NeptuneRunnerIPC.pipe.write("fixwinhwnd" + this.winId() + "");
 				});
 			} catch (_) {}
+		}
+
+		if (buttons === undefined) {
+			let okayButton = new NodeGUI.QPushButton();
+			okayButton.setText("Okay");
+			buttons = [{ button: okayButton, buttonRole: NodeGUI.ButtonRole.AcceptRole }]
 		}
 
 		// Add custom buttons to the message box

@@ -127,6 +127,10 @@ namespace NeptuneRunner {
         public event TypedEventHandler<ToastNotification, ToastFailedEventArgs> Failed;
 
 
+        private string getTag() {
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(!string.IsNullOrEmpty(Id) ? Id : ClientId));
+        }
+
 
         public NeptuneNotification(string id, string title, string text) {
             Id = id;
@@ -199,7 +203,8 @@ namespace NeptuneRunner {
                 Directory.CreateDirectory(tempDirectory);
 
                 // Save the image
-                id = string.IsNullOrEmpty(Id) ? id : Id + "_" + id;
+                string tag = getTag();
+                id = string.IsNullOrEmpty(Id) ? id : tag + "_" + id;
                 string sanitizedId = string.Join("_", id.Split(Path.GetInvalidFileNameChars()));
                 string imagePath = Path.Combine(tempDirectory, $"{sanitizedId}.{fileType}");
                 ImageFormat imageFormat = ImageFormat.Bmp;
@@ -267,7 +272,6 @@ namespace NeptuneRunner {
             try {
                 _iconUri = SaveImageFromDataString(dataString, "icon");
             } catch (Exception) {
-
             }
         }
         /// <summary>
@@ -544,7 +548,8 @@ namespace NeptuneRunner {
                 Failed.Invoke(sender, args);
             };
 
-            toast.Tag = !string.IsNullOrEmpty(Id) ? Id : ClientId;
+            //toast.Tag = !string.IsNullOrEmpty(Id) ? Id : ClientId;
+            toast.Tag = getTag();
             toast.Group = ClientId;
             toast.SuppressPopup = IsSilent;
 
@@ -587,7 +592,7 @@ namespace NeptuneRunner {
             try {
                 if (Program.ToastNotifier == null) {
                     try {
-                        Program.ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
+                        Program.ToastNotifier = ToastNotificationManager.CreateToastNotifier(TaskBar.ApplicationId); //(TaskBar.ApplicationId);
                     } catch (Exception) {
                         // well
                         return false;
@@ -598,16 +603,12 @@ namespace NeptuneRunner {
                 ToastNotification toast = null;
                 try {
                     toast = GetToastNotification();
-
-
-                    IReadOnlyList <ToastNotification> history = ToastNotificationManagerCompat.History.GetHistory();
-                    // Check if the notification is already posted, is so update it
-                    if (toast.Tag != null && history.Any(n => n.Tag == toast.Tag)) {
-                        return Update() == NotificationUpdateResult.Succeeded;
-                    }
-
                     Program.ToastNotifier.Show(toast);
+                    //Console.WriteLine("[NeptuneRunner] PUSHED: " + toast.Tag);
                 } catch (Exception e) {
+                    if (e == null || e.HResult == -2143420155)
+                        return true;
+
                     if (e.Message.Contains("notification has already been posted")) {
                         if (Update() == NotificationUpdateResult.Succeeded) {
                             return true;
@@ -623,10 +624,13 @@ namespace NeptuneRunner {
                         }
                     } else {
                         // uh??
-                        ToastNotificationManagerCompat.History.Remove(toast.Tag, toast.Group);
-                        Program.ToastNotifier.Show(toast);
+                        try {
+                            ToastNotificationManagerCompat.History.Remove(toast.Tag, toast.Group);
+                            Program.ToastNotifier.Show(toast);
+                        } catch (Exception) {
+                            return false;
+                        }
                     }
-                    string breakPointa = e.Message;
                 }
             } catch (Exception) {
                 return false;
@@ -640,14 +644,14 @@ namespace NeptuneRunner {
             try {
                 if (Program.ToastNotifier == null) {
                     try {
-                        Program.ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
+                        Program.ToastNotifier = ToastNotificationManager.CreateToastNotifier(TaskBar.ApplicationId); //(TaskBar.ApplicationId);
                     } catch (Exception) {}
                 }
 
                 if (Type == NeptuneNotificationType.Progress) {
                     if (Contents.ProgressBarData.GetPrecentage() == 1) {
                         // Done!
-                        ToastNotificationManagerCompat.History.Remove(Id, ClientId);
+                        ToastNotificationManagerCompat.History.Remove(getTag(), ClientId);
                         return NotificationUpdateResult.Succeeded;
                     } else {
                         var data = new NotificationData {
@@ -656,10 +660,10 @@ namespace NeptuneRunner {
                         _updateIncrementor++;
 
                         data.Values["progressValue"] = Contents.ProgressBarData.GetPrecentage().ToString();
-                        return Program.ToastNotifier.Update(data, Id, ClientId);
+                        return Program.ToastNotifier.Update(data, getTag(), ClientId);
                     }
                 } else {
-                    return Program.ToastNotifier.Update(GetToastNotification().Data, Id, ClientId);
+                    return Program.ToastNotifier.Update(GetToastNotification().Data, Id, ClientId); // for whatever reason Id must stay Id!
                 }
             } catch (Exception) {
                 return NotificationUpdateResult.Failed;
@@ -677,11 +681,13 @@ namespace NeptuneRunner {
             }
         }
 
-        public void Delete() {
+        public void Delete(bool deleteImages = true) {
             try {
-                ToastNotificationManagerCompat.History.Remove(Id, ClientId);
+                ToastNotificationManagerCompat.History.Remove(getTag(), ClientId);
 
-                DeleteImages();
+                if (deleteImages) {
+                    DeleteImages();
+                }
             } catch (Exception) { }
         }
     }

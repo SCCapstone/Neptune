@@ -48,8 +48,8 @@ namespace NeptuneRunner {
     }
 
     internal static class TaskBar {
-        public static readonly string ApplicationId = "Neptune.Server.V1";
-        public static readonly string ApplicationName = "Neptune";
+        public static readonly string ApplicationId = "Neptune.Server.V2";
+        public static readonly string ApplicationName = "Neptune Server";
 
         [DllImport("shell32.dll")]
         public static extern int SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string AppID);

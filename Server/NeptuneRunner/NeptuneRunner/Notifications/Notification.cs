@@ -16,7 +16,7 @@ namespace NeptuneRunner.Notifications {
             if (!File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Microsoft\\Windows\\Start Menu\\Programs\\" + TaskBar.ApplicationName + ".lnk") || force) {
                 string exePath = Process.GetCurrentProcess().MainModule.FileName;
                 InstallShortcut(exePath);
-                //RegisterComServer(exePath);
+                RegisterComServer(exePath);
             }
         }
 
@@ -24,7 +24,7 @@ namespace NeptuneRunner.Notifications {
         /// Registers the COM server for the running program
         /// </summary>
         /// <param name="exePath">The current path of the running program</param>
-        /*private static void RegisterComServer(string exePath) {
+        private static void RegisterComServer(string exePath) {
             // We register the app process itself to start up when the notification is activated, but
             // other options like launching a background process instead that then decides to launch
             // the UI as needed.
@@ -39,12 +39,12 @@ namespace NeptuneRunner.Notifications {
                         //subkeyClsGuid.SetValue("DisplayName", "Neptune Notification Handler");
 
                         using (RegistryKey subkeyLocalServer32 = subkeyClsGuid.CreateSubKey("LocalServer32")) {
-                            subkeyLocalServer32.SetValue(null, exePath + " /ToastActivated");
+                            subkeyLocalServer32.SetValue(null, exePath);
                         }
                     }
                 }
             }
-        }*/
+        }
 
         /// <summary>
         /// Install the applications shortcut into the start menu for notification support
@@ -64,12 +64,12 @@ namespace NeptuneRunner.Notifications {
             varAppId.SetValue(TaskBar.ApplicationId);
             newShortcutProperties.SetValue(PROPERTYKEY.AppUserModel_ID, varAppId.Propvariant);
 
-            /*PropVariantHelper varToastId = new PropVariantHelper {
+            PropVariantHelper varToastId = new PropVariantHelper {
                 VarType = VarEnum.VT_CLSID
             };
-            varToastId.SetValue(typeof(NotificationActivator).GUID);*/
+            varToastId.SetValue(typeof(NotificationActivator).GUID);
 
-            //newShortcutProperties.SetValue(PROPERTYKEY.AppUserModel_ToastActivatorCLSID, varToastId.Propvariant);
+            newShortcutProperties.SetValue(PROPERTYKEY.AppUserModel_ToastActivatorCLSID, varToastId.Propvariant);
 
             // Commit the shortcut to disk
             IPersistFile newShortcutSave = (IPersistFile)newShortcut;
