@@ -48,7 +48,7 @@ class Clipboard {
 			case 'FreeBSD':
 				return this.getUnixClipboardData();
 			case 'Darwin':
-				return this.getMacOSClipboardData();
+				// return this.getMacOSClipboardData();
 			default:
 				throw new Error('Unsupported platform');
 		}
@@ -257,34 +257,34 @@ class Clipboard {
 	 * 
 	 * @return {Promise<Object>} The contents of the clipboard.
 	 */
-	static getMacOSClipboardData() {
-		// haven't _actually_ checked this!
-		return new Promise((resolve, reject) => {
-			exec('pbpaste -pboard general -Prefer txt', (error, stdout, stderr) => {
-				if (error || stderr) {
-					reject(error);
-					return;
-				}
+	// static getMacOSClipboardData() {
+	// 	// haven't _actually_ checked this!
+	// 	return new Promise((resolve, reject) => {
+	// 		exec('pbpaste -pboard general -Prefer txt', (error, stdout, stderr) => {
+	// 			if (error || stderr) {
+	// 				reject(error);
+	// 				return;
+	// 			}
 
-				let formats = stdout.trim().split('\n');
-				let data = {};
-				let count = 0;
-				formats.forEach((format) => {
-					exec(`pbpaste -pboard general -Prefer ${format} | base64`, (err, stdout, stderr) => {
-						if (!err) {
-							if (stdout)
-								data[format] = stdout.trim();
-						}
+	// 			let formats = stdout.trim().split('\n');
+	// 			let data = {};
+	// 			let count = 0;
+	// 			formats.forEach((format) => {
+	// 				exec(`pbpaste -pboard general -Prefer ${format} | base64`, (err, stdout, stderr) => {
+	// 					if (!err) {
+	// 						if (stdout)
+	// 							data[format] = stdout.trim();
+	// 					}
 
-						count++;
-						if (count === formats.length) {
-							resolve(data);
-						}
-					});
-				});
-			});
-		});
-	}
+	// 					count++;
+	// 					if (count === formats.length) {
+	// 						resolve(data);
+	// 					}
+	// 				});
+	// 			});
+	// 		});
+	// 	});
+	// }
 
 	/**
 	 * Get the contents of the clipboard in Windows using PowerShell.
@@ -572,7 +572,7 @@ Exit
 			case 'FreeBSD':
 				return this.setUnixClipboardData(clipboardData);
 			case 'Darwin':
-				return this.setMacOSClipboardData(clipboardData);
+				// return this.setMacOSClipboardData(clipboardData);
 			default:
 				throw new Error('Unsupported platform');
 		}

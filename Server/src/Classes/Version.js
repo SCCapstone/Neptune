@@ -42,24 +42,34 @@ class Version {
 	 * @param {string} [metaData = ""] Build meta data
 	 */
 	constructor(major, minor, patch, label, metaData) {
+		if (major === undefined && minor === undefined && patch === undefined && label === undefined && metaData === undefined)
+			return;
+
+
 		if (typeof major === "string" && minor == undefined) {
 			let ver = major.match(/^([0-9]|[1-9][0-9]*)\.([0-9]|[1-9][0-9]*)\.([0-9]|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/);
 			if (ver == null)
 				throw new Error(major + " is not a valid semantic version string.");
 
-			this.major = ver[1];
-			this.minor = ver[2];
-			this.patch = ver[3];
+			this.major = parseInt(ver[1]);
+			this.minor = parseInt(ver[2]);
+			this.patch = parseInt(ver[3]);
 			this.prerelease = ver[4];
 			this.metaData = ver[5];
 			return;
 		}
 
-		if (typeof major !== "number" && typeof major !== "string")
+		function isNumberOrValidString(value) {
+			if (typeof value === 'number') return true;
+			if (typeof value !== 'string') return false;
+			return !isNaN(value);
+		}
+
+		if (!isNumberOrValidString(major))
 			throw new TypeError("major expected number|string not " + (typeof major).toString())
-		if (typeof minor !== "number" && typeof minor !== "string")
+		if (!isNumberOrValidString(minor))
 			throw new TypeError("minor expected number|string not " + (typeof minor).toString())
-		if (typeof patch !== "number" && typeof patch !== "string")
+		if (!isNumberOrValidString(patch))
 			throw new TypeError("patch expected number|string not " + (typeof patch).toString())
 
 		if (label != undefined)

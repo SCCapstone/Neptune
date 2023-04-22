@@ -419,70 +419,70 @@ NeptuneCrypto.isEncrypted = function(data) {
  * @param {(string|number)} [key] Encryption key to use. If none provided, a random string of length 128 (or if an number provided, a string of that length) is used.
  * @param {boolean} [testAllHashes = false] Very dangerous. Runs the tests for all supported ciphers AND hashing algorithms (a lot). Expect ~495 tests :)
  */
-NeptuneCrypto.testEncryption = function(simplePassFail, msg, key, testAllHashes) {
-	if (typeof msg === "number")
-		msg = NeptuneCrypto.randomString(msg);
-	if (typeof key === "number")
-		key = NeptuneCrypto.randomString(key);
+// NeptuneCrypto.testEncryption = function(simplePassFail, msg, key, testAllHashes) {
+// 	if (typeof msg === "number")
+// 		msg = NeptuneCrypto.randomString(msg);
+// 	if (typeof key === "number")
+// 		key = NeptuneCrypto.randomString(key);
 
-	if (typeof msg !== "string" || msg === undefined)
-		msg = NeptuneCrypto.randomString(256);
-	if (typeof key !== "string" || key === undefined)
-		key = NeptuneCrypto.randomString(128);
+// 	if (typeof msg !== "string" || msg === undefined)
+// 		msg = NeptuneCrypto.randomString(256);
+// 	if (typeof key !== "string" || key === undefined)
+// 		key = NeptuneCrypto.randomString(128);
 
 
-	var testedHashes = {}
-	var allPassed = true;
-	var executionTimeAverage = 0;
-	var timesRan = 0;
+// 	var testedHashes = {}
+// 	var allPassed = true;
+// 	var executionTimeAverage = 0;
+// 	var timesRan = 0;
 
-	function runWithHash(hash) {
-		let testedAlgorithms = {}
-		for (const [oKey, oValue] of Object.entries(encryptionCipherKeyLengths)) {
-			// start timer
-			let hrstart = process.hrtime();
-			let encryptedValue = NeptuneCrypto.encrypt(msg, key, undefined, { hashAlgorithm: hash, cipherAlgorithm: oKey });
-			let decryptedValue = NeptuneCrypto.decrypt(encryptedValue, key);
-			let exeTime = process.hrtime(hrstart);
-			// end timer
+// 	function runWithHash(hash) {
+// 		let testedAlgorithms = {}
+// 		for (const [oKey, oValue] of Object.entries(encryptionCipherKeyLengths)) {
+// 			// start timer
+// 			let hrstart = process.hrtime();
+// 			let encryptedValue = NeptuneCrypto.encrypt(msg, key, undefined, { hashAlgorithm: hash, cipherAlgorithm: oKey });
+// 			let decryptedValue = NeptuneCrypto.decrypt(encryptedValue, key);
+// 			let exeTime = process.hrtime(hrstart);
+// 			// end timer
 
-			let valid = (decryptedValue == msg);
-			testedAlgorithms[oKey] = {
-				//encryptedValue: encryptedValue,
-				valid: valid,
-				executionTime: (exeTime[1]/1000000)
-			}
-			executionTimeAverage += (exeTime[1]/1000000);
-			timesRan += 1;
+// 			let valid = (decryptedValue == msg);
+// 			testedAlgorithms[oKey] = {
+// 				//encryptedValue: encryptedValue,
+// 				valid: valid,
+// 				executionTime: (exeTime[1]/1000000)
+// 			}
+// 			executionTimeAverage += (exeTime[1]/1000000);
+// 			timesRan += 1;
 
-			if (!valid) {
-				allPassed = false;
-			}
-		}
-		return testedAlgorithms
-	}
+// 			if (!valid) {
+// 				allPassed = false;
+// 			}
+// 		}
+// 		return testedAlgorithms
+// 	}
 
-	if (testAllHashes === true) {
-		let supportedHashes = crypto.getHashes();
-		for (var i = 0; i<supportedHashes.length; i++) {
-			try {
-				testedHashes[supportedHashes[i]] = runWithHash(supportedHashes[i]);
-			} catch (e) {}
-		}
-	} else {
-		testedHashes = runWithHash();
-	}
+// 	if (testAllHashes === true) {
+// 		let supportedHashes = crypto.getHashes();
+// 		for (var i = 0; i<supportedHashes.length; i++) {
+// 			try {
+// 				testedHashes[supportedHashes[i]] = runWithHash(supportedHashes[i]);
+// 			} catch (e) {}
+// 		}
+// 	} else {
+// 		testedHashes = runWithHash();
+// 	}
 
-	if (simplePassFail) {
-		console.log("Runs: " + timesRan);
-		console.log("Total time: " + (executionTimeAverage) + "ms");
-		console.log("Average time: " + (executionTimeAverage/timesRan) + "ms");
-	}
-	else
-		testedHashes["averageExecutionTime"] = executionTimeAverage/timesRan;
+// 	if (simplePassFail) {
+// 		console.log("Runs: " + timesRan);
+// 		console.log("Total time: " + (executionTimeAverage) + "ms");
+// 		console.log("Average time: " + (executionTimeAverage/timesRan) + "ms");
+// 	}
+// 	else
+// 		testedHashes["averageExecutionTime"] = executionTimeAverage/timesRan;
 
-	return (simplePassFail === true)? allPassed : testedHashes;
-}
+// 	return (simplePassFail === true)? allPassed : testedHashes;
+// }
 
 
 

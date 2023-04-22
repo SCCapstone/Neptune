@@ -172,3 +172,91 @@ test('NeptuneCrypto: can catch wrong key', () => {
 		NeptuneCrypto.decrypt(cipherText);
 	}).toThrow(NeptuneCrypto.Errors.MissingDecryptionKey);
 });
+
+
+
+//--
+
+test('NeptuneCrypto: AES-128-GCM with 16-byte key', () => {
+	let key = '1234567890123456';
+	let encrypted = NeptuneCrypto.encrypt("This is a sample message", key, null, {
+		cipherAlgorithm: "aes-128-gcm"
+	});
+
+	expect(NeptuneCrypto.decrypt(encrypted, key)).toBe("This is a sample message");
+});
+
+test('NeptuneCrypto: AES-256-GCM with 32-byte key', () => {
+	let key = '12345678901234567890123456789012';
+	let encrypted = NeptuneCrypto.encrypt("This is a sample message", key, null, {
+		cipherAlgorithm: "aes-256-gcm"
+	});
+
+	expect(NeptuneCrypto.decrypt(encrypted, key)).toBe("This is a sample message");
+});
+
+test('NeptuneCrypto: ChaCha20-Poly1305 with 32-byte key', () => {
+	let key = '12345678901234567890123456789012';
+	let encrypted = NeptuneCrypto.encrypt("This is a sample message", key, null, {
+		cipherAlgorithm: "chacha20-poly1305"
+	});
+
+	expect(NeptuneCrypto.decrypt(encrypted, key)).toBe("This is a sample message");
+});
+
+test('NeptuneCrypto: AES-256-GCM with 12-byte IV', () => {
+	let key = '12345678901234567890123456789012';
+	let iv = '123456789012';
+	let encrypted = NeptuneCrypto.encrypt("This is a sample message", key, iv, {
+		cipherAlgorithm: "aes-256-gcm"
+	});
+
+	expect(NeptuneCrypto.decrypt(encrypted, key, iv)).toBe("This is a sample message");
+});
+
+test('NeptuneCrypto: AES-128-GCM with 8-byte IV', () => {
+	let key = '1234567890123456';
+	let iv = '12345678';
+	let encrypted = NeptuneCrypto.encrypt("This is a sample message", key, iv, {
+		cipherAlgorithm: "aes-128-gcm"
+	});
+
+	expect(NeptuneCrypto.decrypt(encrypted, key, iv)).toBe("This is a sample message");
+});
+
+test('NeptuneCrypto: ChaCha20-Poly1305 with 24-byte IV', () => {
+	let key = '12345678901234567890123456789012';
+	let iv = '123456789012345678901234';
+	let encrypted = NeptuneCrypto.encrypt("This is a sample message", key, iv, {
+		cipherAlgorithm: "chacha20-poly1305"
+	});
+
+	expect(NeptuneCrypto.decrypt(encrypted, key, iv)).toBe("This is a sample message");
+});
+
+describe('NeptuneCrypto: HKDF with different hashing algorithms', () => {
+  const secret = '1234';
+  const salt = '(*)jugm)OA=]BA+>_j>} -B(=K[tbK]+';
+  const length = 32;
+
+  test('SHA256', () => {
+    const key1 = NeptuneCrypto.HKDF(secret, salt, { length, hashAlgorithm: 'sha256' });
+    const key2 = NeptuneCrypto.HKDF(secret, salt, { length, hashAlgorithm: 'sha256' });
+
+    expect(key1.key).toEqual(key2.key);
+  });
+
+  test('SHA384', () => {
+    const key1 = NeptuneCrypto.HKDF(secret, salt, { length, hashAlgorithm: 'sha384' });
+    const key2 = NeptuneCrypto.HKDF(secret, salt, { length, hashAlgorithm: 'sha384' });
+
+    expect(key1.key).toEqual(key2.key);
+  });
+
+  test('SHA512', () => {
+    const key1 = NeptuneCrypto.HKDF(secret, salt, { length, hashAlgorithm: 'sha512' });
+    const key2 = NeptuneCrypto.HKDF(secret, salt, { length, hashAlgorithm: 'sha512' });
+
+    expect(key1.key).toEqual(key2.key);
+  });
+});

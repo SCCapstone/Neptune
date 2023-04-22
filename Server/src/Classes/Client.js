@@ -165,6 +165,8 @@ class Client extends ClientConfig {
 	 * @param {object} data
 	 */
 	#handleCommand(command, data) {
+		if (command === undefined)
+			return;
 		command = command.toLowerCase();
 
 		if (command == "/api/v1/echo") {
@@ -657,16 +659,6 @@ class Client extends ClientConfig {
 			return false
 	}
 
-	/**
-	 * This will pair with a client, generating the required pairId and pairKey
-	 */
-	pair() {
-		if (this.#connectionManager !== undefined)
-			this.#connectionManager.pair();
-		client.saveSync();
-	}
-
-
 	destroyConnectionManager(force) {
 		if (this.#connectionManager !== undefined)
 			this.#connectionManager.destroy(force);
@@ -684,10 +676,18 @@ class Client extends ClientConfig {
 				this.log.error(err, false);
 			}
 			finally {
-				this.eventEmitter.emit('deleted');
-				global.Neptune.clientManager.dropClient(this);
+				try {
+					if (this.eventEmitter !== undefined)
+						this.eventEmitter.emit('deleted');
+
+					if (global.Neptune.clientManager !== undefined)
+						global.Neptune.clientManager.dropClient(this);
+				} catch {}
+
 				super.delete();
-				this.log.warn("Deleted");
+
+				if (this.log !== undefined)
+					this.log.warn("Deleted");
 			}
 		}, 500);
 	}

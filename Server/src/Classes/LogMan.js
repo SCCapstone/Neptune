@@ -379,6 +379,7 @@ class LogMan extends EventEmitter {
 			throw new TypeError("logFolder expected string got " + (typeof logFolder).toString());
 
 		this.#logFileName = logFolder + "/" + logName + ".log";
+		this.#logName = logName;
 
 		// Make log directory
 		if (fs.existsSync(logFolder) === true) { // Exists
@@ -450,6 +451,11 @@ class LogMan extends EventEmitter {
 				this.consoleSufix = options.consoleSufix;
 			if (typeof options.consolePrefix === "string")
 				this.consolePrefix = options.consolePrefix;
+
+			if (typeof options.fileSufix === "string")
+				this.fileSufix = options.fileSufix;
+			if (typeof options.filePrefix === "string")
+				this.filePrefix = options.filePrefix;
 
 			if (typeof options.fileLineTerminator === "boolean")
 				this.fileLineTerminator = options.fileLineTerminator;

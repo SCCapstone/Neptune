@@ -122,11 +122,15 @@ class ConfigurationManager {
 				this.#log.debug("Loading config: " + configName);
 			}
 
-			var configItem;
-			if (configClass !== undefined)
-				configItem = new configClass(this, path);
-			else
-				configItem = new ConfigItem(this, path);
+			try {
+				var configItem;
+				if (configClass !== undefined)
+					configItem = new configClass(this, path);
+				else
+					configItem = new ConfigItem(this, path);
+			} catch {
+				return;
+			}
 			this.#cachedItems.set(path, configItem);
 
 

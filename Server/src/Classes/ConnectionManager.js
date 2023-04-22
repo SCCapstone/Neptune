@@ -167,10 +167,6 @@ class ConnectionManager extends EventEmitter {
 		return this.hasNegotiated;
 	}
 
-
-	pair() {
-		// yes
-	}
 	unpair() {
 		this.sendRequest("/api/v1/client/unpair", {});
 	}

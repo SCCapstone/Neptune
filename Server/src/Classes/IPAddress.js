@@ -28,14 +28,24 @@ class IPAddress {
 			let split = address.split(":");
 			if (split.length == 2) {
 				address = split[0];
+
 				port = split[1];
+				if (/^\d+$/.test(port))
+					port = parseInt(port);
+				else
+					port = undefined;
 			}
 		}
 
 		if (this.isValidIPAddress(address))
 			this.#IPAddress = address;
+		else if (address !== undefined)
+			throw new Error("Invalid IP address");
+
 		if (this.isValidPort(port))
 			this.#port = port;
+		else if (port !== undefined)
+			throw new Error("Invalid port");
 	}
 
 	/**
@@ -45,18 +55,18 @@ class IPAddress {
 	 */
 	isValidIPAddress(address) {
 		if (typeof address !== "string")
-			throw new TypeError("address expected string got " + (typeof address).toString());
+			return false
 		return /^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$/.test(address);
 	}
 
 	/**
 	 * This checks if the port number is valid
-	 * @param {int} port 
+	 * @param {(string|number)} port 
 	 * @return {boolean}
 	 */
 	isValidPort(port) {
-		if (typeof port !== "string")
-			throw new TypeError("port expected string got " + (typeof port).toString());
+		if (typeof port !== "number" && typeof port !== "string")
+			return false
 		return (port > 1000 && port < 65535);
 	}
 
