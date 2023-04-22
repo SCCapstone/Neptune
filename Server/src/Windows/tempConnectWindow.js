@@ -11,6 +11,8 @@
 
 const NodeGUI = require("@nodegui/nodegui");
 const NeptuneWindow = require("./NeptuneWindow");
+const os = require('os');
+
 
 
 class tempConnectWindow extends NeptuneWindow {
@@ -30,34 +32,54 @@ class tempConnectWindow extends NeptuneWindow {
             step1Label.setObjectName("step1Label");
             step1Label.setGeometry(10, 50, 650, 24);
             let font = new NodeGUI.QFont();
-            font.setPointSize(12);
-            font.setBold(false);
-            font.setWeight(75);
+            // font.setPointSize(12);
+            // font.setBold(false);
+            // font.setWeight(75);
             step1Label.setFont(font);
             step1Label.setText("Step1: Open the android app while the desktop app is open.")
 
             let step2Label = new NodeGUI.QLabel(centralwidget);
             step2Label.setObjectName("step2Label");
-            step2Label.setGeometry(10, 90, 650, 24);
+            step2Label.setGeometry(10, 75, 650, 24);
             step2Label.setFont(font);
             step2Label.setText("Step 2: Tap \"Add New Device\" and fill in your IP Address.");
             
             let step3Label = new NodeGUI.QLabel(centralwidget);
             step3Label.setObjectName("step3Label");
-            step3Label.setGeometry(10, 130, 650, 24);
+            step3Label.setGeometry(10, 100, 650, 24);
             step3Label.setFont(font);
             step3Label.setText("Devices on the same network should connect automatically.");
 
+            var ips = [];
+            try {
+                var networkInterfaces = os.networkInterfaces();
+                let interfaceNames = Object.keys(networkInterfaces);
+                interfaceNames.forEach((interfaceName) => {
+                    try {
+                        let addresses = Object.values(networkInterfaces[interfaceName]);
+
+                        addresses.forEach((address) => {
+                            if (address === undefined)
+                                return;
+
+
+                            if (address.family === "IPv4" && !address.internal) {
+                                ips.push(address.address + " [" + interfaceName + "]");
+                            }
+                        });
+                    } catch {}
+                });
+            } catch (err) {
+                // huh
+            }
             let IpLabel = new NodeGUI.QLabel(centralwidget);
             IpLabel.setObjectName("IpLabel");
-            IpLabel.setGeometry(10, 170, 600, 24);
+            IpLabel.setGeometry(10, 125, 600, 75);
             IpLabel.setFont(font);
-            const os = require('os');
-            var networkInterfaces = os.networkInterfaces();
-            console.log(networkInterfaces);
-            let arr = networkInterfaces['Wi-Fi'];
-            let ip = arr[arr.length-1].address;
-            IpLabel.setText("Your IP Address: " + ip);
+            let text = "Your IP address" + ((ips.length > 1)? "es:\n\t" : ": ") + ips.join("\n\t");
+            console.log(text);
+            // Your IP address: 127.0.0.1 (Wi-Fi)
+            // Your IP addresses:\n127.0.0.1 (Wi-Fi)\n127.0.0.1 (not Wi-Fi)
 
             let titleLabel = new NodeGUI.QLabel(centralwidget);
             titleLabel.setObjectName("titleLabel");
