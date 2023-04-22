@@ -76,11 +76,13 @@ class tempConnectWindow extends NeptuneWindow {
             IpLabel.setObjectName("IpLabel");
             IpLabel.setGeometry(10, 125, 600, 75);
             IpLabel.setFont(font);
-            let text = "Your IP address" + ((ips.length > 1)? "es:\n\t" : ": ") + ips.join("\n\t");
-            console.log(text);
+            let text = "Unable to lookup your IP addresses. Run `ipconfig` in Command Prompt to view your device's IP."
+            if (ip !== undefined && ip.length > 0) {
+                text = "Your IP address" + ((ips.length > 1)? "es:\n\t" : ": ") + ips.join("\n\t");
+            }
+            IpLabel.setText(text);
             // Your IP address: 127.0.0.1 (Wi-Fi)
             // Your IP addresses:\n127.0.0.1 (Wi-Fi)\n127.0.0.1 (not Wi-Fi)
-
             let titleLabel = new NodeGUI.QLabel(centralwidget);
             titleLabel.setObjectName("titleLabel");
             titleLabel.setGeometry(208, 20, 600, 28);
