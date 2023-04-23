@@ -1,0 +1,25 @@
+package com.neptune.app;
+
+import static androidx.test.espresso.Espresso.openActionBarOverflowOrOptionsMenu;
+import static androidx.test.espresso.action.ViewActions.click;
+import static androidx.test.espresso.matcher.ViewMatchers.withText;
+
+import androidx.test.espresso.Espresso;
+import androidx.test.ext.junit.rules.ActivityScenarioRule;
+import androidx.test.platform.app.InstrumentationRegistry;
+
+import org.junit.Rule;
+import org.junit.Test;
+
+public class OpenAboutNeptuneTest {
+
+    @Rule
+    public ActivityScenarioRule<MainActivity> mainRule = new ActivityScenarioRule<>(MainActivity.class);
+
+    @Test
+    public void openAboutNeptune() {
+        openActionBarOverflowOrOptionsMenu(InstrumentationRegistry.getInstrumentation().getTargetContext());
+        Espresso.onView(withText("About Neptune")).perform(click());
+        Espresso.onView(withText("About Neptune Client"));
+    }
+}
