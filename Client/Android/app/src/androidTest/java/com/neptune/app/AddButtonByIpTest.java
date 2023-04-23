@@ -44,6 +44,7 @@ public class AddButtonByIpTest {
             if(server.ipAddress.getIPAddress().equals("1.1.1.1")) {
                 Assert.assertTrue(true);
                 server.delete();
+                return;
             } else {
                 count++;
             }
