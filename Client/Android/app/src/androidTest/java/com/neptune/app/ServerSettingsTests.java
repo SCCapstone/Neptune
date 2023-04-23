@@ -52,6 +52,33 @@ public class ServerSettingsTests {
     }
 
     @Test
+    public void disableNotificationSettingsTest() {
+        Server testServer = null;
+        try {
+            //Creates a mock server so the client interactions can be tested.
+            UUID id = createServerOpenSettings();
+            testServer = MainActivity.serverManager.getServer(id);
+
+            testServer.syncNotifications = true;
+            Espresso.onView(withId(R.id.server_settings_save)).perform(click());
+            //Making sure that the related checkbox gets unchecked.
+            if(testServer.syncNotifications) {
+                Espresso.onView(withId(R.id.server_sync_notifications)).perform(click());
+            }
+
+            Espresso.onView(withId(R.id.server_settings_save)).perform(click());
+
+            Assert.assertFalse(testServer.syncNotifications);
+
+        }  catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (testServer != null)
+                testServer.delete();
+        }
+    }
+
+    @Test
     public void disableClipboardSettingsTest() {
         Server testServer = null;
         try {
@@ -222,6 +249,33 @@ public class ServerSettingsTests {
             Espresso.onView(withId(R.id.server_settings_save)).perform(click());
 
             Assert.assertFalse(testServer.filesharingSettings.allowServerToUpload);
+
+        }  catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (testServer != null)
+                testServer.delete();
+        }
+    }
+
+    @Test
+    public void enableNotificationSettingsTest() {
+        Server testServer = null;
+        try {
+            //Creates a mock server so the client interactions can be tested.
+            UUID id = createServerOpenSettings();
+            testServer = MainActivity.serverManager.getServer(id);
+
+            testServer.syncNotifications = false;
+            Espresso.onView(withId(R.id.server_settings_save)).perform(click());
+            //Making sure that the related checkbox gets unchecked.
+            if(!testServer.syncNotifications) {
+                Espresso.onView(withId(R.id.server_sync_notifications)).perform(click());
+            }
+
+            Espresso.onView(withId(R.id.server_settings_save)).perform(click());
+
+            Assert.assertTrue(testServer.syncNotifications);
 
         }  catch (IOException e) {
             e.printStackTrace();
