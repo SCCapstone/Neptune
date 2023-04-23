@@ -2,6 +2,7 @@ package com.neptune.app;
 
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.action.ViewActions.click;
+import static androidx.test.espresso.matcher.ViewMatchers.withText;
 
 import androidx.test.espresso.Espresso;
 import androidx.test.espresso.intent.Intents;
@@ -22,7 +23,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 @RunWith(AndroidJUnit4.class)
-public class OpenServerSettingsTest {
+public class OpenAddDeviceActivityTest {
 
     @Before
     public void setUp() {
@@ -34,24 +35,8 @@ public class OpenServerSettingsTest {
 
     @Test
     public void openServerSettings() {
-
-        try {
-            //Creates a mock server so the client interactions can be tested.
-            Server testServer = new Server(UUID.randomUUID(), MainActivity.configurationManager);
-            testServer.friendlyName = "testServer";
-            testServer.ipAddress = new IPAddress("1.1.1.1:50000");
-            testServer.filesharingSettings.receivedFilesDirectory = "Pictures";
-            MainActivity.serverManager.addServer(testServer);
-            mainRule.getScenario().recreate();
-
-            Espresso.onView(withId(R.id.server_name)).perform(click());
-            Intents.intended(IntentMatchers.hasComponent(ServerSettingsActivity.class.getName()));
-
-            MainActivity.serverManager.removeServer(testServer);
-            testServer.delete();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        Espresso.onView(withId(R.id.addDev)).perform(click());
+        Intents.intended(IntentMatchers.hasComponent(AddDeviceActivity.class.getName()));
     }
 
     @After
