@@ -1,6 +1,7 @@
 package com.neptune.app.Backend;
 
 import android.annotation.SuppressLint;
+import android.os.Build;
 import android.os.Handler;
 import android.os.StrictMode;
 import android.util.Log;
@@ -60,6 +61,7 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.security.cert.X509Certificate;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -847,6 +849,28 @@ public class ConnectionManager {
         }
     }
 
+    private AtomicBoolean isRunningTest;
+    /**
+     * Checks if we're running testing
+     * @return
+     */
+    public synchronized boolean isRunningTest() {
+        if (null == isRunningTest) {
+            boolean istest;
+
+            try {
+                Class.forName ("androidx.test.espresso.Espresso");
+                istest = true;
+            } catch (ClassNotFoundException e) {
+                istest = false;
+            }
+
+            isRunningTest = new AtomicBoolean (istest);
+        }
+
+        return isRunningTest.get ();
+    }
+
     /**
      * Initiate a connection to the server, completing the handshake, and pairing if need be.
      *
@@ -855,6 +879,10 @@ public class ConnectionManager {
     public void initiateConnectionSync() throws FailedToPair {
         if (connecting)
             return;
+
+        if (isRunningTest())
+            return;
+
         try {
             EventEmitter.emit("connecting");
             StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build(); // ?
@@ -1173,6 +1201,9 @@ public class ConnectionManager {
 
     public String getSocketUUID() {
         return this.socketUUID;
+    }
+    public void setSocketUUID(UUID uuid) {
+        this.socketUUID = uuid.toString();
     }
 
     public void disconnect() {

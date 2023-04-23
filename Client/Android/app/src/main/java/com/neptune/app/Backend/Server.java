@@ -5,6 +5,7 @@ import static android.content.Context.BATTERY_SERVICE;
 
 import android.annotation.SuppressLint;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
@@ -47,6 +48,7 @@ import java.util.UUID;
 
 public class Server extends ServerConfig {
     private final String TAG;
+    private Context context;
 
     private ConnectionManager connectionManager;
 
@@ -60,17 +62,20 @@ public class Server extends ServerConfig {
 
     public Server(String serverId, ConfigurationManager configurationManager) throws JsonParseException, IOException {
         super(serverId, configurationManager);
+        this.context = configurationManager.context;
         TAG = "Server-" + this.serverId.toString();
         Log.i(TAG, "Server(): " + serverId);
     }
     public Server(UUID serverId, ConfigurationManager configurationManager) throws JsonParseException, IOException {
         super(serverId.toString(), configurationManager);
+        this.context = configurationManager.context;
         TAG = "Server-" + this.serverId.toString();
         Log.i(TAG, "Server(): " + serverId);
     }
 
     public Server(JsonObject jsonObject, ConfigurationManager configurationManager) throws JsonParseException, IOException {
         super(jsonObject.get("serverId").getAsString(), configurationManager);
+        this.context = configurationManager.context;
         fromJson(jsonObject);
         TAG = "Server-" + this.serverId.toString();
         Log.i(TAG, "Server(): " + this.serverId.toString());
@@ -295,34 +300,34 @@ public class Server extends ServerConfig {
                             notification.setTimeoutAfter(60000); // Cancel after 1 minute;
 
                             // Get icon
-                            Resources resources = MainActivity.Context.getResources();
+                            Resources resources = this.context.getResources();
                             int checkMarkIcon = resources.getIdentifier("ic_baseline_check_24",
                                     "drawable",
-                                    MainActivity.Context.getPackageName());
+                                    this.context.getPackageName());
                             int cancelIcon = resources.getIdentifier("ic_baseline_cancel_24",
                                     "drawable",
-                                    MainActivity.Context.getPackageName());
+                                    this.context.getPackageName());
 
                             // Add actions / intents
                             int notificationId = MainActivity.getNewNotificationId();
 
                             // Create the intents for the notification actions
-                            Intent denyIntent = new Intent(MainActivity.Context, NotificationReceiver.class);
+                            Intent denyIntent = new Intent(this.context, NotificationReceiver.class);
                             denyIntent.setAction(NotificationReceiver.ACTION_DENY_INCOMING);
                             PendingIntent denyPendingIntent;
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                denyPendingIntent = PendingIntent.getBroadcast(MainActivity.Context,
+                                denyPendingIntent = PendingIntent.getBroadcast(this.context,
                                         0,
                                         denyIntent,
                                         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
                             } else {
-                                denyPendingIntent = PendingIntent.getBroadcast(MainActivity.Context,
+                                denyPendingIntent = PendingIntent.getBroadcast(this.context,
                                         0,
                                         denyIntent,
                                         PendingIntent.FLAG_UPDATE_CURRENT);
                             }
 
-                            Intent acceptIntent = new Intent(MainActivity.Context, NotificationReceiver.class);
+                            Intent acceptIntent = new Intent(this.context, NotificationReceiver.class);
                             acceptIntent.setAction(NotificationReceiver.ACTION_ACCEPT_INCOMING);
                             acceptIntent.putExtra(NotificationReceiver.EXTRA_SERVER_UUID, serverId.toString());
                             acceptIntent.putExtra(NotificationReceiver.EXTRA_FILE_UUID, fileUUID);
@@ -330,12 +335,12 @@ public class Server extends ServerConfig {
                             acceptIntent.putExtra(NotificationReceiver.EXTRA_FILE_PATH, fileName);
                             PendingIntent acceptPendingIntent;
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                acceptPendingIntent = PendingIntent.getBroadcast(MainActivity.Context,
+                                acceptPendingIntent = PendingIntent.getBroadcast(this.context,
                                         0,
                                         acceptIntent,
                                         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
                             } else {
-                                acceptPendingIntent = PendingIntent.getBroadcast(MainActivity.Context,
+                                acceptPendingIntent = PendingIntent.getBroadcast(this.context,
                                         0,
                                         acceptIntent,
                                         PendingIntent.FLAG_UPDATE_CURRENT);
@@ -452,8 +457,8 @@ public class Server extends ServerConfig {
                     return;
             }
 
-            BatteryManager bm = (BatteryManager) MainActivity.Context.getSystemService(BATTERY_SERVICE);
-            Intent bi = MainActivity.Context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            BatteryManager bm = (BatteryManager) this.context.getSystemService(BATTERY_SERVICE);
+            Intent bi = this.context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
 
             int level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
 
@@ -514,7 +519,7 @@ public class Server extends ServerConfig {
 
             if (connectionManager.getHasNegotiated()) {
                 if (!notificationBlacklistApps.contains(notification.applicationPackageName)
-                        && !notification.applicationPackageName.equals(MainActivity.Context.getPackageName())) {
+                        && !notification.applicationPackageName.equals(this.context.getPackageName())) {
                     JsonObject notificationData = notification.toJson();
                     if (notificationData.has("action") && action != SendNotificationAction.CREATE) {
                         notificationData.remove("action");
@@ -636,7 +641,7 @@ public class Server extends ServerConfig {
             connectionManager.createWebSocketClient(false);
         }
 
-        Cursor returnCursor = MainActivity.Context.getContentResolver().query(uri, null, null, null, null);
+        Cursor returnCursor = this.context.getContentResolver().query(uri, null, null, null, null);
         /*
          * Get the column indexes of the data in the Cursor,
          * move to the first row in the Cursor, get the data,
@@ -694,7 +699,7 @@ public class Server extends ServerConfig {
                 try {
                     if (this.filesharingSettings.receivedFilesDirectory != null) {
                         Uri uri = Uri.parse(this.filesharingSettings.receivedFilesDirectory);
-                        MainActivity.Context.getContentResolver().takePersistableUriPermission(uri,
+                        this.context.getContentResolver().takePersistableUriPermission(uri,
                                 (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION));
                         receivedFilesDirectoryValid = ServerSettingsActivity.isValidContentUri(uri);
                     }
@@ -706,7 +711,7 @@ public class Server extends ServerConfig {
                     this.filesharingSettings.receivedFilesDirectory = "content://com.android.providers.downloads.documents/tree/downloads";
                     incomingFilesDirectoryUri = Uri.parse("content://com.android.providers.downloads.documents/tree/downloads");
                 }
-                DocumentFile directoryDocumentFile = DocumentFile.fromTreeUri(MainActivity.Context, incomingFilesDirectoryUri);
+                DocumentFile directoryDocumentFile = DocumentFile.fromTreeUri(this.context, incomingFilesDirectoryUri);
 
                 if (directoryDocumentFile == null) {
                     NotificationCompat.Builder notification = MainActivity.createBaseNotification(Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_ID,
@@ -776,7 +781,7 @@ public class Server extends ServerConfig {
 
                 // Save the file to the user's download folder
                 try (InputStream is = connection.getInputStream()) {
-                    try (OutputStream fos = MainActivity.Context.getContentResolver().openOutputStream(newFile.getUri()))  {
+                    try (OutputStream fos = this.context.getContentResolver().openOutputStream(newFile.getUri()))  {
                         int bytesRead;
                         byte[] buffer = new byte[4096];
                         while ((bytesRead = is.read(buffer)) != -1) {
@@ -804,14 +809,14 @@ public class Server extends ServerConfig {
 
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         openFilePendingIntent = PendingIntent.getActivity(
-                                MainActivity.Context,
+                                this.context,
                                 0,
                                 openFileIntent,
                                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
                         );
                     } else {
                         openFilePendingIntent = PendingIntent.getActivity(
-                                MainActivity.Context,
+                                this.context,
                                 0,
                                 openFileIntent,
                                 PendingIntent.FLAG_UPDATE_CURRENT
@@ -819,10 +824,10 @@ public class Server extends ServerConfig {
                     }
 
                     // Get icon
-                    Resources resources = MainActivity.Context.getResources();
+                    Resources resources = this.context.getResources();
                     int openIcon = resources.getIdentifier("ic_baseline_open_in_new_24",
                         "drawable",
-                        MainActivity.Context.getPackageName());
+                        this.context.getPackageName());
 
                     // Add the action to the notification
                     notification.addAction(
@@ -871,7 +876,7 @@ public class Server extends ServerConfig {
             request.writeBytes("Content-Disposition: form-data; name=\"file\";filename=\"filename2.jpg\"" + crlf);
             request.writeBytes(crlf);
 
-            try (InputStream inputStream = MainActivity.Context.getContentResolver().openInputStream(contentUri)) {
+            try (InputStream inputStream = this.context.getContentResolver().openInputStream(contentUri)) {
                 byte[] buffer = new byte[4096];
                 int bytesRead;
                 while ((bytesRead = inputStream.read(buffer)) != -1) {

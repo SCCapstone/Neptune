@@ -1,5 +1,6 @@
 package com.neptune.app.Backend;
 
+import android.content.Context;
 import android.util.Log;
 
 import java.io.IOException;
@@ -9,11 +10,15 @@ import java.util.Map;
 public class ConfigurationManager {
     private static String TAG = "Neptune-ConfigurationManager";
 
+    public Context context;
+
     protected Map<String, ConfigItem> cachedItems;
     private boolean isDestroying = false;
 
-    public ConfigurationManager() {
+    public ConfigurationManager(Context context) {
         cachedItems = new HashMap<String, ConfigItem>();
+
+        this.context = context;
     }
 
     public ConfigItem loadConfig(String filePath) throws IOException {
@@ -21,7 +26,7 @@ public class ConfigurationManager {
         Log.i(TAG, "Loading/Creating: " + filePath);
 
         if (cached != null)
-            if (cached.getIsAlive() == true)
+            if (cached.getIsAlive())
                 return cached;
 
         ConfigItem newItem = new ConfigItem(filePath, this);

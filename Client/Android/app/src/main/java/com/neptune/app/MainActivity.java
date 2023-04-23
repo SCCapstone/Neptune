@@ -15,7 +15,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.net.nsd.NsdManager;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -49,8 +48,6 @@ import com.neptune.app.Backend.ConfigurationManager;
 import com.neptune.app.Backend.Exceptions.InvalidIPAddress;
 import com.neptune.app.Backend.IPAddress;
 import com.neptune.app.Backend.Interfaces.ICallback;
-import com.neptune.app.Backend.MDNSDiscoveryListener;
-import com.neptune.app.Backend.MDNSResolver;
 import com.neptune.app.Backend.NotificationListenerService;
 import com.neptune.app.Backend.NotificationManager;
 import com.neptune.app.Backend.Server;
@@ -95,7 +92,7 @@ public class MainActivity extends AppCompatActivity implements RenameDialog.Rena
         buildAddDialog();
 
         // Get configurationManager
-        configurationManager = new ConfigurationManager();
+        configurationManager = new ConfigurationManager(this.Context);
         try {
             ClientConfig = new ClientConfig("clientConfiguration.json", configurationManager);
             ClientConfig.save();

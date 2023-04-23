@@ -45,7 +45,7 @@ public class ConfigItem {
         this.TAG += fileName;
 
         try {
-            fileObject = new File(MainActivity.Context.getFilesDir(), fileName);
+            fileObject = new File(ConfigManagerParent.context.getFilesDir(), fileName);
             isAlive = true;
         } catch (JsonParseException e) {
             e.printStackTrace();
@@ -74,7 +74,7 @@ public class ConfigItem {
     protected void makeWritable() throws IOException {
         try {
             if (!fileObject.exists()) {
-                try (FileOutputStream fos = MainActivity.Context.openFileOutput(fileName, Context.MODE_PRIVATE)) {
+                try (FileOutputStream fos = ConfigManagerParent.context.openFileOutput(fileName, Context.MODE_PRIVATE)) {
                     fos.write(toJson().toString().getBytes(StandardCharsets.UTF_8));
                 }
             } else if (fileObject.isDirectory()) {
@@ -84,10 +84,7 @@ public class ConfigItem {
             if (!fileObject.canWrite()) {
                 fileObject.setWritable(true);
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            throw e;
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             throw e;
         }
@@ -148,7 +145,7 @@ public class ConfigItem {
                 fileObject.setWritable(true);
             }
 
-            try (FileOutputStream fos = MainActivity.Context.openFileOutput(fileName, Context.MODE_PRIVATE)) {
+            try (FileOutputStream fos = ConfigManagerParent.context.openFileOutput(fileName, Context.MODE_PRIVATE)) {
                 fos.write(newContents.getBytes(StandardCharsets.UTF_8));
             }
         } catch (IOException e) {
@@ -223,7 +220,7 @@ public class ConfigItem {
 
         this.TAG = "ConfigItem-" + fileName;
 
-        File newName = new File(MainActivity.Context.getFilesDir(), fileName);
+        File newName = new File(ConfigManagerParent.context.getFilesDir(), fileName);
         fileObject.renameTo(newName);
     }
 }

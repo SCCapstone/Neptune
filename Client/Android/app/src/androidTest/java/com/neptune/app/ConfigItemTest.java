@@ -4,6 +4,10 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
+import androidx.test.espresso.intent.Intents;
+import androidx.test.ext.junit.rules.ActivityScenarioRule;
+import androidx.test.platform.app.InstrumentationRegistry;
+
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonSyntaxException;
 import com.neptune.app.Backend.ConfigItem;
@@ -11,6 +15,8 @@ import com.neptune.app.Backend.ConfigurationManager;
 import com.neptune.app.Backend.Version;
 
 import org.json.JSONException;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.File;
@@ -19,7 +25,7 @@ import java.io.IOException;
 public class ConfigItemTest {
     private final String TEST_CONFIG_FILE = "testConfig.json";
 
-    private static ConfigurationManager configurationManager = new ConfigurationManager();
+    private static final ConfigurationManager configurationManager = new ConfigurationManager(InstrumentationRegistry.getInstrumentation().getContext());
     private ConfigItem testConfigItem;
 
 
