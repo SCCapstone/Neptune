@@ -1,5 +1,5 @@
 <p align="center">
-	<img alt="Neptune Banner" src="https://user-images.githubusercontent.com/55852895/233927319-911f77a2-7b96-46ed-a5fc-f666104ec87e.png" width="100%" ></img>
+	<img alt="Neptune Banner" src="https://user-images.githubusercontent.com/55852895/233927319-911f77a2-7b96-46ed-a5fc-f666104ec87e.png" width="100%" />
 </p>
 
 Neptune is a tool for receiving your Android device's notifications on your computer (mainly Windows).\
@@ -9,7 +9,7 @@ No active internet connection is required, all data is sent between the devices 
 
 
 <center>
-	<video src="https://user-images.githubusercontent.com/55852895/233905615-30f8dc58-839d-4338-afa4-001e24719f2d.mp4" height="500px"></video>
+	<video controls autoplay muted src="https://user-images.githubusercontent.com/55852895/233905615-30f8dc58-839d-4338-afa4-001e24719f2d.mp4" height="500px"></video>
 </center>
 
 
@@ -20,10 +20,8 @@ No active internet connection is required, all data is sent between the devices 
 [Matthew Sprinkle](https://github.com/Sprinklem)
 
 
-![NotificationExamples]()
-
 <p align="center">
-	<img alt="Notification Examples" src="https://user-images.githubusercontent.com/55852895/233928167-a97025eb-460b-44b7-a11a-8eac5ebee243.png" width="100%" ></img>
+	<img alt="Notification Examples" src="https://user-images.githubusercontent.com/55852895/233928167-a97025eb-460b-44b7-a11a-8eac5ebee243.png" width="100%" />
 </p>
 
 ---
