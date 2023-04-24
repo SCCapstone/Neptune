@@ -2,17 +2,13 @@ package com.neptune.app.Backend;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Person;
 import android.app.RemoteInput;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -22,27 +18,23 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
-import android.os.SystemClock;
 import android.service.notification.StatusBarNotification;
-import android.text.format.DateUtils;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
-import androidx.core.graphics.drawable.IconCompat;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.neptune.app.MainActivity;
-import com.neptune.app.NotificationsActivity;
 
 import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class NeptuneNotification {
     private final Context context;
@@ -80,19 +72,21 @@ public class NeptuneNotification {
         try {
             PackageManager packageManager = context.getPackageManager();
             this.applicationName = packageManager.getApplicationLabel(packageManager.getApplicationInfo(this.applicationPackageName, 0)).toString();
-            if (this.applicationName == null)
-                this.applicationName = "(unknown)";
         } catch (Exception e) {
             this.applicationName = "(unknown)";
         }
 
 
-        if (extras.containsKey(Notification.EXTRA_TITLE)) {
-            this.title = extras.getCharSequence(Notification.EXTRA_TITLE).toString();
-        } else if (extras.containsKey(Notification.EXTRA_CONVERSATION_TITLE)) {
-            this.title = extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE).toString();
-        } else if (extras.containsKey(Notification.EXTRA_TITLE_BIG)) {
-            this.title = extras.getCharSequence(Notification.EXTRA_TITLE_BIG).toString();
+        try {
+            if (extras.containsKey(Notification.EXTRA_TITLE)) {
+                this.title = extras.getCharSequence(Notification.EXTRA_TITLE).toString();
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && extras.containsKey(Notification.EXTRA_CONVERSATION_TITLE)) {
+                this.title = extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE).toString();
+            } else if (extras.containsKey(Notification.EXTRA_TITLE_BIG)) {
+                this.title = extras.getCharSequence(Notification.EXTRA_TITLE_BIG).toString();
+            }
+        } catch (Exception ignored) {
+            throw new Exception("Invalid notification");
         }
 
         // Get text data
@@ -108,6 +102,32 @@ public class NeptuneNotification {
         } catch (Exception ignored) {}
         if (this.text == null)
             this.text = " ";
+
+        /*try {
+            if (applicationPackageName.equals("com.google.android.deskclock")) {
+                String text = notification.getSortKey(); // get the notification text
+                // use regular expressions to extract the paused state, total time, and time remaining from the text
+                Pattern pausedPattern = Pattern.compile("\\|(PAUSED)\\|");
+                Matcher pausedMatcher = pausedPattern.matcher(text);
+                Pattern expiredPattern = Pattern.compile("\\|(EXPIRED)\\|");
+                Matcher expiredMatcher = expiredPattern.matcher(text);
+                Pattern durationPattern = Pattern.compile("Σ(\\d+:\\d+:\\d+)");
+                Matcher durationMatcher = durationPattern.matcher(text);
+                Pattern elapsedPattern = Pattern.compile("Δ(\\d+:\\d+:\\d+)");
+                Matcher elapsedMatcher = elapsedPattern.matcher(text);
+                Pattern remainingPattern = Pattern.compile("⏳(\\d+:\\d+:\\d+)");
+                Matcher remainingMatcher = remainingPattern.matcher(text);
+                boolean isPaused = pausedMatcher.find();
+                if (durationMatcher.find() && remainingMatcher.find()) {
+                    String duration = durationMatcher.group(1);
+                    String remaining = remainingMatcher.group(1);
+                    // durations are in the format "HH:MM:SS", convert them to seconds if needed
+                    // Do something with the timer durations, remaining time, and paused state
+                    this.text = "Timer " + (isPaused ? "paused" : "running") + ".\n" +
+                            "Time remaining: " + remaining + "\n\nTotal duration: " + duration;
+                }
+            }
+        } catch (Exception ignored) {}*/
 
         // Sub text
         if (extras.containsKey(Notification.EXTRA_SUB_TEXT)) {
@@ -135,7 +155,7 @@ public class NeptuneNotification {
                 isSilent = (channel.getImportance() == android.app.NotificationManager.IMPORTANCE_LOW
                         || channel.getImportance() == android.app.NotificationManager.IMPORTANCE_MIN);
             } else {
-                isSilent = (notification.priority == Notification.PRIORITY_LOW || notification.priority == Notification.PRIORITY_LOW);
+                isSilent = (notification.priority == Notification.PRIORITY_LOW);
             }
         } else {
             int flags = notification.flags;
@@ -228,12 +248,10 @@ public class NeptuneNotification {
                 }
             } else {
                 // No buttonId, textContent, or comboBoxChoice, so "tap" the notification body
-                if (notification.contentIntent != null && !firedIntent) {
+                if (notification.contentIntent != null) {
                     notification.contentIntent.send();
                 }
             }
-        } catch (PendingIntent.CanceledException e) {
-            e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -310,9 +328,7 @@ public class NeptuneNotification {
 
 
             // Extract image from Uri attachment
-            Uri messageUri = null;
-
-            messageUri = message.getDataUri();
+            Uri messageUri = message.getDataUri();
             String mimeType = message.getDataMimeType();
             if (messageUri != null && mimeType != null) {
                 if (messageUri.getScheme().equals(ContentResolver.SCHEME_CONTENT) ||
@@ -386,8 +402,11 @@ public class NeptuneNotification {
         try {
             if (extras.containsKey(Notification.EXTRA_PICTURE ) || extras.containsKey(Notification.EXTRA_PICTURE_ICON)) {
                 Bitmap imageBitmap = (Bitmap) extras.get(Notification.EXTRA_PICTURE);
-                if (extras.containsKey(Notification.EXTRA_PICTURE_ICON) && extras.get(Notification.EXTRA_PICTURE_ICON) != null)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                        && extras.containsKey(Notification.EXTRA_PICTURE_ICON)
+                        && extras.get(Notification.EXTRA_PICTURE_ICON) != null) {
                     imageBitmap = (Bitmap) extras.get(Notification.EXTRA_PICTURE_ICON);
+                }
 
                 if (imageBitmap != null) {
                     try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
@@ -406,9 +425,9 @@ public class NeptuneNotification {
                 && (notification.category != null && (notification.category.equals(Notification.EXTRA_SHOW_CHRONOMETER)
                     || notification.category.equals(Notification.CATEGORY_STOPWATCH)))) {
             jsonObject.addProperty("type", "timer");
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 JsonObject timerData = new JsonObject();
-                boolean countingDown = countingDown = extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, true);
+                boolean countingDown = extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, true);
                 timerData.addProperty("countingDown", countingDown);
                 jsonObject.add("timerData", timerData);
             }
@@ -453,8 +472,7 @@ public class NeptuneNotification {
                 if (messages != null && messages.size() > 0) {
                     for (Notification.MessagingStyle.Message message : messages) {
                         JsonObject messageObject = processNotificationMessage(message);
-                        if (messageObject != null)
-                            conversationDataArray.add(messageObject);
+                        conversationDataArray.add(messageObject);
                     }
                 }
             }
@@ -516,10 +534,8 @@ public class NeptuneNotification {
 
         // Actions (buttons, text box)
         JsonArray actionsArray = new JsonArray();
-        PendingIntent contentIntent = notification.contentIntent;
         if (notification.actions != null) {
             try {
-
                 // Loop through the Notification.Action array and extract the button data
                 for (int i = 0; i < notification.actions.length; i++) {
                     JsonObject action = new JsonObject();

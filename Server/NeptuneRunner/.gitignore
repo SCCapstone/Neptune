@@ -5,6 +5,7 @@
 
 /NeptuneRunnerNetCore/*
 /NeptuneRunnerNetCore/
+/build/temp/
 
 # User-specific files
 *.rsuser

@@ -17,6 +17,8 @@ let { Logger } = require('./LogMan');
 
 let EventEmitter = require("node:events");
 
+const crypto = require("node:crypto");
+
 
 /**
  * Neptune
@@ -80,6 +82,8 @@ class Notification extends EventEmitter {
      * @type {NotificationData}
      */
     data;
+
+    #neptuneRunnerId;
 
 
     /**
@@ -176,6 +180,7 @@ class Notification extends EventEmitter {
             }
         }
         this.#id = data.notificationId;
+        this.#neptuneRunnerId  = crypto.createHash("sha1").update(data.notificationId).digest('hex')
     }
 
 
@@ -291,7 +296,7 @@ class Notification extends EventEmitter {
             try {
                 let data = {
                     action: this.data.action,
-                    id: this.data.notificationId,
+                    id: this.#neptuneRunnerId,
 
                     clientId: this.#client.clientId,
                     clientName: this.#client.friendlyName,
@@ -322,11 +327,11 @@ class Notification extends EventEmitter {
 
                 let func = this.#IPCActivation;
                 let actuallyThis = this;
-                if (global.NeptuneRunnerIPC._events['notify-client_' + this.clientId + ":" + this.data.notificationId] !== undefined)
-                    delete global.NeptuneRunnerIPC._events['notify-client_' + this.clientId + ":" + this.data.notificationId];
+                if (global.NeptuneRunnerIPC._events['notify-client_' + this.clientId + ":" + this.#neptuneRunnerId] !== undefined)
+                    delete global.NeptuneRunnerIPC._events['notify-client_' + this.clientId + ":" + this.#neptuneRunnerId];
 
-                if (global.NeptuneRunnerIPC._events['notify-client_' + this.clientId + ":" + this.data.notificationId] === undefined) {
-                    global.NeptuneRunnerIPC.once('notify-client_' + this.clientId + ":" + this.data.notificationId, (data) => {
+                if (global.NeptuneRunnerIPC._events['notify-client_' + this.clientId + ":" + this.#neptuneRunnerId] === undefined) {
+                    global.NeptuneRunnerIPC.once('notify-client_' + this.clientId + ":" + this.#neptuneRunnerId, (data) => {
                         func(actuallyThis, data);
                     });
                 }

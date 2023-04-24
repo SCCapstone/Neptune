@@ -1,13 +1,15 @@
+<p align="center">
+	<img alt="Neptune Banner" src="https://user-images.githubusercontent.com/55852895/233927319-911f77a2-7b96-46ed-a5fc-f666104ec87e.png" width="100%" ></img>
+</p>
+
 Neptune is a tool for receiving your Android device's notifications on your computer (mainly Windows).\
 Neptune also supports sharing files and clipboard data between the two devices. This is useful for quickly transferring images, text and other data between devices.
 
 No active internet connection is required, all data is sent between the devices using the local network.
 
 
-_**Final demo video goes here**_
-
 <center>
-	<video src="https://user-images.githubusercontent.com/55852895/233226957-ef83ceb2-306a-4269-858b-2b1586e92638.mp4" height="500px"></video>
+	<video src="https://user-images.githubusercontent.com/55852895/233905615-30f8dc58-839d-4338-afa4-001e24719f2d.mp4" height="500px"></video>
 </center>
 
 
@@ -17,6 +19,12 @@ _**Final demo video goes here**_
 [Cody Newberry](https://cnewb.co/)\
 [Matthew Sprinkle](https://github.com/Sprinklem)
 
+
+![NotificationExamples]()
+
+<p align="center">
+	<img alt="Notification Examples" src="https://user-images.githubusercontent.com/55852895/233928167-a97025eb-460b-44b7-a11a-8eac5ebee243.png" width="100%" ></img>
+</p>
 
 ---
 
@@ -86,7 +94,7 @@ The devices can, however, disable file sharing or clipboard sharing for the othe
 
 Here's a demo video:
 <center>
-	<video controls="true" src="https://user-images.githubusercontent.com/55852895/230435879-1f880635-07e8-4623-b56b-c4fb06e0932e.mp4" height="500px"></video>
+	<video controls="true" src="https://user-images.githubusercontent.com/55852895/233906787-0a2fb425-9780-4f68-8ae5-7bc64373aaf0.mp4" height="500px"></video>
 </center>
 
 

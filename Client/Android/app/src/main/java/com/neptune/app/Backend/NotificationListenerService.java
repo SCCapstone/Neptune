@@ -42,14 +42,13 @@ public class NotificationListenerService extends android.service.notification.No
     public void onNotificationPosted(StatusBarNotification notification) {
         try {
             Log.d("NotificationListener", "Notification from package: " + notification.getPackageName());
-            Bundle extras = notification.getNotification().extras;
-            if (extras.getCharSequence("android.title") == null) { //Some notifications are not handled correctly, so we'll just skip em
-                return;
-            }
 
-
-            NeptuneNotification notify = new NeptuneNotification(notification, getApplicationContext());
-            MainActivity.notificationManager.setNotification(notify);
+            new Thread(() -> {
+                try {
+                    NeptuneNotification notify = new NeptuneNotification(notification, getApplicationContext());
+                    MainActivity.notificationManager.setNotification(notify);
+                } catch (Exception ignored) {}
+            }).start();
         } catch (Exception e) {
             // yepirr
             e.printStackTrace();
