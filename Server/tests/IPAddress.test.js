@@ -6,7 +6,7 @@ const IPAddress = require("../src/Classes/IPAddress");
 
 
 
-describe("Client class (non-API) tests", () => {
+describe("IP Tests", () => {
     describe('constructor', () => {
         test('should create a new instance if the ip and port are valid', () => {
             const ipAddress = new IPAddress('192.168.0.1', 8080);

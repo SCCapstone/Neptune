@@ -77,7 +77,7 @@ class tempConnectWindow extends NeptuneWindow {
             IpLabel.setGeometry(10, 125, 600, 75);
             IpLabel.setFont(font);
             let text = "Unable to lookup your IP addresses. Run `ipconfig` in Command Prompt to view your device's IP."
-            if (ip !== undefined && ip.length > 0) {
+            if (ips !== undefined && ips.length > 0) {
                 text = "Your IP address" + ((ips.length > 1)? "es:\n\t" : ": ") + ips.join("\n\t");
             }
             IpLabel.setText(text);

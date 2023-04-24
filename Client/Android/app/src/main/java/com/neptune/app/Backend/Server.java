@@ -210,7 +210,12 @@ public class Server extends ServerConfig {
                     JsonObject response = new JsonObject();
                     if (this.clipboardSettings.enabled) {
                         if (this.clipboardSettings.allowServerToSet) {
-                            if (Clipboard.setClipboard(apiDataPackage.jsonObject()) && isResponse) {
+                            JsonObject data = apiDataPackage.jsonObject();
+                            if (data == null) {
+                                response.addProperty("status", "failed");
+                                response.addProperty("errorMessage", "No clipboard data");
+                                this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/uploadStatus", response);
+                            } else if (Clipboard.setClipboard(data.getAsJsonObject("data")) && isResponse) {
                                 response.addProperty("status", "success");
                                 this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/uploadStatus", response);
                             } else if (isResponse) {

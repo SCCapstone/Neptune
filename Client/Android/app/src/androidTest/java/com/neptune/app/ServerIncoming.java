@@ -112,6 +112,10 @@ public class ServerIncoming {
         try {
             mockWebServer.shutdown();
         } catch (Exception ignored) {}
+
+        try {
+            testServer.delete();
+        } catch (Exception ignored) {}
     }
 
     @Test
