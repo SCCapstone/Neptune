@@ -24,6 +24,7 @@ import com.neptune.app.Backend.Server;
 import com.neptune.app.Backend.ServerManager;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +44,9 @@ public class NotificationsActivity extends AppCompatActivity {
     private Map<String, Drawable> sortedApps;
     public HashMap<String, String> applicationNamesToPackageNames = new HashMap<>();
     private Server server;
+
+    public static ArrayList<String> allAppNames = new ArrayList<String>();
+    public static ArrayList<String> allPackageNames = new ArrayList<String>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,6 +103,12 @@ public class NotificationsActivity extends AppCompatActivity {
         for(String key : sortedApps.keySet()) {
             keys.add(key);
         }
+        allAppNames = (ArrayList<String>) keys;
+        ArrayList<String> packs = new ArrayList<String>();
+        for(int a=0; a<applicationNamesToPackageNames.size(); a++) {
+            packs.add(applicationNamesToPackageNames.get(allAppNames.get(a)));
+        }
+        allPackageNames = packs;
 
         //This populates the scroll view that contains the linear layout of app icons and their names in a checkbox.
         for(Map.Entry<String, Drawable> b : sortedApps.entrySet()) {

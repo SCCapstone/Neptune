@@ -170,6 +170,7 @@ public class ServerSettingsActivity extends AppCompatActivity {
                     } catch (TooManyEventListenersException | TooManyEventsException e) {
                         e.printStackTrace();
                     }
+                    Log.i("ServerSettingsActivity", "Syncing with " + server.friendlyName);
                     server.sync();
                     //Toast.makeText(this, "Synced", Toast.LENGTH_SHORT).show();
                     runOnUiThread(this::updateDetailsText);
