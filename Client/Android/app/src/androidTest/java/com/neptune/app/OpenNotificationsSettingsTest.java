@@ -40,7 +40,7 @@ public class OpenNotificationsSettingsTest {
             Server testServer = new Server(UUID.randomUUID(), MainActivity.configurationManager);
             testServer.friendlyName = "testServer";
             testServer.ipAddress = new IPAddress("1.1.1.1:50000");
-            testServer.filesharingSettings.receivedFilesDirectory = "Pictures";
+            testServer.filesharingSettings.receivedFilesDirectory = "Downloads";
             MainActivity.serverManager.addServer(testServer);
             mainRule.getScenario().recreate();
 

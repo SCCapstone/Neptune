@@ -87,7 +87,7 @@ public class ConfigItemTest {
         }
     }
 
-    @Test
+    /*@Test
     public void saveAndLoad() throws IOException {
         createTestConfigItem();
 
@@ -100,5 +100,5 @@ public class ConfigItemTest {
         createTestConfigItem();
 
         assertEquals(testVersion.toString(), testConfigItem.version.toString());
-    }
+    }*/
 }

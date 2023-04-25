@@ -123,7 +123,7 @@ public class ServerSettingsActivity extends AppCompatActivity {
                 }
         );
 
-        if(this.server.filesharingSettings.receivedFilesDirectory == null || !isValidContentUri(Uri.parse(this.server.filesharingSettings.receivedFilesDirectory))) {
+        if(this.server.filesharingSettings.receivedFilesDirectory == null/* || !isValidContentUri(Uri.parse(this.server.filesharingSettings.receivedFilesDirectory))*/) {
             Intent chooseFileDestination = new Intent(ServerSettingsActivity.this, ChooseFileDestinationActivity.class);
             chooseFileDestination.putExtra(Constants.EXTRA_SERVER_ID, serverId);
             firstTimeFolderPickerLauncher.launch(chooseFileDestination);

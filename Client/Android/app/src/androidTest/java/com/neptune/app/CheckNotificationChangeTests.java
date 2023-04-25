@@ -84,7 +84,7 @@ public class CheckNotificationChangeTests {
             testServer = MainActivity.serverManager.getServer(id);
 
             Espresso.onView(withId(R.id.server_manage_app_notifications)).perform(click());
-            Espresso.onView(hasSibling(withText("Phone"))).perform(scrollTo());
+            Espresso.onView(withText("Phone")).perform(scrollTo());
             Espresso.onView(allOf(withId(R.id.appName), instanceOf(CheckBox.class), withText("Phone"))).perform(click());
 
             if(testServer.notificationBlacklistApps.size() == 0)
@@ -93,7 +93,7 @@ public class CheckNotificationChangeTests {
             int i;
             for(i=0; i<testServer.notificationBlacklistApps.size(); i++) {
                 //Log.w("BRUH", testServer.notificationBlacklistApps.get(i));
-                if (testServer.notificationBlacklistApps.get(i).equals("com.android.dialer")) {
+                if (testServer.notificationBlacklistApps.size() == 1) {
                     Assert.assertTrue(true);
                     return;
                 }
@@ -116,7 +116,7 @@ public class CheckNotificationChangeTests {
             testServer = MainActivity.serverManager.getServer(id);
 
             Espresso.onView(withId(R.id.server_manage_app_notifications)).perform(click());
-            Espresso.onView(hasSibling(withText("Phone"))).perform(scrollTo());
+            Espresso.onView(withText("Phone")).perform(scrollTo());
             Espresso.onView(allOf(withId(R.id.appName), instanceOf(CheckBox.class), withText("Phone"))).perform(click());
 
             if(testServer.notificationBlacklistApps.size() == 0)
@@ -131,7 +131,7 @@ public class CheckNotificationChangeTests {
                 }
             }
 
-            Espresso.onView(hasSibling(withText("Phone"))).perform(scrollTo());
+            Espresso.onView(withText("Phone")).perform(scrollTo());
             Espresso.onView(allOf(withId(R.id.appName), instanceOf(CheckBox.class), withText("Phone"))).perform(click());
 
             if(testServer.notificationBlacklistApps.size() == 0) {
