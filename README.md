@@ -38,6 +38,8 @@ To build, run `npx nodegui-packer --init NeptuneServer` at least once, then `npm
 ## Testing
 ### Android Testing
 
+Before you test, ensure that you have no servers created on your client. The client app should open directly to the MainActivity, which should display no servers connected.
+
 Follow these steps to test the Android Client app.
 1) Open our project's code in Android Studio.
 2) Run the app to ensure that all permissions are enabled prior to testing (shown in Final Client Testing Video in the Issue Labeled "Final Testing Video")).
@@ -51,6 +53,8 @@ Follow these steps to test the Android Client app.
     1) Right click the desired test.
     2) Click `Run [Insert Test Name Here]`.
     3) Wait for the tests to finish running. Look at the bottom of the window to see information regarding the tests that ran.
+
+---
 
 ## Authors
 Will Amos\
