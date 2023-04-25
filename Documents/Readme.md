@@ -1,6 +1,8 @@
-<p align="center">
-	<img alt="Neptune Banner" src="https://user-images.githubusercontent.com/55852895/233927319-911f77a2-7b96-46ed-a5fc-f666104ec87e.png" width="100%" />
-</p>
+<center>
+	<p align="center">
+		<img alt="Neptune Banner" src="https://user-images.githubusercontent.com/55852895/233927319-911f77a2-7b96-46ed-a5fc-f666104ec87e.png" width="100%" />
+	</p>
+</center>
 
 Neptune is a tool for receiving your Android device's notifications on your computer (mainly Windows).\
 Neptune also supports sharing files and clipboard data between the two devices. This is useful for quickly transferring images, text and other data between devices.
@@ -20,9 +22,12 @@ No active internet connection is required, all data is sent between the devices 
 [Matthew Sprinkle](https://github.com/Sprinklem)
 
 
-<p align="center">
-	<img alt="Notification Examples" src="https://user-images.githubusercontent.com/55852895/233928167-a97025eb-460b-44b7-a11a-8eac5ebee243.png" width="100%" />
-</p>
+<center>
+	<p align="center">
+		<img alt="Notification Examples" src="https://user-images.githubusercontent.com/55852895/233928167-a97025eb-460b-44b7-a11a-8eac5ebee243.png" width="100%" />
+	</p>
+</center>
+
 
 ---
 
