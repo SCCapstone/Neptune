@@ -1,5 +1,6 @@
 // This is called before each test
 
+const { EventEmitter } = require('node:stream');
 const { LogMan } = require('../src/Classes/LogMan.js');
 const Version = require('../src/Classes/Version.js');
 const fs = require("node:fs");
@@ -13,7 +14,12 @@ Neptune = {
         consoleMessageCharacterLimit: (1250),
         fileMessageCharacterLimit: (7500),
     }),
+    events: {
+        application: new EventEmitter(),
+        server: new EventEmitter()
+    }
 }
+global.Neptune = Neptune;
 global.Neptune = Neptune;
 
 const testFilename = path.basename(expect.getState().testPath);
@@ -60,4 +66,9 @@ Neptune.tearDownConfigurations = function() {
     } else {
         console.warn("Neptune not defined");
     }
+}
+
+Neptune.events = {
+    application: new EventEmitter("application"),
+    server: new EventEmitter("server")
 }

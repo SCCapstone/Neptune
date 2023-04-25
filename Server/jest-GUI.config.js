@@ -31,4 +31,6 @@ module.exports = {
   roots: [
     "<rootDir>\\tests"
   ],
+
+  setupFilesAfterEnv: ["./tests/JestSetupEachTest.js"],
 };
