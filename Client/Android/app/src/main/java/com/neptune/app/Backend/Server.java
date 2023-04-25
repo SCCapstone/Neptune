@@ -215,13 +215,27 @@ public class Server extends ServerConfig {
                                 response.addProperty("status", "failed");
                                 response.addProperty("errorMessage", "No clipboard data");
                                 this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/uploadStatus", response);
-                            } else if (Clipboard.setClipboard(data.getAsJsonObject("data")) && isResponse) {
-                                response.addProperty("status", "success");
-                                this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/uploadStatus", response);
-                            } else if (isResponse) {
-                                response.addProperty("status", "failed");
-                                response.addProperty("errorMessage", "Unknown client error");
-                                this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/uploadStatus", response);
+                            } else {
+                                boolean allow = false;
+                                if (data.has("status")) {
+                                    String status = data.get("status").getAsString();
+                                    if (status.equalsIgnoreCase("getBlocked")) {
+                                        allow = false;
+                                    } else {
+                                        allow = true;
+                                    }
+                                }
+
+                                if (!data.has("data")) {
+                                    // failed!
+                                } else if ( Clipboard.setClipboard(data.getAsJsonObject("data")) && isResponse) {
+                                    response.addProperty("status", "success");
+                                    this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/uploadStatus", response);
+                                } else if (isResponse) {
+                                    response.addProperty("status", "failed");
+                                    response.addProperty("errorMessage", "Unknown client error");
+                                    this.connectionManager.sendRequestAsync("/api/v1/client/clipboard/uploadStatus", response);
+                                }
                             }
 
                         } else if (isResponse) {
@@ -280,6 +294,9 @@ public class Server extends ServerConfig {
 
                 // File stuff
                 } else if (command.equals("/api/v1/client/filesharing/receive") && apiDataPackage.isJsonObject()) {
+                    if (!filesharingSettings.allowServerToUpload)
+                        return;
+
                     // Download a file! (preferably in a new thread!)
                     JsonObject data = apiDataPackage.jsonObject();
                     if (data.has("fileUUID")
@@ -798,7 +815,7 @@ public class Server extends ServerConfig {
                 if (filesharingSettings.notifyOnServerUpload) {
                     NotificationCompat.Builder notification = MainActivity.createBaseNotification(Constants.INCOMING_FILES_NOTIFICATION_CHANNEL_ID,
                             "Received file",
-                            fileName + " has been ");
+                            fileName + " has been downloaded.");
 
                     notification.setSubText(friendlyName);
 

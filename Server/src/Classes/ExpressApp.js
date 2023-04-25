@@ -811,13 +811,13 @@ app.post('/api/v1/server/socket/:socketUUID/filesharing/:fileUUID/upload', uploa
 					contents: {
 						text: 'Received a file: ' + fileName,
 						subtext: "File received",
-						actions: [
-							{
-								"id": "showme",
-								"type": "button",
-								"contents": actionButtonContents
-							},
-						]
+						// actions: [
+						// 	{
+						// 		"id": "showme",
+						// 		"type": "button",
+						// 		"contents": actionButtonContents
+						// 	},
+						// ]
 					},
 
 					onlyAlertOnce: true,

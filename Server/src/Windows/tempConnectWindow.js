@@ -22,7 +22,7 @@ class tempConnectWindow extends NeptuneWindow {
 
         try {
             this.setWindowTitle('Neptune | tempConnectWindow');
-            this.setFixedSize(700, 300);
+            this.setFixedSize(500, 300);
             this.setWindowFlag(NodeGUI.WindowType.Dialog | NodeGUI.WindowType.MSWindowsFixedSizeDialogHint, true);
         
             let centralwidget = new NodeGUI.QWidget();
@@ -74,7 +74,7 @@ class tempConnectWindow extends NeptuneWindow {
             }
             let IpLabel = new NodeGUI.QLabel(centralwidget);
             IpLabel.setObjectName("IpLabel");
-            IpLabel.setGeometry(10, 125, 600, 75);
+            IpLabel.setGeometry(10, 110, 600, 125);
             IpLabel.setFont(font);
             let text = "Unable to lookup your IP addresses. Run `ipconfig` in Command Prompt to view your device's IP."
             if (ips !== undefined && ips.length > 0) {
@@ -85,7 +85,7 @@ class tempConnectWindow extends NeptuneWindow {
             // Your IP addresses:\n127.0.0.1 (Wi-Fi)\n127.0.0.1 (not Wi-Fi)
             let titleLabel = new NodeGUI.QLabel(centralwidget);
             titleLabel.setObjectName("titleLabel");
-            titleLabel.setGeometry(208, 20, 600, 28);
+            titleLabel.setGeometry(135, 20, 600, 28);
             let font1 = new NodeGUI.QFont();
             font1.setPointSize(14);
             font1.setBold(false);
@@ -95,7 +95,7 @@ class tempConnectWindow extends NeptuneWindow {
 
             let closeButton = new NodeGUI.QPushButton(centralwidget);
             closeButton.setObjectName("closeButton");
-            closeButton.setGeometry(240, 230, 221, 37);
+            closeButton.setGeometry(140, 230, 221, 37);
             closeButton.setFont(font1);
             closeButton.setText("Close Window");
             closeButton.addEventListener('clicked', (checked) => this.close());

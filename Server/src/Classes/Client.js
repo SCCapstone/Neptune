@@ -290,6 +290,9 @@ class Client extends ClientConfig {
 			if (this.clipboardSettings.enabled) {
 				if (this.clipboardSettings.allowClientToSet || isReponse) { // Allowed to set?
 					this.clipboardModificationsLocked = true; // DO NOT SEND WHAT WE JUST GOT! RACE CONDITION!
+					let maybeThis = this;
+					setTimeout(() => { maybeThis.clipboardModificationsLocked = false }, 1000);
+
 					this.log.silly(data);
 					Clipboard.setStandardizedClipboardData(data).then((success) => {
 						if (success)
@@ -307,11 +310,6 @@ class Client extends ClientConfig {
 							});
 						}
 					});
-
-					if (isReponse) {
-						let maybeThis = this;
-						setTimeout(() => { maybeThis.clipboardModificationsLocked = false }, 1000);
-					}
 				} else {
 					if (!isReponse)
 						this.sendRequest("/api/v1/server/clipboard/uploadStatus", { status: "setBlocked" });

@@ -29,6 +29,7 @@
         <activity
             android:name=".AddDeviceActivity"
             android:exported="false"
+            android:parentActivityName=".MainActivity"
             android:label="Add device" />
         <activity
             android:name=".NotificationsActivity"

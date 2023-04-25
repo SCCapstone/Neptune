@@ -123,7 +123,7 @@ public class ServerSettingsActivity extends AppCompatActivity {
                 }
         );
 
-        if(server.filesharingSettings.receivedFilesDirectory==null) {
+        if(this.server.filesharingSettings.receivedFilesDirectory == null || !isValidContentUri(Uri.parse(this.server.filesharingSettings.receivedFilesDirectory))) {
             Intent chooseFileDestination = new Intent(ServerSettingsActivity.this, ChooseFileDestinationActivity.class);
             chooseFileDestination.putExtra(Constants.EXTRA_SERVER_ID, serverId);
             firstTimeFolderPickerLauncher.launch(chooseFileDestination);
@@ -192,34 +192,36 @@ public class ServerSettingsActivity extends AppCompatActivity {
         filePickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
-                    Intent data = result.getData();
-                    if (result.getResultCode() != Activity.RESULT_OK) {
-                        Log.d(TAG, "openFilePickerToSendFileToServer: user canceled");
-                        Toast.makeText(this, "File upload canceled.", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
+                    new Thread(() -> {
+                        Intent data = result.getData();
+                        if (result.getResultCode() != Activity.RESULT_OK) {
+                            Log.d(TAG, "openFilePickerToSendFileToServer: user canceled");
+                            runOnUiThread(() -> Toast.makeText(this, "File upload canceled.", Toast.LENGTH_SHORT).show());
+                            return;
+                        }
 
-                    if (data == null) {
-                        Log.w(TAG, "openFilePickerToSendFileToServer: no intent data");
-                        Toast.makeText(this, "File upload failed, no selected file.", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
+                        if (data == null) {
+                            Log.w(TAG, "openFilePickerToSendFileToServer: no intent data");
+                            runOnUiThread(() -> Toast.makeText(this, "File upload failed, no selected file.", Toast.LENGTH_SHORT).show());
+                            return;
+                        }
 
-                    if (null != data.getClipData()) {
-                        for (int i = 0; i < data.getClipData().getItemCount(); i++) {
-                            Uri uri = data.getClipData().getItemAt(i).getUri();
+                        if (null != data.getClipData()) {
+                            for (int i = 0; i < data.getClipData().getItemCount(); i++) {
+                                Uri uri = data.getClipData().getItemAt(i).getUri();
+                                if (uri != null) {
+                                    String name = getFriendlyNameFromUri(uri);
+                                    runOnUiThread(() -> Toast.makeText(this, "Sending \"" + name + "\".", Toast.LENGTH_SHORT).show());
+                                    new Thread(() -> server.sendFile(uri)).start();
+                                }
+                            }
+                        } else {
+                            Uri uri = data.getData();
                             if (uri != null) {
-                                String name = getFriendlyNameFromUri(uri);
-                                Toast.makeText(this, "Sending \"" + name + "\".", Toast.LENGTH_SHORT).show();
                                 server.sendFile(uri);
                             }
                         }
-                    } else {
-                        Uri uri = data.getData();
-                        if (uri != null) {
-                            server.sendFile(uri);
-                        }
-                    }
+                    }).start();
                 }
         );
         folderPickerLauncher = registerForActivityResult(
@@ -446,7 +448,7 @@ public class ServerSettingsActivity extends AppCompatActivity {
             updateClipboardSettings();
 
             chkFileSharingEnable.setChecked(this.server.filesharingSettings.enabled);
-            chkFileSharingAutoAcceptFiles.setChecked(!this.server.filesharingSettings.requireConfirmationOnServerUploads);
+            chkFileSharingAutoAcceptFiles.setChecked(this.server.filesharingSettings.requireConfirmationOnServerUploads == false);
             chkFileSharingNotifyOnReceive.setChecked(this.server.filesharingSettings.notifyOnServerUpload);
             chkFileSharingServerSet.setChecked(this.server.filesharingSettings.allowServerToUpload);
             updateFileSharingSettings();
@@ -472,6 +474,8 @@ public class ServerSettingsActivity extends AppCompatActivity {
 
 
             updateDetailsText();
+            
+            runOnUiThread(() -> Toast.makeText(this, "Settings loaded", Toast.LENGTH_SHORT).show());
         } catch (Exception e) {
             Log.e(TAG, "pullSettings: error occurred while pulling server settings", e);
             showErrorMessage("Unexpected error", "We're having trouble reading the server's settings. You may have to delete the server and repair.");
@@ -490,7 +494,7 @@ public class ServerSettingsActivity extends AppCompatActivity {
         this.server.clipboardSettings.allowServerToGet = chkClipboardServerGet.isChecked();
 
         this.server.filesharingSettings.enabled = chkFileSharingEnable.isChecked();
-        this.server.filesharingSettings.requireConfirmationOnServerUploads = !chkFileSharingAutoAcceptFiles.isChecked();
+        this.server.filesharingSettings.requireConfirmationOnServerUploads = (chkFileSharingAutoAcceptFiles.isChecked() == false);
         this.server.filesharingSettings.notifyOnServerUpload = chkFileSharingNotifyOnReceive.isChecked();
         this.server.filesharingSettings.allowServerToUpload = chkFileSharingServerSet.isChecked();
         this.server.filesharingSettings.receivedFilesDirectory = incomingFilesDirectoryUri.toString();

@@ -467,7 +467,7 @@ async function main() {
 	if (clipboard) {
 		clipboard.addEventListener('changed', () => {
 			// Clipboard changed, push to client
-			// Neptune.log.silly("Clipboard data changed, pushing to clients.");
+			Neptune.log.silly("Clipboard data changed, pushing to clients.");
 			Neptune.clientManager.getClients().forEach(client => {
 				if (client.clipboardSettings.synchronizeClipboardToClient && !client.clipboardModificationsLocked)
 					client.sendClipboard();

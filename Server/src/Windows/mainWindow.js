@@ -359,7 +359,7 @@ class thisTest extends NeptuneWindow {
 			this.updateEnableClipboardSharing(client.clipboardSettings.enabled);
 			this.chkSyncClipboard.setChecked(client.clipboardSettings.enabled === true);
 			this.actionToggleClipboardSharing.setChecked(client.clipboardSettings.enabled === true);
-			this.chkAutoSendClipboard.setChecked(client.clipboardSettings.autoSendToClient === true);
+			this.chkAutoSendClipboard.setChecked(client.clipboardSettings.synchronizeClipboardToClient === true);
 			this.chkClipboardAllowClientToGet.setChecked(client.clipboardSettings.allowClientToGet === true);
 			
 
@@ -393,7 +393,7 @@ class thisTest extends NeptuneWindow {
 			client.notificationSettings.enabled = this.chkSyncNotifications.isChecked(); //(client.notificationSettings.enabled !== false);
 			// clipboard
 			client.clipboardSettings.enabled = this.chkSyncClipboard.isChecked(); //(client.clipboardSettings.enabled === true);
-			client.clipboardSettings.autoSendToClient = this.chkAutoSendClipboard.isChecked(); //(client.clipboardSettings.autoSendToClient === true);
+			client.clipboardSettings.synchronizeClipboardToClient = this.chkAutoSendClipboard.isChecked(); //(client.clipboardSettings.synchronizeClipboardToClient === true);
 			client.clipboardSettings.allowClientToGet = this.chkClipboardAllowClientToGet.isChecked(); //(client.clipboardSettings.allowClientToGet === true);
 
 			// file sharing
