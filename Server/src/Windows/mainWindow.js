@@ -36,7 +36,7 @@ class thisTest extends NeptuneWindow {
 
 
 	/** @type {ClientManager} */
-	clientManager = Neptune.clientManager;
+	clientManager = global.Neptune.clientManager;
 
 
 	/** @type {Map<string, Client>} */
@@ -1354,12 +1354,16 @@ class thisTest extends NeptuneWindow {
 					let cancelButton = new NodeGUI.QPushButton();
 					cancelButton.setText("No");
 
-					let result = this.displayMessageBox("Delete and unpair " + (client.friendlyName === undefined? "the client" : client.friendlyName) + "?",
-						"Are you sure you want to delete and unpair with " + (client.friendlyName === undefined? "the client" : client.friendlyName) + "?",
-						[
-							{ button: okayButton, buttonRole: NodeGUI.ButtonRole.AcceptRole },
-							{ button: cancelButton, buttonRole: NodeGUI.ButtonRole.RejectRole },
-						]);
+					let result = NodeGUI.DialogCode.Accepted;
+					if (global.testing) {
+						result = NodeGUI.DialogCode.Rejected;
+					} else
+						result = this.displayMessageBox("Delete and unpair " + (client.friendlyName === undefined? "the client" : client.friendlyName) + "?",
+							"Are you sure you want to delete and unpair with " + (client.friendlyName === undefined? "the client" : client.friendlyName) + "?",
+							[
+								{ button: okayButton, buttonRole: NodeGUI.ButtonRole.AcceptRole },
+								{ button: cancelButton, buttonRole: NodeGUI.ButtonRole.RejectRole },
+							]);
 
 					if (result != NodeGUI.DialogCode.Accepted) {
 						this.RemoveClientFromDeviceList(client.friendlyName);

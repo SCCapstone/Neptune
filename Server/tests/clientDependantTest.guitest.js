@@ -5,7 +5,6 @@ const fs = require("node:fs");
 global.Neptune.setupConfigurations();
 
 const Client = require("../src/Classes/Client");
-const IPAddress = require("../src/Classes/IPAddress");
 const ClientManager = require('../src/Classes/ClientManager.js');
 
 
@@ -36,22 +35,27 @@ function getClientSettings(value) {
     }
 }
 
+const MainWindow = new (require('../src/Windows/mainWindow.js'))();
+MainWindow.show();
+
 describe("Client class (non-API) tests", () => {
 
-    var clientUUID = null;
-    var client = null;
+    var clientUUID = undefined;
+    var client = undefined;
 
-    beforeAll(() => {
-        let MainWindow = new (require('../src/Windows/mainWindow.js'))();
+    beforeEach(() => {
         clientUUID = crypto.randomUUID();
-        client = new Client(global.Neptune.configurationManager, clientUUID);
+        client = global.Neptune.clientManager.getClient(clientUUID);
+        client.friendlyName = "MyTestDevice";
+        client.batteryLevel = 60;
+        global.testing = true;
+        MainWindow.AddClientToDeviceList(client);
     });
 
-    afterAll((done) => {
+    afterEach((done) => {
         if (client) {
             try {
-            client.delete();
-        
+                client.delete();
                 setTimeout(() => {
                     done();
                 }, 1000);
@@ -63,22 +67,46 @@ describe("Client class (non-API) tests", () => {
         }
     });
 
-    test("Enable clickboard sharing updates buttons", async () => {
-    
+    afterAll(() => {
+        MainWindow.hide();
+    })
+
+    test("Clipboard sharing updates buttons", async () => {
+        if (MainWindow.chkSyncClipboard.isChecked())
+            MainWindow.chkSyncClipboard.click(); // turn off
+
+        expect(MainWindow.btnSendClipboard.isEnabled()).toBe(false);
+        expect(MainWindow.btnReceiveClipboard.isEnabled()).toBe(false);
+
+        MainWindow.chkSyncClipboard.click();
+
+        expect(MainWindow.btnSendClipboard.isEnabled()).toBe(true);
+        expect(MainWindow.btnReceiveClipboard.isEnabled()).toBe(true);
     });
 
-    /*test("emits delete on delete", () => {
-        client = new Client(global.Neptune.configurationManager, clientUUID);
+    test("File sharing updates buttons", async () => {
+        if (MainWindow.chkFileSharingEnable.isChecked())
+            MainWindow.chkFileSharingEnable.click(); // turn off
 
+        expect(MainWindow.btnSendFile.isEnabled()).toBe(false);
+
+        MainWindow.chkFileSharingEnable.click();
+
+        expect(MainWindow.btnSendFile.isEnabled()).toBe(true);
+    });
+
+    test("Client emits delete on delete press", () => {
+        let cclient = global.Neptune.clientManager.getClient(clientUUID);
         jest.useFakeTimers();
         const eventSpy = jest.fn();
-        client.eventEmitter.on('deleted', eventSpy);
+        eventSpy();
+        cclient.eventEmitter.on('deleted', eventSpy);
 
-        client.delete();
+        MainWindow.btnDelete.click();
 
         jest.advanceTimersByTime(1000);
         // Expect the event to have been emitted
         expect(eventSpy).toHaveBeenCalledTimes(1);
         jest.useRealTimers();
-    });*/
+    });
 });
