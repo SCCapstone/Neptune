@@ -592,7 +592,7 @@ namespace NeptuneRunner {
             try {
                 if (Program.ToastNotifier == null) {
                     try {
-                        Program.ToastNotifier = ToastNotificationManager.CreateToastNotifier(TaskBar.ApplicationId); //(TaskBar.ApplicationId);
+                        Program.ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId); //(TaskBar.ApplicationId);
                     } catch (Exception) {
                         // well
                         return false;
@@ -644,7 +644,7 @@ namespace NeptuneRunner {
             try {
                 if (Program.ToastNotifier == null) {
                     try {
-                        Program.ToastNotifier = ToastNotificationManager.CreateToastNotifier(TaskBar.ApplicationId); //(TaskBar.ApplicationId);
+                        Program.ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier(); //(TaskBar.ApplicationId);
                     } catch (Exception) {}
                 }
 

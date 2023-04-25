@@ -27,7 +27,7 @@ namespace NeptuneRunner {
 
         public static Queue<string> IPCDataQueue = new Queue<string>(0);
 
-        public static ToastNotifier ToastNotifier;
+        public static ToastNotifierCompat ToastNotifier;
 
 
         #region Properties
@@ -263,16 +263,16 @@ namespace NeptuneRunner {
                 NotificationRegisty.RegisterAppForNotificationSupport(true); // Setup notification support
                                                                              //Notifications.NotificationActivator.Initialize(ToastActivated); // Initialize
 
-                //ToastNotificationManagerCompat.OnActivated += ToastNotificationManagerCompat_OnActivated;
-                Notifications.NotificationActivator.Initialize(ToastActivated);
-                ToastNotifier = ToastNotificationManager.CreateToastNotifier(TaskBar.ApplicationId);
+                ToastNotificationManagerCompat.OnActivated += ToastNotificationManagerCompat_OnActivated;
+                //Notifications.NotificationActivator.Initialize(ToastActivated);
+                ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier();
             } catch (Exception) {
                 try {
                     ToastNotificationManagerCompat.Uninstall();
                     NotificationRegisty.UninstallShortcut();
 
                     NotificationRegisty.RegisterAppForNotificationSupport(true);
-                    ToastNotifier = ToastNotificationManager.CreateToastNotifier(TaskBar.ApplicationId);
+                    ToastNotifier = ToastNotificationManagerCompat.CreateToastNotifier();
                 } catch (Exception e) {
                     MessageBox.Show("Neptune was unable to register the ToastNotifier into Windows. Because of this, notifications quality will be degraded. "
                         + Environment.NewLine + "Restarting Neptune may help, but do make sure notifications are enabled for your system in the Settings app."

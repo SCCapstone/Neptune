@@ -25,7 +25,7 @@ const isWin = process.platform === "win32"; // Can change notification handling 
  * Debug mode - special stuff
  * @type {boolean}
  */
-const debug = true; // change this later idk
+const debug = false; // change this later idk
 
 /**
  * output the silly log level to console (it goes	every other level > silly, silly is the lowest priority, literal spam)
@@ -33,7 +33,7 @@ const debug = true; // change this later idk
  */
 const displaySilly = false; // 
 Error.stackTraceLimit = (debug)? 8 : 4;
-global.consoleVisible = true;
+global.consoleVisible = false;
 
 
 /** @namespace Neptune */

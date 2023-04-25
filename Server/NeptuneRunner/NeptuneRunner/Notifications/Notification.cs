@@ -16,7 +16,7 @@ namespace NeptuneRunner.Notifications {
             if (!File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Microsoft\\Windows\\Start Menu\\Programs\\" + TaskBar.ApplicationName + ".lnk") || force) {
                 string exePath = Process.GetCurrentProcess().MainModule.FileName;
                 InstallShortcut(exePath);
-                RegisterComServer(exePath);
+                //RegisterComServer(exePath);
             }
         }
 
