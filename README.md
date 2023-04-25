@@ -35,6 +35,22 @@ To build, run `npx nodegui-packer --init NeptuneServer` at least once, then `npm
 
 ---
 
+## Testing
+### Android Testing
+
+Follow these steps to test the Android Client app.
+1) Open our project's code in Android Studio.
+2) Run the app to ensure that all permissions are enabled prior to testing (shown in Final Client Testing Video in the Issue Labeled "Final Testing Video")).
+3) Stop the app's execution. You are ready to test.
+4) Go to the Project tab on the left side of the screen and locate the `com (androidTest)` and `com (test)` folders. Open both and go to the `neptune.app` folder. The `androidTest` folder holds the Behavior Tests and the `test` folder holds the Unit Tests.
+5) To run an entire folder's group of tests, do the following:
+    1) Right click the `neptune.app` folder for the desired test group. This also works for subfolders within the `neptune.app` folder.
+    2) Click `Run Tests in com.neptune...`
+    3) Wait for the tests to finish running. Look at the bottom of the window to see information regarding the tests that ran.
+6) To run a single test file, do the following:
+    1) Right click the desired test.
+    2) Click `Run [Insert Test Name Here]`.
+    3) Wait for the tests to finish running. Look at the bottom of the window to see information regarding the tests that ran.
 
 ## Authors
 Will Amos\
